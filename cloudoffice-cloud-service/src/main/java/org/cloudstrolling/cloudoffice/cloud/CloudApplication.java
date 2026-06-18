@@ -19,6 +19,11 @@ import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 @EnableDiscoveryClient
 public class CloudApplication {
 
+    /**
+     * 应用主入口。
+     *
+     * @param args 命令行参数
+     */
     public static void main(String[] args) {
         SpringApplication.run(CloudApplication.class, args);
     }

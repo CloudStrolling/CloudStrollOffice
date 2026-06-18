@@ -29,8 +29,14 @@ import java.util.Map;
 public class HealthController {
 
     @Autowired
-    private Environment env;
+    private Environment env; // Spring 环境配置，用于读取应用名称等属性
 
+    /**
+     * 健康检查接口。
+     * <p>返回当前服务的健康状态，包括服务名称、运行状态、版本号及当前时间戳。</p>
+     *
+     * @return 包含服务健康信息的 ApiResult 响应
+     */
     @GetMapping("/health")
     public ApiResult<Map<String, Object>> health() {
         Map<String, Object> info = new LinkedHashMap<>();

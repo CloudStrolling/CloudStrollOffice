@@ -24,10 +24,14 @@ import java.util.Date;
 @Component
 public class JwtUtils {
 
+    /** JWT 签名密钥字符串（配置项：jwt.secret） */
     private final String secret;
+    /** JWT 令牌过期时间，单位毫秒（配置项：jwt.expiration，默认 86400000 = 24 小时） */
     private final long expiration;
+    /** JWT 签名算法（配置项：jwt.algorithm，默认 HS256），当前版本暂未使用 */
     @SuppressWarnings("unused")
     private final String algorithm;
+    /** HMAC 签名密钥对象，由 {@link #secret} 初始化生成 */
     private SecretKey secretKey;
 
     /**

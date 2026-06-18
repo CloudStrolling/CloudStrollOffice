@@ -20,7 +20,8 @@ import java.util.Map;
 /**
  * 健康检查控制器。
  * <p>
- * 用于服务存活探活与基础信息获取。
+ * 提供服务的存活探活（Health Check）与基础信息获取接口，
+ * 用于 Kubernetes 等容器编排平台的就绪探针和存活探针检测。
  * </p>
  *
  * @author CloudStrolling
@@ -32,7 +33,7 @@ import java.util.Map;
 public class HealthController {
 
     @Autowired
-    private Environment env;
+    private Environment env; // Spring 环境配置，用于读取 application 名称等属性
 
     /**
      * 健康检查接口。

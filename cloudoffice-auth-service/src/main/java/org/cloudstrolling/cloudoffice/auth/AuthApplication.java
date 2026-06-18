@@ -13,6 +13,11 @@ import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 @EnableDiscoveryClient
 public class AuthApplication {
 
+    /**
+     * 认证授权服务入口方法。
+     *
+     * @param args 启动参数
+     */
     public static void main(String[] args) {
         SpringApplication.run(AuthApplication.class, args);
     }

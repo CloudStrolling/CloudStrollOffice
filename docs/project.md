@@ -4,7 +4,7 @@
 **项目名称：** CloudStrollOffice
 **编程语言：** Java 21 (OpenJDK 21 LTS)
 **项目类型：** 微服务应用程序（Spring Boot + Spring Cloud）
-**当前进度：** impm-coding
+**当前进度：** impm-docs-update
 **本地化语言：** 简体中文
 **项目总体介绍：** 云漫智企（CloudStrollOffice）是一个基于 Java 21 + Spring Boot 3.2.x + Spring Cloud 2023.x 技术栈构建的微服务互联网应用程序。采用 Maven 多模块架构，由认证服务（auth-service）、企业服务（biz-service）、云服务（cloud-service）、系统服务（system-service）、API 网关（gateway）及公共模块（common）组成，为企业提供企业信息管理、人事管理、工作流审批、薪酬管理、统一认证授权等综合服务能力。数据库采用 MariaDB 10.6 (LTS)，缓存使用 Redis 7.2.x，消息队列使用 RocketMQ 5.1.x，注册中心和配置中心使用 Nacos 2.3.x。
 
@@ -173,19 +173,24 @@ docs/
 │   └── origin-requires0.1.0.md    # 原始架构需求文档 v0.1.0（技术栈选型、架构设计、服务划分等）
 ├── requires/                      # 需求文档（梳理后）
 │   └── CloudStrollOffice-requirement-v0.1.0.md  # 项目需求文档 v0.1.0（User Story 格式，含 FR/NFR/约束条件）
-├── prds/                          # PRD 文档（待生成）
-├── sds/                           # 技术规格说明书（待生成）
-├── tasks/                         # 任务清单（待生成）
+├── prds/                          # PRD 文档
+├── sds/                           # 技术规格说明书
+├── tasks/                         # 任务清单
 ├── prompts/                       # AI 交互历史记录
 │   ├── prompt-20260618-090703.md
 │   ├── prompt-20260618-094140.md
-│   └── prompt-20260618-094508.md
+│   ├── prompt-20260618-094508.md
+│   └── prompt-20260618-123000.md
+├── tests/                         # 测试用例文档
+│   ├── test-cases-common-v0.1.0.md
+│   └── test-cases-services-v0.1.0.md
+├── deployment-guide.md            # 编译部署文档
 └── project.md                     # 本项目文件（项目信息、编码规范、项目地图）
 ```
 
-## 本期待创建模块（v0.1.0）
+## 已创建模块（v0.1.0）
 
-以下模块为 v0.1.0 阶段需要创建的 Maven 子模块，当前尚为骨架状态：
+以下模块为 v0.1.0 阶段已创建的 Maven 子模块：
 
 | 模块目录 | 包名 | 端口 | 功能描述 |
 |----------|------|------|----------|

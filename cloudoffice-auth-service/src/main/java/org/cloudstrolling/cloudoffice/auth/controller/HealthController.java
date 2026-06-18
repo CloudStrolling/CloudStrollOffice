@@ -23,6 +23,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class HealthController {
 
+    /** Spring 应用环境配置，用于读取服务名称等信息 */
     @Autowired
     private Environment env;
 

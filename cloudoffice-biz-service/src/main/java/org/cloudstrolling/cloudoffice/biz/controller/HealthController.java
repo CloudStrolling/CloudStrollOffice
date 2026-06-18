@@ -31,7 +31,7 @@ public class HealthController {
     private static final Logger log = LoggerFactory.getLogger(HealthController.class);
 
     @Autowired
-    private Environment env;
+    private Environment env; // Spring 环境配置，用于读取应用名称等属性
 
     /**
      * 健康检查接口。
