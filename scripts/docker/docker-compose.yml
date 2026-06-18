@@ -1,0 +1,161 @@
+version: '3.8'
+
+networks:
+  cloud-stroll-network:
+    driver: bridge
+
+volumes:
+  mariadb-data:
+    driver: local
+
+services:
+  # 注册中心 - Nacos
+  nacos:
+    image: nacos/nacos-server:v2.3.0
+    container_name: cloud-stroll-nacos
+    ports:
+      - "8848:8848"
+    environment:
+      - MODE=standalone
+    networks:
+      - cloud-stroll-network
+    restart: unless-stopped
+
+  # 数据库 - MariaDB
+  mariadb:
+    image: mariadb:10.6
+    container_name: cloud-stroll-mariadb
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MARIADB_ROOT_PASSWORD:-root123}
+    volumes:
+      - mariadb-data:/var/lib/mysql
+    networks:
+      - cloud-stroll-network
+    restart: unless-stopped
+
+  # 缓存 - Redis（本期预留）
+  redis:
+    image: redis:7.2
+    container_name: cloud-stroll-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - cloud-stroll-network
+    restart: unless-stopped
+
+  # 网关服务
+  gateway:
+    build:
+      context: ../../
+      dockerfile: scripts/docker/gateway/Dockerfile
+    image: cloud-stroll-gateway:latest
+    container_name: cloud-stroll-gateway
+    ports:
+      - "9000:9000"
+    depends_on:
+      - nacos
+      - mariadb
+    environment:
+      - NACOS_ADDR=${NACOS_ADDR:-nacos:8848}
+      - DB_HOST=${DB_HOST:-mariadb}
+      - DB_PORT=${DB_PORT:-3306}
+      - DB_USER=${DB_USER:-root}
+      - DB_PASSWORD=${DB_PASSWORD:-root123}
+      - JWT_SECRET=${JWT_SECRET}
+    networks:
+      - cloud-stroll-network
+    restart: unless-stopped
+
+  # 认证服务
+  auth-service:
+    build:
+      context: ../../
+      dockerfile: scripts/docker/auth-service/Dockerfile
+    image: cloud-stroll-auth-service:latest
+    container_name: cloud-stroll-auth-service
+    ports:
+      - "9100:9100"
+    depends_on:
+      - nacos
+      - mariadb
+    environment:
+      - NACOS_ADDR=${NACOS_ADDR:-nacos:8848}
+      - DB_HOST=${DB_HOST:-mariadb}
+      - DB_PORT=${DB_PORT:-3306}
+      - DB_USER=${DB_USER:-root}
+      - DB_PASSWORD=${DB_PASSWORD:-root123}
+      - JWT_SECRET=${JWT_SECRET}
+    networks:
+      - cloud-stroll-network
+    restart: unless-stopped
+
+  # 业务服务
+  biz-service:
+    build:
+      context: ../../
+      dockerfile: scripts/docker/biz-service/Dockerfile
+    image: cloud-stroll-biz-service:latest
+    container_name: cloud-stroll-biz-service
+    ports:
+      - "9200:9200"
+    depends_on:
+      - nacos
+      - mariadb
+    environment:
+      - NACOS_ADDR=${NACOS_ADDR:-nacos:8848}
+      - DB_HOST=${DB_HOST:-mariadb}
+      - DB_PORT=${DB_PORT:-3306}
+      - DB_USER=${DB_USER:-root}
+      - DB_PASSWORD=${DB_PASSWORD:-root123}
+      - JWT_SECRET=${JWT_SECRET}
+    networks:
+      - cloud-stroll-network
+    restart: unless-stopped
+
+  # 云服务
+  cloud-service:
+    build:
+      context: ../../
+      dockerfile: scripts/docker/cloud-service/Dockerfile
+    image: cloud-stroll-cloud-service:latest
+    container_name: cloud-stroll-cloud-service
+    ports:
+      - "9300:9300"
+    depends_on:
+      - nacos
+      - mariadb
+    environment:
+      - NACOS_ADDR=${NACOS_ADDR:-nacos:8848}
+      - DB_HOST=${DB_HOST:-mariadb}
+      - DB_PORT=${DB_PORT:-3306}
+      - DB_USER=${DB_USER:-root}
+      - DB_PASSWORD=${DB_PASSWORD:-root123}
+      - JWT_SECRET=${JWT_SECRET}
+    networks:
+      - cloud-stroll-network
+    restart: unless-stopped
+
+  # 系统服务
+  system-service:
+    build:
+      context: ../../
+      dockerfile: scripts/docker/system-service/Dockerfile
+    image: cloud-stroll-system-service:latest
+    container_name: cloud-stroll-system-service
+    ports:
+      - "9400:9400"
+    depends_on:
+      - nacos
+      - mariadb
+    environment:
+      - NACOS_ADDR=${NACOS_ADDR:-nacos:8848}
+      - DB_HOST=${DB_HOST:-mariadb}
+      - DB_PORT=${DB_PORT:-3306}
+      - DB_USER=${DB_USER:-root}
+      - DB_PASSWORD=${DB_PASSWORD:-root123}
+      - JWT_SECRET=${JWT_SECRET}
+    networks:
+      - cloud-stroll-network
+    restart: unless-stopped

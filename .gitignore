@@ -1,0 +1,219 @@
+# ====================== 操作系统文件 ======================
+# Mac
+.DS_Store
+.AppleDouble
+._*
+# Windows
+Thumbs.db
+desktop.ini
+# Linux
+*~
+
+# ====================== IDE/编辑器配置 ======================
+# idea
+.idea/
+!.idea/codeStyles/
+!.idea/runConfigurations/
+*.iml
+*.ipr
+*.iws
+out/
+
+# vscode
+.vscode/
+*.code-workspace
+
+# Sublime
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+
+# Atom
+.atom/
+
+# ====================== AI开发工具专用 ======================
+# OpenCode
+.opencode/
+.opencode.json
+opencode-cache/
+.opencode-snapshots/
+.opencode-history/
+*.opencode.tmp
+
+# Claude Code VSCode插件
+.claude/
+.claudeignore
+.claude-history/
+.claude/conversations/
+.claude/sessions/
+.claude/checkpoints/
+.claude/skills/.cache/
+.claude/settings.local.json
+*.skill-backup
+conversation-history.jsonl
+
+# Codex / GitHub Copilot
+.copilot/
+.copilot-agent/
+copilot-*.log
+.copilotignore
+.vscode/copilot/
+
+# Cursor AI
+.cursor/
+.cursor-index/
+.cursor-cache/
+
+# Codeium / Windsurf
+.codeium/
+windsurf-sessions/
+
+# Tabnine
+.tabnine/
+.tabnine-cache/
+
+# AI通用临时/日志
+*.ai.log
+ai-tmp/
+ai-generated-temp/
+*.ai-backup
+
+# ====================== Java / Maven ======================
+# Maven
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+dependency-reduced-pom.xml
+# Gradle
+build/
+.gradle/
+gradle-app.setting
+!gradle-wrapper.jar
+
+# 编译class
+*.class
+*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# ====================== Flutter / Dart ======================
+# Flutter
+.dart_tool/
+.packages
+.pub/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+*.flutter-ignore
+
+# Dart
+.dart_tool/
+.packages
+.pub-cache/
+build/
+*.g.dart
+*.freezed.dart
+*.config.dart
+
+# Android (Flutter 构建产物)
+android/.gradle/
+android/local.properties
+android/key.properties
+android/app/google-services.json
+android/app/release.keystore
+android/app/*.jks
+android/app/*.keystore
+
+# iOS (Flutter 构建产物)
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/Flutter/app.flx
+ios/Flutter/app.zip
+ios/Flutter/flutter_assets/
+ios/Flutter/flutter_export_environment.sh
+ios/ServiceDefinitions.json
+ios/Runner/GeneratedPluginRegistrant.*
+
+# Web (Flutter web build)
+web/
+
+# ====================== 日志、数据库、缓存、临时文件 ======================
+# 日志
+*.log
+logs/
+log/
+
+# 数据库
+*.db
+*.sqlite
+*.sqlite3
+*.mdb
+*.frm
+*.ibd
+*.myd
+*.myi
+
+# 缓存、临时文件
+tmp/
+temp/
+.cache/
+
+# 环境密钥
+.env
+.env.local
+.env.dev
+.env.prod
+.env.staging
+*.pem
+*.key
+
+# ====================== 环境配置文件 ======================
+# 忽略个性化环境配置，保留模板
+application-*.yml
+application-*.yaml
+bootstrap-*.yml
+bootstrap-*.yaml
+!application.yml
+!application.yaml
+!bootstrap.yml
+!bootstrap.yaml
+
+# 本地分支记录、补丁备份
+*.patch
+*.diff
+*.bak
+*.backup
+*.orig
+*~
+
+# ====================== 操作系统编译产物 ======================
+# Windows
+*.lib
+*.exp
+# Linux
+*.so
+# Mac
+*.dylib
+*.framework
+
+# ====================== Docker ======================
+.docker/
+docker-compose.override.yml
+*.docker-cache
+
+# ====================== 文档 ======================
+# 仅排除构建文档的输出目录，保留源文档
+docs/_build/
+site/
+_book/

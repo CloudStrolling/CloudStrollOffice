@@ -1,0 +1,21 @@
+server:
+  port: 9100
+
+spring:
+  application:
+    name: cloudoffice-auth-service
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+
+jwt:
+  secret: ${JWT_SECRET:cloudstrollDefaultJwtSecretKeyForDevEnvironmentOnly}
+  expiration: 86400000
+  algorithm: HS256
+
+logging:
+  level:
+    org.cloudstrolling: DEBUG

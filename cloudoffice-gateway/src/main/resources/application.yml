@@ -1,0 +1,37 @@
+server:
+  port: 9000
+
+spring:
+  cloud:
+    gateway:
+      routes:
+        - id: auth-service
+          uri: lb://cloudoffice-auth-service
+          predicates:
+            - Path=/api/v1/auth/**
+        - id: biz-service
+          uri: lb://cloudoffice-biz-service
+          predicates:
+            - Path=/api/v1/biz/**
+        - id: cloud-service
+          uri: lb://cloudoffice-cloud-service
+          predicates:
+            - Path=/api/v1/cloud/**
+        - id: system-service
+          uri: lb://cloudoffice-system-service
+          predicates:
+            - Path=/api/v1/system/**
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOriginPatterns: "*"
+            allowedMethods: "*"
+            allowedHeaders: "*"
+            allowCredentials: true
+      discovery:
+        locator:
+          enabled: true
+
+logging:
+  level:
+    org.springframework.cloud.gateway: INFO
