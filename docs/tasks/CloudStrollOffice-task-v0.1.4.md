@@ -15,7 +15,7 @@
 | 系统服务 | 启动入口 | TASK-001 | 创建 SystemApplication 启动类 |
 | 系统服务 | 应用配置 | TASK-002 | 配置 bootstrap.yml 和 application.yml ✅ |
 | 系统服务 | Maven配置 | TASK-003 | 配置 pom.xml Maven 依赖 |
-| 系统服务 | 健康检查 | TASK-004 | 实现 HealthController 健康检查接口 |
+| 系统服务 | 健康检查 | TASK-004 | 实现 HealthController 健康检查接口 ✅ |
 | 系统服务 | 骨架目录 | TASK-005 | 建立标准包目录结构 |
 | 系统服务 | 测试配置 | TASK-006 | 配置测试环境 bootstrap.yml |
 | 系统服务 | 单元测试 | TASK-007 | 编写系统服务单元测试 |
@@ -193,7 +193,7 @@
 **任务类型：** backend
 **关联UserStory：** US-002
 **优先级：** P0
-**当前状态：** pending
+**当前状态：** review-finish ✅
 
 #### 上下游任务
 - 上游任务：TASK-001（启动类）
@@ -280,7 +280,7 @@
 **任务类型：** backend
 **关联UserStory：** US-004
 **优先级：** P1
-**当前状态：** pending
+**当前状态：** completed ✅
 
 #### 上下游任务
 - 上游任务：TASK-001（启动类）

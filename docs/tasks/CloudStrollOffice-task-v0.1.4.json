@@ -57,7 +57,7 @@
       "upstreamTaskIds": ["TASK-001"],
       "downstreamTaskIds": ["TASK-007"],
       "priority": "P0",
-      "status": "pending",
+      "status": "review-finish",
       "testMethod": "MockMvc 或直接调用单元测试验证响应体",
       "acceptanceCriteria": "接口返回 HTTP 200，响应体为 ApiResult 格式，data.service='cloudoffice-system-service'，data.status='UP'，data.version 非空，data.timestamp 为 Long 正数，构造器注入替代 @Autowired 字段注入",
       "contextObtain": "PRD US-002 AC1~AC5, PRD 4.3 接口规范, SDS 4.2, architecture.md 6.3, project.md 编码规范"
@@ -71,7 +71,7 @@
       "upstreamTaskIds": ["TASK-001"],
       "downstreamTaskIds": [],
       "priority": "P1",
-      "status": "pending",
+      "status": "completed",
       "testMethod": "目录结构检查 + 与 auth-service/biz-service 对比",
       "acceptanceCriteria": "13 个标准目录全部创建，包名遵循 org.cloudstrolling.cloudoffice.system.{subpackage}，resources 目录存在 bootstrap.yml 和 application.yml",
       "contextObtain": "PRD US-004 AC1~AC4, SDS 2.3, project.md 文件组织规范"
