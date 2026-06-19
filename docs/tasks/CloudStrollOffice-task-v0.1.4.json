@@ -43,7 +43,7 @@
       "upstreamTaskIds": ["TASK-002"],
       "downstreamTaskIds": [],
       "priority": "P0",
-      "status": "pending",
+      "status": "commit_finish",
       "testMethod": "mvn clean compile -pl cloudoffice-system-service -am 编译通过",
       "acceptanceCriteria": "Maven 编译成功，无依赖缺失，无硬编码版本号",
       "contextObtain": "PRD US-001 AC5, PRD 4.2 依赖清单, SDS 2.2 模块依赖关系"

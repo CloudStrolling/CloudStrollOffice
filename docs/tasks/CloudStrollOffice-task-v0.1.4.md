@@ -133,7 +133,7 @@
 **任务类型：** backend
 **关联UserStory：** US-001
 **优先级：** P0
-**当前状态：** pending
+**当前状态：** commit_finish
 
 #### 上下游任务
 - 上游任务：TASK-002（应用配置）
