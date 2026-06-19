@@ -118,12 +118,13 @@
 - **端口：** 9400
 - **已实现内容（v0.1.4）：**
   - 系统服务启动类 `SystemApplication`（@SpringBootApplication + @EnableDiscoveryClient）
-  - 健康检查控制器 `HealthController`（GET /api/v1/system/health）
+  - 健康检查控制器 `HealthController`（@Slf4j 日志记录，GET /api/v1/system/health 返回服务名称/状态/版本/时间戳）
   - 应用配置（端口 9400、MariaDB 数据源、MyBatis-Plus、SpringDoc、日志级别）
-  - Nacos 注册/配置中心配置（bootstrap.yml，环境变量注入）
-  - 数据源自动排除配置（无 DB 可启动，仅 WARN 日志）
+  - Nacos 注册/配置中心配置（bootstrap.yml，环境变量注入，默认地址 127.0.0.1:8848）
+  - 数据源自动排除配置（无 DB 可启动，仅 WARN 日志，默认地址 127.0.0.1:3306）
   - 应用启动测试 `SystemApplicationTest`（验证 Spring 上下文加载 & @EnableDiscoveryClient 注解）
-  - 健康检查控制器单元测试 `HealthControllerTest`（Mock 环境，验证 200 状态码和响应体字段）
+  - 健康检查控制器单元测试 `HealthControllerTest`（Mock 环境，验证 200 状态码和响应体字段，覆盖 version 和 timestamp 校验）
+  - 测试资源配置（bootstrap.yml 禁用 Nacos 服务发现和配置中心，支持无外部依赖独立运行测试）
   - 标准包目录结构（config/controller/service/mapper/entity/dto/vo/enums/exception/filter/interceptor/util）
 - **说明：** v0.1.4 完成基础框架搭建，定时任务框架选型后续决策，本期不做绑定
 
@@ -329,18 +330,19 @@ public class PageResult<T> {
     private Integer pageSize;   // 每页大小
 }
 
-// 健康检查响应示例
-// GET /api/v1/auth/health
-// Response:
+// 健康检查响应示例（v0.1.4 系统服务）
+// GET /api/v1/system/health
+// Response 200:
 {
     "code": 200,
     "message": "操作成功",
     "data": {
-        "service": "cloudoffice-auth-service",
+        "service": "cloudoffice-system-service",
         "status": "UP",
-        "timestamp": "2026-06-18T10:00:00Z"
+        "version": "0.0.1-SNAPSHOT",
+        "timestamp": 1718000000000
     },
-    "timestamp": 1770000000000
+    "timestamp": 1718000000000
 }
 ```
 
@@ -359,6 +361,8 @@ public class PageResult<T> {
 | PRD-NFR编号 | 非功能性需求 | 架构决策 | 量化指标 |
 | --------- | -------- | ------------- | -------------- |
 | NFR-001 | 性能 - 模块启动时间 ≤ 30 秒 | 去除不必要的自动配置，懒加载非关键组件；各服务不强制依赖数据库连接，无 DB 时可启动（WARN 日志）；system-service 配置 DataSourceAutoConfiguration 排除 | 单模块首次启动 ≤ 30 秒 |
+| NFR-001 | 性能 - 健康检查接口响应时间 < 100ms | 健康检查控制器使用简单逻辑，不依赖外部中间件，直接返回内存状态信息 | 健康检查响应时间 < 100ms |
+| NFR-001 | 性能 - Maven 编译时间 ≤ 30 秒 | 父 POM 统一依赖版本管理，子模块无硬编码版本；增量编译仅编译变更模块 | `mvn clean compile -pl cloudoffice-system-service -am` ≤ 30 秒 |
 | NFR-001 | 可用性 - Nacos 连接容错 | Nacos 连接失败时服务启动失败并给出明确错误提示，指导开发者检查 Nacos 地址和运行状态 | 错误信息明确提示 Nacos 连接失败原因 |
 | NFR-002 | 可靠性 - 全局异常兜底 | `@RestControllerAdvice` + `@ExceptionHandler(Exception.class)` 兜底所有未捕获异常，返回统一错误体，不泄露堆栈明细到客户端 | 100% 未捕获异常走通用兜底处理器 |
 | NFR-002 | 可维护性 - API 文档 | SpringDoc 自动生成 OpenAPI 3 文档，支持在线调试 | 各服务 `/swagger-ui.html` 可访问 |
@@ -367,6 +371,7 @@ public class PageResult<T> {
 | NFR-005 | 可维护性 - 代码规范一致性 | 统一包结构、命名规范、构造器注入、Checkstyle + Alibaba 规范检查 | 通过 Checkstyle 规则验证 |
 | 约束条件 | 安全性 - SQL 注入防护 | MyBatis-Plus 预编译机制，禁止拼接 SQL | 无 SQL 注入风险 |
 | 约束条件 | 安全性 - 敏感配置 | JWT 密钥、数据库密码等通过环境变量 + 配置文件管理，禁止硬编码 | 代码仓库无明文敏感信息 |
+| NFR-006 | 测试 - 无外部中间件独立运行 | 测试环境 bootstrap.yml 禁用 Nacos 服务发现和配置中心；排除 DataSourceAutoConfiguration，不强制依赖 MariaDB 数据库 | 测试可在无 Nacos、MariaDB 环境下 100% 通过 |
 
 ---
 
@@ -688,5 +693,5 @@ public class PageResult<T> {
 
 | 变更日期 | 版本号 | 变更说明 |
 |---------|-------|---------|
-| 2026-06-19 | v0.1.4 | 系统服务模块(v0.1.4) - system-service 基础框架搭建，含HealthController及单元测试 |
+| 2026-06-19 | v0.1.4 | 基于PRD更新系统服务模块架构描述——启动入口、健康检查响应体version字段、骨架结构、测试架构；补充NFR指标（健康检查响应时间、编译时间、测试独立性） |
 | 2026-06-19 | v0.1.0 | 移除cloud-service微服务模块 |
