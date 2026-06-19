@@ -1,0 +1,153 @@
+{
+  "projectName": "CloudStrollOffice",
+  "version": "v0.1.0",
+  "taskDocVersion": "v0.1.0",
+  "generatedAt": "2026-06-19",
+  "description": "删除 cloudoffice-cloud-service 微服务模块（端口9300）的任务清单",
+  "taskType": "module-removal",
+  "estimatedTotalHours": 4.0,
+  "dependencies": [
+    {
+      "from": "TASK-002",
+      "to": "TASK-001",
+      "description": "需先删除源码目录，再更新 POM"
+    },
+    {
+      "from": "TASK-003",
+      "to": "TASK-001",
+      "description": "需先删除源码目录和 Dockerfile，再更新 Docker Compose"
+    },
+    {
+      "from": "TASK-006",
+      "to": "TASK-001",
+      "description": "编译验证需先完成源码删除"
+    },
+    {
+      "from": "TASK-006",
+      "to": "TASK-002",
+      "description": "编译验证需先完成 POM 更新"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "TASK-001",
+      "title": "删除 cloud-service 源码目录及关联文件",
+      "description": "删除 cloudoffice-cloud-service 整个目录（含所有源码、测试、资源、编译产物），删除 scripts/docker/cloud-service/Dockerfile，从 scripts/sql/init.sql 中移除 cloudstroll_office_cloud 数据库创建语句",
+      "taskType": "common",
+      "priority": "P0",
+      "status": "pending",
+      "dependencies": [],
+      "estimatedHours": 0.5,
+      "acceptanceCriteria": [
+        "cloudoffice-cloud-service/ 目录已完全删除（含 target 编译产物）",
+        "scripts/docker/cloud-service/Dockerfile 已删除",
+        "scripts/sql/init.sql 中不再包含 cloudstroll_office_cloud 数据库创建语句"
+      ],
+      "fileOperations": {
+        "delete": [
+          "cloudoffice-cloud-service/",
+          "scripts/docker/cloud-service/Dockerfile"
+        ],
+        "edit": [
+          "scripts/sql/init.sql"
+        ]
+      }
+    },
+    {
+      "id": "TASK-002",
+      "title": "更新父 POM 移除 cloud-service 模块",
+      "description": "从项目根目录 pom.xml 的 <modules> 部分移除 cloudoffice-cloud-service 模块声明，使模块声明从6个缩减为5个",
+      "taskType": "backend",
+      "priority": "P0",
+      "status": "pending",
+      "dependencies": ["TASK-001"],
+      "estimatedHours": 0.5,
+      "acceptanceCriteria": [
+        "pom.xml 的 <modules> 中不再包含 cloudoffice-cloud-service",
+        "模块声明共计5个子模块（common、gateway、auth-service、biz-service、system-service）"
+      ],
+      "fileOperations": {
+        "edit": [
+          "pom.xml"
+        ]
+      }
+    },
+    {
+      "id": "TASK-003",
+      "title": "更新 Docker Compose 移除 cloud-service",
+      "description": "从 scripts/docker/docker-compose.yml 中删除 cloud-service 服务的完整定义块（含build、ports、environment、networks等），确保 system-service 直接跟在 biz-service 后面，YAML 格式正确",
+      "taskType": "common",
+      "priority": "P0",
+      "status": "pending",
+      "dependencies": ["TASK-001"],
+      "estimatedHours": 0.5,
+      "acceptanceCriteria": [
+        "docker-compose.yml 中不再包含 cloud-service 服务定义",
+        "删除后 YAML 格式正确，可通过 docker compose config 验证"
+      ],
+      "fileOperations": {
+        "edit": [
+          "scripts/docker/docker-compose.yml"
+        ]
+      }
+    },
+    {
+      "id": "TASK-004",
+      "title": "更新部署文档移除 cloud-service 引用",
+      "description": "更新 docs/deployment-guide.md，移除所有 cloud-service 引用，包括：服务端口映射表、编译产物列表、健康检查命令（网关和直连）、验证部署清单、手动部署脚本、Maven 插件启动命令、Docker 镜像大小表、环境变量清单、配置文件路径表、数据库初始化列表、Docker 架构图、备份脚本等",
+      "taskType": "common",
+      "priority": "P1",
+      "status": "pending",
+      "dependencies": [],
+      "estimatedHours": 1.0,
+      "acceptanceCriteria": [
+        "部署文档中不再包含任何 cloud-service / 端口9300 相关内容",
+        "所有数字（数据库数量4→3、服务数量5→4）已正确调整",
+        "健康检查命令、手动部署脚本、编译产物列表已移除 cloud 相关项"
+      ],
+      "fileOperations": {
+        "edit": [
+          "docs/deployment-guide.md"
+        ]
+      }
+    },
+    {
+      "id": "TASK-005",
+      "title": "更新数据库设计文档移除 cloud 引用",
+      "description": "更新 docs/dbd.md，移除：第3.3节云服务数据库整个章节（含表结构和预留表）、云资源类型枚举值、云资源状态枚举值、云服务应用账号（cloud_app）；更新 t_sys_oper_log.module 注释移除 cloud；调整后续章节编号；更新数据库汇总表从4个改为3个",
+      "taskType": "common",
+      "priority": "P1",
+      "status": "pending",
+      "dependencies": [],
+      "estimatedHours": 1.0,
+      "acceptanceCriteria": [
+        "第3.3节云服务数据库已完全删除，后续章节编号正确前移",
+        "云资源类型和云资源状态枚举值已删除",
+        "云服务应用账号 cloud_app 已从权限表中删除",
+        "t_sys_oper_log.module 注释已更新",
+        "数据库总数调整为3个"
+      ],
+      "fileOperations": {
+        "edit": [
+          "docs/dbd.md"
+        ]
+      }
+    },
+    {
+      "id": "TASK-006",
+      "title": "编译验证",
+      "description": "执行 mvn clean compile -pl cloudoffice-common,cloudoffice-gateway,cloudoffice-auth-service,cloudoffice-biz-service,cloudoffice-system-service -am 验证剩余5个模块编译通过，确认无 cloud-service 相关编译错误或依赖缺失",
+      "taskType": "backend",
+      "priority": "P0",
+      "status": "pending",
+      "dependencies": ["TASK-001", "TASK-002"],
+      "estimatedHours": 0.5,
+      "acceptanceCriteria": [
+        "编译命令输出 BUILD SUCCESS",
+        "无编译错误或依赖缺失",
+        "编译日志中无 cloud-service 相关警告或错误"
+      ],
+      "validationCommand": "mvn clean compile -pl cloudoffice-common,cloudoffice-gateway,cloudoffice-auth-service,cloudoffice-biz-service,cloudoffice-system-service -am"
+    }
+  ]
+}
