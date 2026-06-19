@@ -85,7 +85,7 @@
       "upstreamTaskIds": ["TASK-001", "TASK-002"],
       "downstreamTaskIds": ["TASK-007"],
       "priority": "P1",
-      "status": "pending",
+      "status": "completed",
       "testMethod": "mvn test 在无 Nacos 环境下执行",
       "acceptanceCriteria": "测试运行时 Nacos 被禁用，测试不依赖外部中间件",
       "contextObtain": "PRD US-005 AC5, SDS 2.3 测试模块, SDS 6.6 测试要求"
@@ -99,7 +99,7 @@
       "upstreamTaskIds": ["TASK-004", "TASK-006"],
       "downstreamTaskIds": [],
       "priority": "P1",
-      "status": "pending",
+      "status": "completed",
       "testMethod": "mvn test -pl cloudoffice-system-service 执行",
       "acceptanceCriteria": "所有测试通过，遵循 Given-When-Then 模式，测试命名遵循 {methodName}_{scenario}_{expectedResult} 规范，无外部中间件依赖",
       "contextObtain": "PRD US-005 AC1~AC6, SDS 2.4, SDS 6.6, project.md 测试规范"
