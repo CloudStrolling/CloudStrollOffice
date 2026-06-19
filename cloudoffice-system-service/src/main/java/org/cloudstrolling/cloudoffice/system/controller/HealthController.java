@@ -5,15 +5,15 @@
 
 package org.cloudstrolling.cloudoffice.system.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.cloudstrolling.cloudoffice.common.model.ApiResult;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -30,10 +30,19 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/system")
 @Slf4j
+@Tag(name = "系统服务健康检查", description = "提供系统服务的存活探活与基础信息获取接口")
 public class HealthController {
 
-    @Autowired
-    private Environment env; // Spring 环境配置，用于读取 application 名称等属性
+    private final Environment env;
+
+    /**
+     * 构造器注入 Environment。
+     *
+     * @param env Spring 环境配置，用于读取 application 名称等属性
+     */
+    public HealthController(Environment env) {
+        this.env = env;
+    }
 
     /**
      * 健康检查接口。
@@ -41,12 +50,14 @@ public class HealthController {
      * @return 包含服务名称、状态、版本号和时间戳的健康信息
      */
     @GetMapping("/health")
+    @Operation(summary = "健康检查", description = "返回系统服务运行状态、版本号和时间戳")
     public ApiResult<Map<String, Object>> health() {
+        log.info("健康检查接口被调用");
         Map<String, Object> info = new LinkedHashMap<>();
         info.put("service", env.getProperty("spring.application.name", "cloudoffice-system-service"));
         info.put("status", "UP");
         info.put("version", "0.0.1-SNAPSHOT");
-        info.put("timestamp", Instant.now().toString());
+        info.put("timestamp", System.currentTimeMillis());
         return ApiResult.success(info);
     }
 }

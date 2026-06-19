@@ -11,7 +11,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.env.Environment;
 
-import java.lang.reflect.Field;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -33,16 +32,12 @@ class HealthControllerTest {
     private HealthController healthController;
 
     @BeforeEach
-    void setUp() throws Exception {
-        // 直接实例化控制器，通过反射注入模拟的 Environment
-        healthController = new HealthController();
+    void setUp() {
+        // 构造器注入模拟的 Environment
         Environment mockEnv = mock(Environment.class);
         when(mockEnv.getProperty("spring.application.name", "cloudoffice-system-service"))
                 .thenReturn("cloudoffice-system-service");
-
-        Field envField = HealthController.class.getDeclaredField("env");
-        envField.setAccessible(true);
-        envField.set(healthController, mockEnv);
+        healthController = new HealthController(mockEnv);
     }
 
     @Test
@@ -63,6 +58,7 @@ class HealthControllerTest {
         assertEquals("UP", data.get("status"), "状态应为 UP");
         assertEquals("0.0.1-SNAPSHOT", data.get("version"), "版本号应正确");
         assertNotNull(data.get("timestamp"), "timestamp 不应为空");
+        assertInstanceOf(Long.class, data.get("timestamp"), "timestamp 应为 Long 类型");
 
         // 验证顶层 timestamp
         assertNotNull(result.getTimestamp(), "顶层 timestamp 不应为空");
