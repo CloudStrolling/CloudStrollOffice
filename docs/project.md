@@ -6,7 +6,7 @@
 **项目类型：** 微服务应用程序（Spring Boot + Spring Cloud）
 **当前进度：** impm-docs-update
 **本地化语言：** 简体中文
-**项目总体介绍：** 云漫智企（CloudStrollOffice）是一个基于 Java 21 + Spring Boot 3.2.x + Spring Cloud 2023.x 技术栈构建的微服务互联网应用程序。采用 Maven 多模块架构，由认证服务（auth-service）、企业服务（biz-service）、云服务（cloud-service）、系统服务（system-service）、API 网关（gateway）及公共模块（common）组成，为企业提供企业信息管理、人事管理、工作流审批、薪酬管理、统一认证授权等综合服务能力。数据库采用 MariaDB 10.6 (LTS)，缓存使用 Redis 7.2.x，消息队列使用 RocketMQ 5.1.x，注册中心和配置中心使用 Nacos 2.3.x。
+**项目总体介绍：** 云漫智企（CloudStrollOffice）是一个基于 Java 21 + Spring Boot 3.2.x + Spring Cloud 2023.x 技术栈构建的微服务互联网应用程序。采用 Maven 多模块架构，由认证服务（auth-service）、企业服务（biz-service）、系统服务（system-service）、API 网关（gateway）及公共模块（common）组成，为企业提供企业信息管理、人事管理、工作流审批、薪酬管理、统一认证授权等综合服务能力。数据库采用 MariaDB 10.6 (LTS)，缓存使用 Redis 7.2.x，消息队列使用 RocketMQ 5.1.x，注册中心和配置中心使用 Nacos 2.3.x。
 
 ---
 
@@ -135,7 +135,6 @@ org.cloudstrolling.cloudoffice.{module}
 |----------|------|------|
 | AUTH-0001 ~ AUTH-9999 | 认证服务 | `AUTH-0001` 用户名或密码错误 |
 | BIZ-0001 ~ BIZ-9999 | 企业服务 | `BIZ-0001` 企业信息不存在 |
-| CLOUD-0001 ~ CLOUD-9999 | 云服务 | `CLOUD-0001` 资源不足 |
 | SYS-0001 ~ SYS-9999 | 系统服务 | `SYS-0001` 配置不存在 |
 | COMMON-0001 ~ COMMON-9999 | 公共模块 | `COMMON-0001` 参数校验失败 |
 
@@ -198,7 +197,6 @@ docs/
 | `cloudoffice-gateway/` | `org.cloudstrolling.cloudoffice.gateway` | 9000 | API 网关 — 路由转发、CORS 配置、Nacos 服务发现集成 |
 | `cloudoffice-auth-service/` | `org.cloudstrolling.cloudoffice.auth` | 9100 | 认证服务 — Spring Security + OAuth2 骨架、JWT 工具类 |
 | `cloudoffice-biz-service/` | `org.cloudstrolling.cloudoffice.biz` | 9200 | 企业服务 — 企业信息、人事管理业务骨架 |
-| `cloudoffice-cloud-service/` | `org.cloudstrolling.cloudoffice.cloud` | 9300 | 云服务 — 云资源管理业务骨架 |
 | `cloudoffice-system-service/` | `org.cloudstrolling.cloudoffice.system` | 9400 | 系统服务 — 系统配置、日志、监控、定时任务骨架 |
 | `scripts/docker/` | - | - | Dockerfile 模板 |
 | `scripts/sql/` | - | - | 数据库初始化脚本模板 |
@@ -276,36 +274,14 @@ cloudoffice-auth-service/src/main/java/org/cloudstrolling/cloudoffice/auth/
 | `SecurityConfig` | `org.cloudstrolling.cloudoffice.auth.config` | Spring Security 安全配置：BCrypt 编码器、无状态会话、自定义 401/403 异常处理 |
 | `JwtUtils` | `org.cloudstrolling.cloudoffice.auth.util` | JWT 令牌工具类：签发 Token、验证签名、解析 Claims |
 
-## cloudoffice-cloud-service/ 云服务模块
-
-### 源码结构
-
-```
-cloudoffice-cloud-service/src/main/java/org/cloudstrolling/cloudoffice/cloud/
-├── CloudApplication.java           # CloudService 启动入口（@SpringBootApplication + @EnableDiscoveryClient）
-├── config/                         # 配置类（Spring 配置等）
-├── controller/                     # 控制器层
-│   └── HealthController.java       # 健康检查接口 GET /api/v1/cloud/health
-├── service/                        # 业务逻辑层接口
-│   └── impl/                       # 业务逻辑实现类
-├── mapper/                         # 数据访问层（MyBatis-Plus Mapper）
-├── entity/                         # 实体类（数据库表映射）
-├── dto/                            # 数据传输对象
-├── vo/                             # 视图对象
-├── enums/                          # 枚举类
-├── exception/                      # 异常处理类
-├── filter/                         # 过滤器
-├── interceptor/                    # 拦截器
-└── util/                           # 工具类
-```
-
-### 关键类说明
-
-| 类名 | 包路径 | 功能描述 |
-|------|--------|----------|
-| `CloudApplication` | `org.cloudstrolling.cloudoffice.cloud` | 服务启动入口，集成 Nacos 服务发现 |
-| `HealthController` | `org.cloudstrolling.cloudoffice.cloud.controller` | 健康检查 REST 控制器，返回服务名称、状态、版本和时间戳 |
-
 ---
 
 > **说明：** 项目地图持续更新中，反映当前 v0.1.0 阶段的代码实现状态。
+
+---
+
+# 变更记录
+
+| 日期 | 版本 | 变更说明 |
+|------|------|----------|
+| 2026-06-19 | v0.1.0 | 项目文档更新 - 移除cloud-service微服务模块 |

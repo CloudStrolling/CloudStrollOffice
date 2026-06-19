@@ -64,7 +64,6 @@
                       ├── cloudoffice-gateway        (API 网关)
                       ├── cloudoffice-auth-service   (认证服务)
                       ├── cloudoffice-biz-service    (企业服务)
-                      ├── cloudoffice-cloud-service  (云服务)
                       └── cloudoffice-system-service (系统服务)
                       ├── scripts/                   (脚本模板)
                       └── .idea/                     (IDEA 配置)
@@ -82,12 +81,12 @@
 
 ### FR-001: Maven 多模块项目骨架搭建
 
-- **描述：** 创建顶层父 POM 及 6 个子模块的 Maven 项目结构。父 POM 通过 `<dependencyManagement>` 统一管理所有第三方依赖版本，子模块正确继承父 POM，确保项目在 IDEA 中可正常导入和编译。
+- **描述：** 创建顶层父 POM 及 5 个子模块的 Maven 项目结构。父 POM 通过 `<dependencyManagement>` 统一管理所有第三方依赖版本，子模块正确继承父 POM，确保项目在 IDEA 中可正常导入和编译。
 - **优先级：** 高 (Must)
 - **验收标准：**
   1. 父 POM 文件 `pom.xml` 位于项目根目录，定义项目坐标 `org.cloudstrolling:cloudoffice`，版本号 `0.0.1-SNAPSHOT`
   2. 父 POM 通过 `<dependencyManagement>` 统一管理以下依赖版本：Spring Boot 3.2.5、Spring Cloud 2023.0.1、Spring Cloud Alibaba 2023.0.1.0、MyBatis-Plus 3.5.6、Hutool 5.8.26、SpringDoc 2.5.0、Lombok 1.18.32 等（详见依赖版本汇总表）
-  3. 父 POM 通过 `<modules>` 聚合 6 个子模块：`cloudoffice-common`、`cloudoffice-gateway`、`cloudoffice-auth-service`、`cloudoffice-biz-service`、`cloudoffice-cloud-service`、`cloudoffice-system-service`
+  3. 父 POM 通过 `<modules>` 聚合 5 个子模块：`cloudoffice-common`、`cloudoffice-gateway`、`cloudoffice-auth-service`、`cloudoffice-biz-service`、`cloudoffice-system-service`
   4. 各子模块的 `pom.xml` 正确声明 `<parent>` 指向父 POM，子模块中不出现硬编码的版本号
   5. 使用 `mvn clean compile` 命令可正常编译整个项目，无报错
   6. 项目在 IntelliJ IDEA 中可正常导入，模块结构完整显示
@@ -104,7 +103,7 @@
      - 定义 `BaseException` 抽象基类，继承 `RuntimeException`，包含 `code` 和 `message` 字段
      - 定义 `BusinessException` 业务异常类
      - 定义全局异常处理器 `GlobalExceptionHandler`，使用 `@RestControllerAdvice` + `@ExceptionHandler` 统一拦截处理异常，返回 `ApiResult` 格式
-     - 定义各模块的错误码枚举（AUTH、BIZ、CLOUD、SYS、COMMON 错误码段）
+     - 定义各模块的错误码枚举（AUTH、BIZ、SYS、COMMON 错误码段）
   3. **基础实体类 `BaseEntity`：**
      - 包含公共字段：`id`（主键，Long，雪花算法生成）、`createTime`（LocalDateTime，创建时间）、`updateTime`（LocalDateTime，更新时间）、`deleted`（Integer，逻辑删除标志，0-正常，1-删除）
      - 使用 MyBatis-Plus 注解（`@TableId`、`@TableLogic`、`@TableField`）
@@ -150,17 +149,6 @@
   3. 按照规范建立完整的包目录结构
   4. 配置 `bootstrap.yml` 从 Nacos 加载配置
   5. 提供一个测试端点（如 `/api/v1/biz/health`）验证服务可正常访问
-
-### FR-006: 云服务骨架搭建
-
-- **描述：** 搭建 `cloudoffice-cloud-service` 模块，创建标准的 Spring Boot 应用骨架，集成 Nacos 服务发现，建立标准的包结构。作为云资源管理、资源编排等业务模块的承载服务。
-- **优先级：** 中 (Should)
-- **验收标准：**
-  1. cloud-service 可正常启动，监听端口 9300
-  2. 集成 Nacos 服务发现，启动后在 Nacos 控制台可见
-  3. 按照规范建立完整的包目录结构
-  4. 配置 `bootstrap.yml` 从 Nacos 加载配置
-  5. 提供一个测试端点（如 `/api/v1/cloud/health`）验证服务可正常访问
 
 ### FR-007: 系统服务骨架搭建
 
@@ -337,7 +325,6 @@
 | **Must (必须有)** | FR-003 | API 网关基础配置 |
 | **Should (应该有)** | FR-004 | 认证服务骨架搭建 |
 | **Should (应该有)** | FR-005 | 企业服务骨架搭建 |
-| **Should (应该有)** | FR-006 | 云服务骨架搭建 |
 | **Should (应该有)** | FR-007 | 系统服务骨架搭建 |
 | **Could (可以有)** | FR-008 | IDEA 配置文件与开发环境最佳实践 |
 | **Could (可以有)** | FR-009 | 脚本与 Docker 模板 |
@@ -351,19 +338,18 @@ cloudoffice-common (无依赖)
        ▲
        │ 依赖
        │
-┌──────┴──────┬──────────┬──────────┬──────────────┐
-│             │          │          │              │
-▼             ▼          ▼          ▼              ▼
-gateway   auth-service  biz-service  cloud-service  system-service
-(依赖       (依赖         (依赖        (依赖           (依赖
- common)    common)      common)     common)        common)
+┌──────┴──────┬──────────┬──────────┐
+│             │          │          │
+▼             ▼          ▼          ▼
+gateway   auth-service  biz-service  system-service
+(依赖       (依赖         (依赖        (依赖
+ common)    common)      common)     common)
 ```
 
 - **common 模块：** 基础模块，无其他模块依赖
 - **gateway 模块：** 依赖 common，通过 Nacos 发现其他服务
 - **auth-service 模块：** 依赖 common
 - **biz-service 模块：** 依赖 common
-- **cloud-service 模块：** 依赖 common
 - **system-service 模块：** 依赖 common
 
 > **注意：** 各业务服务模块之间无直接代码依赖，服务间通信通过 OpenFeign（同步）或 RocketMQ（异步）实现，不在本期搭建范围内。
