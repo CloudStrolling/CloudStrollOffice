@@ -2,7 +2,7 @@
 
 **项目中文名称：** 云漫智企
 **项目名称：** CloudStrollOffice
-**版本号：** v0.1.0
+**版本号：** v0.1.4
 **日期：** 2026-06-19
 
 ---
@@ -11,7 +11,7 @@
 
 ### 1.1 系统定位
 
-云漫智企（CloudStrollOffice）是一个基于 Java 21 + Spring Boot 3.2.x + Spring Cloud 2023.x 技术栈构建的微服务企业管理平台，旨在为企业提供企业信息管理、人事管理、工作流审批、薪酬管理、统一认证授权等综合服务能力。v0.1.0 阶段完成基础骨架搭建，为后续业务功能开发奠定微服务基础设施。
+云漫智企（CloudStrollOffice）是一个基于 Java 21 + Spring Boot 3.2.x + Spring Cloud 2023.x 技术栈构建的微服务企业管理平台，旨在为企业提供企业信息管理、人事管理、工作流审批、薪酬管理、统一认证授权等综合服务能力。v0.1.0 阶段完成基础骨架搭建，v0.1.4 阶段完成系统服务模块（cloudoffice-system-service）的搭建，含健康检查端点和单元测试，为后续业务功能开发奠定微服务基础设施。
 
 ### 1.2 架构风格
 
@@ -41,6 +41,7 @@
 │  (端口 9100)     │   │   (端口 9200)        │
 │  Spring Security│   │   企业信息/人事管理      │
 │  OAuth2 + JWT   │   │   v0.1.0 骨架阶段      │
+│  v0.1.0 骨架阶段  │   │                      │
 └─────────────────┘   └──────────────────────┘
         │                       │
         ▼                       ▼
@@ -48,7 +49,7 @@
 │                          系统服务 (system-service)                         │
 │                          (端口 9400)                                       │
 │                     系统配置 │ 日志 │ 监控 │ 定时任务                        │
-│                         v0.1.0 骨架阶段                                    │
+│                    v0.1.4 完成搭建（含健康检查 + 单元测试）                    │
 └──────────────────────────────────────────────────────────────────────────┘
                                   │
         ┌─────────────────────────┼─────────────────────────────┐
@@ -112,10 +113,19 @@
 
 ### 2.5 系统服务（cloudoffice-system-service）
 
-- **职责：** 基础公共服务承载服务，本阶段为骨架模块。后续将承载系统参数配置管理、操作日志、监控告警、定时任务等功能。
+- **职责：** 基础公共服务承载服务，提供系统参数配置管理、操作日志、监控告警、定时任务等功能。v0.1.4 完成基础框架搭建。
 - **依赖：** Spring Boot Starter Web、Nacos Discovery/Config、MyBatis-Plus、MariaDB Driver、common 模块
 - **端口：** 9400
-- **说明：** v0.1.0 仅搭建骨架，定时任务框架选型后续决策，本期不做绑定
+- **已实现内容（v0.1.4）：**
+  - 系统服务启动类 `SystemApplication`（@SpringBootApplication + @EnableDiscoveryClient）
+  - 健康检查控制器 `HealthController`（GET /api/v1/system/health）
+  - 应用配置（端口 9400、MariaDB 数据源、MyBatis-Plus、SpringDoc、日志级别）
+  - Nacos 注册/配置中心配置（bootstrap.yml，环境变量注入）
+  - 数据源自动排除配置（无 DB 可启动，仅 WARN 日志）
+  - 应用启动测试 `SystemApplicationTest`（验证 Spring 上下文加载 & @EnableDiscoveryClient 注解）
+  - 健康检查控制器单元测试 `HealthControllerTest`（Mock 环境，验证 200 状态码和响应体字段）
+  - 标准包目录结构（config/controller/service/mapper/entity/dto/vo/enums/exception/filter/interceptor/util）
+- **说明：** v0.1.4 完成基础框架搭建，定时任务框架选型后续决策，本期不做绑定
 
 ### 模块关系图
 
@@ -348,7 +358,7 @@ public class PageResult<T> {
 
 | PRD-NFR编号 | 非功能性需求 | 架构决策 | 量化指标 |
 | --------- | -------- | ------------- | -------------- |
-| NFR-001 | 性能 - 模块启动时间 ≤ 30 秒 | 去除不必要的自动配置，懒加载非关键组件；各服务不强制依赖数据库连接，无 DB 时可启动（WARN 日志） | 单模块首次启动 ≤ 30 秒 |
+| NFR-001 | 性能 - 模块启动时间 ≤ 30 秒 | 去除不必要的自动配置，懒加载非关键组件；各服务不强制依赖数据库连接，无 DB 时可启动（WARN 日志）；system-service 配置 DataSourceAutoConfiguration 排除 | 单模块首次启动 ≤ 30 秒 |
 | NFR-001 | 可用性 - Nacos 连接容错 | Nacos 连接失败时服务启动失败并给出明确错误提示，指导开发者检查 Nacos 地址和运行状态 | 错误信息明确提示 Nacos 连接失败原因 |
 | NFR-002 | 可靠性 - 全局异常兜底 | `@RestControllerAdvice` + `@ExceptionHandler(Exception.class)` 兜底所有未捕获异常，返回统一错误体，不泄露堆栈明细到客户端 | 100% 未捕获异常走通用兜底处理器 |
 | NFR-002 | 可维护性 - API 文档 | SpringDoc 自动生成 OpenAPI 3 文档，支持在线调试 | 各服务 `/swagger-ui.html` 可访问 |
@@ -555,25 +565,36 @@ CloudStrollOffice/
 │           ├── bootstrap.yml
 │           └── application.yml
 │
-├── cloudoffice-system-service/                # 系统服务（端口 9400）
+├── cloudoffice-system-service/                # 系统服务（端口 9400）v0.1.4
 │   ├── pom.xml
-│   └── src/main/java/org/cloudstrolling/cloudoffice/system/
-│       ├── SystemApplication.java
-│       ├── config/
-│       ├── controller/
-│       ├── service/
-│       │   └── impl/
-│       ├── mapper/
-│       ├── entity/
-│       ├── dto/
-│       ├── vo/
-│       ├── enums/
-│       ├── exception/
-│       ├── filter/
-│       └── interceptor/
-│       └── main/resources/
-│           ├── bootstrap.yml
-│           └── application.yml
+│   └── src/
+│       ├── main/
+│       │   ├── java/org/cloudstrolling/cloudoffice/system/
+│       │   │   ├── SystemApplication.java     # 系统服务启动类
+│       │   │   ├── config/                    # 配置类（预留）
+│       │   │   ├── controller/
+│       │   │   │   └── HealthController.java # 健康检查控制器
+│       │   │   ├── service/                   # 业务逻辑层（预留）
+│       │   │   │   └── impl/
+│       │   │   ├── mapper/                    # 数据访问层（预留）
+│       │   │   ├── entity/                    # 实体类（预留）
+│       │   │   ├── dto/                       # 数据传输对象（预留）
+│       │   │   ├── vo/                        # 视图对象（预留）
+│       │   │   ├── enums/                     # 枚举类（预留）
+│       │   │   ├── exception/                 # 异常处理（预留）
+│       │   │   ├── filter/                    # 过滤器（预留）
+│       │   │   ├── interceptor/               # 拦截器（预留）
+│       │   │   └── util/                      # 工具类（预留）
+│       │   └── resources/
+│       │       ├── bootstrap.yml              # Nacos 配置
+│       │       └── application.yml            # 应用配置（端口 9400、数据源、MyBatis-Plus）
+│       └── test/
+│           ├── java/org/cloudstrolling/cloudoffice/system/
+│           │   ├── SystemApplicationTest.java         # 启动测试
+│           │   └── controller/
+│           │       └── HealthControllerTest.java      # 健康检查单元测试
+│           └── resources/
+│               └── bootstrap.yml                      # 测试 Nacos 禁用配置
 │
 ├── scripts/                                   # 脚本与模板
 │   ├── docker/                                # Docker 部署模板
@@ -667,4 +688,5 @@ public class PageResult<T> {
 
 | 变更日期 | 版本号 | 变更说明 |
 |---------|-------|---------|
+| 2026-06-19 | v0.1.4 | 系统服务模块(v0.1.4) - system-service 基础框架搭建，含HealthController及单元测试 |
 | 2026-06-19 | v0.1.0 | 移除cloud-service微服务模块 |

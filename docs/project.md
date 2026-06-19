@@ -4,7 +4,7 @@
 **项目名称：** CloudStrollOffice
 **编程语言：** Java 21 (OpenJDK 21 LTS)
 **项目类型：** 微服务应用程序（Spring Boot + Spring Cloud）
-**当前进度：** impm-docs-update（cloud-service已移除）
+**当前进度：** impm-req（系统服务搭建 v0.1.4）
 **本地化语言：** 简体中文
 **项目总体介绍：** 云漫智企（CloudStrollOffice）是一个基于 Java 21 + Spring Boot 3.2.x + Spring Cloud 2023.x 技术栈构建的微服务互联网应用程序。采用 Maven 多模块架构，由认证服务（auth-service）、企业服务（biz-service）、系统服务（system-service）、API 网关（gateway）及公共模块（common）组成，为企业提供企业信息管理、人事管理、工作流审批、薪酬管理、统一认证授权等综合服务能力。数据库采用 MariaDB 10.6 (LTS)，缓存使用 Redis 7.2.x，消息队列使用 RocketMQ 5.1.x，注册中心和配置中心使用 Nacos 2.3.x。
 
@@ -187,20 +187,20 @@ docs/
 └── project.md                     # 本项目文件（项目信息、编码规范、项目地图）
 ```
 
-## 已创建模块（v0.1.0）
+## 已创建模块（v0.1.0 / v0.1.4）
 
-以下模块为 v0.1.0 阶段已创建的 Maven 子模块：
+以下模块为已创建的 Maven 子模块：
 
-| 模块目录 | 包名 | 端口 | 功能描述 |
-|----------|------|------|----------|
-| `cloudoffice-common/` | `org.cloudstrolling.cloudoffice.common` | - | 公共模块 — 通用工具类、BaseEntity、统一响应体、异常定义、SpringDoc 配置 |
-| `cloudoffice-gateway/` | `org.cloudstrolling.cloudoffice.gateway` | 9000 | API 网关 — 路由转发、CORS 配置、Nacos 服务发现集成 |
-| `cloudoffice-auth-service/` | `org.cloudstrolling.cloudoffice.auth` | 9100 | 认证服务 — Spring Security + OAuth2 骨架、JWT 工具类 |
-| `cloudoffice-biz-service/` | `org.cloudstrolling.cloudoffice.biz` | 9200 | 企业服务 — 企业信息、人事管理业务骨架 |
-| `cloudoffice-system-service/` | `org.cloudstrolling.cloudoffice.system` | 9400 | 系统服务 — 系统配置、日志、监控、定时任务骨架 |
-| `scripts/docker/` | - | - | Dockerfile 模板 |
-| `scripts/sql/` | - | - | 数据库初始化脚本模板 |
-| `.idea/` | - | - | IntelliJ IDEA 统一配置文件（代码风格、运行配置等） |
+| 模块目录 | 包名 | 端口 | 功能描述 | 创建阶段 |
+|----------|------|------|----------|---------|
+| `cloudoffice-common/` | `org.cloudstrolling.cloudoffice.common` | - | 公共模块 — 通用工具类、BaseEntity、统一响应体、异常定义、SpringDoc 配置 | v0.1.0 |
+| `cloudoffice-gateway/` | `org.cloudstrolling.cloudoffice.gateway` | 9000 | API 网关 — 路由转发、CORS 配置、Nacos 服务发现集成 | v0.1.0 |
+| `cloudoffice-auth-service/` | `org.cloudstrolling.cloudoffice.auth` | 9100 | 认证服务 — Spring Security + OAuth2 骨架、JWT 工具类 | v0.1.0 |
+| `cloudoffice-biz-service/` | `org.cloudstrolling.cloudoffice.biz` | 9200 | 企业服务 — 企业信息、人事管理业务骨架 | v0.1.0 |
+| `cloudoffice-system-service/` | `org.cloudstrolling.cloudoffice.system` | 9400 | 系统服务 — 系统配置、日志、监控、定时任务骨架，含健康检查端点和单元测试 | v0.1.4 |
+| `scripts/docker/` | - | - | Dockerfile 模板 | v0.1.0 |
+| `scripts/sql/` | - | - | 数据库初始化脚本模板 | v0.1.0 |
+| `.idea/` | - | - | IntelliJ IDEA 统一配置文件（代码风格、运行配置等） | v0.1.0 |
 
 ## cloudoffice-common/ 公共模块
 
@@ -209,37 +209,40 @@ docs/
 ```
 cloudoffice-common/src/main/java/org/cloudstrolling/cloudoffice/common/
 ├── config/                         # 配置类（Spring 配置等）
-│   ├── MyBatisPlusConfig.java      # MyBatis-Plus 配置，分页插件、乐观锁插件等
+│   ├── MyBatisPlusConfig.java      # MyBatis-Plus 配置：自动填充处理器（createTime/updateTime/deleted）
 │   └── SpringDocConfig.java        # SpringDoc OpenAPI 配置，API 文档分组与基本信息
 ├── exception/                      # 异常定义
 │   ├── ErrorCode.java              # 通用错误码枚举（实现 model.ErrorCode 接口）
-│   ├── BaseException.java          # 异常基类（继承 RuntimeException）
-│   ├── BusinessException.java      # 业务异常
-│   └── AuthException.java          # 认证异常（401）
+│   ├── BaseException.java          # 异常基类（继承 RuntimeException，含 code/message）
+│   ├── BusinessException.java      # 业务异常（带模块标识 module）
+│   ├── AuthException.java          # 认证异常（401）
+│   └── GlobalExceptionHandler.java # 全局异常处理器（@RestControllerAdvice，覆盖 10+ 异常类型）
 ├── model/                          # 公共模型
-│   ├── ApiResult.java              # 统一响应体（含成功/错误静态工厂方法）
-│   ├── BaseEntity.java             # 实体基类（ID、创建时间、更新时间、逻辑删除）
+│   ├── ApiResult.java              # 统一响应体（含成功/错误静态工厂方法，链式调用）
+│   ├── BaseEntity.java             # 实体基类（雪花算法ID、创建时间、更新时间、逻辑删除）
 │   ├── ErrorCode.java              # 错误码接口（定义 getCode/getMessage 契约）
-│   └── PageResult.java             # 分页结果封装
+│   └── PageResult.java             # 分页结果封装（含 empty/of 静态工厂方法）
 └── util/                           # 工具类
-    └── JsonUtils.java              # JSON 工具类（基于 Jackson ObjectMapper 单例）
+    ├── .gitkeep                    # 占位文件
+    └── JsonUtils.java              # JSON 工具类（基于 Jackson ObjectMapper 单例，支持 JavaTimeModule）
 ```
 
 ### 关键类说明
 
 | 类名 | 包路径 | 功能描述 |
 |------|--------|----------|
-| `MyBatisPlusConfig` | `org.cloudstrolling.cloudoffice.common.config` | MyBatis-Plus 配置：分页插件、乐观锁插件 |
-| `SpringDocConfig` | `org.cloudstrolling.cloudoffice.common.config` | SpringDoc OpenAPI 3 文档配置 |
-| `ErrorCode` | `org.cloudstrolling.cloudoffice.common.exception` | 通用错误码枚举（HTTP 状态码 + 中文描述） |
-| `BaseException` | `org.cloudstrolling.cloudoffice.common.exception` | 运行时异常基类 |
-| `BusinessException` | `org.cloudstrolling.cloudoffice.common.exception` | 业务异常封装 |
-| `AuthException` | `org.cloudstrolling.cloudoffice.common.exception` | 认证异常（HTTP 401） |
-| `ApiResult` | `org.cloudstrolling.cloudoffice.common.model` | 统一 API 响应体 |
-| `BaseEntity` | `org.cloudstrolling.cloudoffice.common.model` | MyBatis-Plus 实体基类 |
-| `ErrorCode` | `org.cloudstrolling.cloudoffice.common.model` | 错误码接口 |
-| `PageResult` | `org.cloudstrolling.cloudoffice.common.model` | 分页查询结果封装 |
-| `JsonUtils` | `org.cloudstrolling.cloudoffice.common.util` | Jackson JSON 序列化工具类 |
+| `MyBatisPlusConfig` | `org.cloudstrolling.cloudoffice.common.config` | MyBatis-Plus 自动填充处理器：插入时填充 createTime/updateTime/deleted，更新时填充 updateTime |
+| `SpringDocConfig` | `org.cloudstrolling.cloudoffice.common.config` | SpringDoc OpenAPI 3 文档配置：包含认证/业务/云资源/系统管理 4 个 API 分组 |
+| `ErrorCode` | `org.cloudstrolling.cloudoffice.common.exception` | 通用错误码枚举：SUCCESS/BAD_REQUEST/UNAUTHORIZED/FORBIDDEN/NOT_FOUND 等 10 个错误码 |
+| `BaseException` | `org.cloudstrolling.cloudoffice.common.exception` | 运行时异常基类（抽象类）：含 code 和 message 属性 |
+| `BusinessException` | `org.cloudstrolling.cloudoffice.common.exception` | 业务异常：继承 BaseException，增加 module 模块标识，构造时自动记录错误日志 |
+| `AuthException` | `org.cloudstrolling.cloudoffice.common.exception` | 认证异常：继承 BaseException，映射 HTTP 401 状态码 |
+| `GlobalExceptionHandler` | `org.cloudstrolling.cloudoffice.common.exception` | 全局异常处理器：@RestControllerAdvice，覆盖参数校验/业务异常/认证异常/权限不足/404/500 等 12+ 种异常场景 |
+| `ApiResult` | `org.cloudstrolling.cloudoffice.common.model` | 统一 API 响应体：链式调用 @Accessors(chain=true)，含 success/error 静态工厂方法，自动填充时间戳 |
+| `BaseEntity` | `org.cloudstrolling.cloudoffice.common.model` | MyBatis-Plus 实体基类（抽象类）：雪花算法 ID、createTime/updateTime 自动填充、deleted 逻辑删除 |
+| `ErrorCode` | `org.cloudstrolling.cloudoffice.common.model` | 错误码契约接口：定义 getCode()/getMessage() 方法 |
+| `PageResult` | `org.cloudstrolling.cloudoffice.common.model` | 分页查询结果封装：records/total/page/pageSize，含 empty() 和 of() 静态工厂方法 |
+| `JsonUtils` | `org.cloudstrolling.cloudoffice.common.util` | Jackson JSON 序列化工具类：@UtilityClass，注册 JavaTimeModule 支持日期时间类型 |
 
 ## cloudoffice-auth-service/ 认证服务模块
 
@@ -249,34 +252,136 @@ cloudoffice-common/src/main/java/org/cloudstrolling/cloudoffice/common/
 cloudoffice-auth-service/src/main/java/org/cloudstrolling/cloudoffice/auth/
 ├── AuthApplication.java            # 认证服务启动入口（@SpringBootApplication + @EnableDiscoveryClient）
 ├── config/                         # 配置类
-│   ├── OAuth2Config.java           # OAuth2 授权服务器骨架配置（预留扩展点，v0.2.0 实现完整授权码流程）
-│   └── SecurityConfig.java         # Spring Security 安全配置（CSRF 关闭、无状态会话、BCrypt、自定义 401/403 JSON 响应）
+│   ├── SecurityConfig.java         # Spring Security 安全配置（BCrypt 编码器、无状态会话、CSRF 关闭、自定义 401/403 JSON 响应）
+│   └── OAuth2Config.java           # OAuth2 授权服务器骨架配置（预留扩展点，v0.2.0 实现完整授权码流程）
 ├── controller/                     # 控制器层
-├── dto/                            # 数据传输对象
-├── entity/                         # 实体类
-├── enums/                          # 枚举类
-├── exception/                      # 异常处理类
-├── filter/                         # 过滤器
-├── interceptor/                    # 拦截器
-├── mapper/                         # 数据访问层
-├── service/                        # 业务逻辑层接口
-│   └── impl/                       # 业务逻辑实现类
+│   └── HealthController.java       # 健康检查控制器（GET /api/v1/auth/health 返回服务状态）
+├── dto/                            # 数据传输对象（预留，仅 .gitkeep）
+├── entity/                         # 实体类（预留，仅 .gitkeep）
+├── enums/                          # 枚举类（预留，仅 .gitkeep）
+├── exception/                      # 异常处理类（预留，仅 .gitkeep）
+├── filter/                         # 过滤器（预留，仅 .gitkeep）
+├── interceptor/                    # 拦截器（预留，仅 .gitkeep）
+├── mapper/                         # 数据访问层（预留，仅 .gitkeep）
+├── service/                        # 业务逻辑层接口（预留，仅 .gitkeep）
+│   └── impl/                       # 业务逻辑实现类（预留，仅 .gitkeep）
 └── util/                           # 工具类
-    └── JwtUtils.java               # JWT 令牌工具类（签发、验证、解析）
+    └── JwtUtils.java               # JWT 令牌工具类（签发、验证、解析，支持 HS256 算法）
 ```
 
 ### 关键类说明
 
 | 类名 | 包路径 | 功能描述 |
 |------|--------|----------|
-| `AuthApplication` | `org.cloudstrolling.cloudoffice.auth` | 认证服务启动入口，集成 Nacos 服务发现 |
-| `OAuth2Config` | `org.cloudstrolling.cloudoffice.auth.config` | OAuth2 授权服务器骨架配置，预留授权码流程扩展点 |
-| `SecurityConfig` | `org.cloudstrolling.cloudoffice.auth.config` | Spring Security 安全配置：BCrypt 编码器、无状态会话、自定义 401/403 异常处理 |
-| `JwtUtils` | `org.cloudstrolling.cloudoffice.auth.util` | JWT 令牌工具类：签发 Token、验证签名、解析 Claims |
+| `AuthApplication` | `org.cloudstrolling.cloudoffice.auth` | 认证服务启动入口，@SpringBootApplication + @EnableDiscoveryClient 集成 Nacos 服务发现 |
+| `SecurityConfig` | `org.cloudstrolling.cloudoffice.auth.config` | Spring Security 安全配置：BCryptPasswordEncoder 密码编码器、无状态会话管理、CSRF 关闭、健康检查/Swagger 端点匿名访问、自定义 401/403 JSON 响应 |
+| `OAuth2Config` | `org.cloudstrolling.cloudoffice.auth.config` | OAuth2 授权服务器骨架配置类，预留下期扩展点 |
+| `HealthController` | `org.cloudstrolling.cloudoffice.auth.controller` | 健康检查控制器：GET /api/v1/auth/health，返回服务名称/状态/版本/时间戳 |
+| `JwtUtils` | `org.cloudstrolling.cloudoffice.auth.util` | JWT 令牌工具类：构造器注入配置属性（secret/expiration/algorithm），@PostConstruct 校验密钥长度并初始化 HMAC 密钥，提供 generateToken/parseToken/validateToken/getUserIdFromToken/getUserNameFromToken 方法 |
 
 ---
 
-> **说明：** 项目地图持续更新中，反映当前 v0.1.0 阶段的代码实现状态。
+## cloudoffice-gateway/ API 网关模块
+
+### 源码结构
+
+```
+cloudoffice-gateway/src/main/java/org/cloudstrolling/cloudoffice/gateway/
+├── GatewayApplication.java         # 网关启动入口（@SpringBootApplication + @EnableDiscoveryClient）
+└── config/                         # 配置类目录（预留，待实现鉴权过滤器等）
+```
+
+### 关键类说明
+
+| 类名 | 包路径 | 功能描述 |
+|------|--------|----------|
+| `GatewayApplication` | `org.cloudstrolling.cloudoffice.gateway` | API 网关启动入口，@SpringBootApplication + @EnableDiscoveryClient 集成 Nacos 服务发现，统一流量入口（端口 9000） |
+
+---
+
+## cloudoffice-biz-service/ 企业服务模块
+
+### 源码结构
+
+```
+cloudoffice-biz-service/src/main/java/org/cloudstrolling/cloudoffice/biz/
+├── BizApplication.java             # 企业服务启动入口（@SpringBootApplication + @EnableDiscoveryClient）
+├── config/                         # 配置类（预留，仅 .gitkeep）
+├── controller/                     # 控制器层
+│   └── HealthController.java       # 健康检查控制器（GET /api/v1/biz/health 返回服务状态）
+├── dto/                            # 数据传输对象（预留，仅 .gitkeep）
+├── entity/                         # 实体类（预留，仅 .gitkeep）
+├── enums/                          # 枚举类（预留，仅 .gitkeep）
+├── exception/                      # 异常处理类（预留，仅 .gitkeep）
+├── filter/                         # 过滤器（预留，仅 .gitkeep）
+├── interceptor/                    # 拦截器（预留，仅 .gitkeep）
+├── mapper/                         # 数据访问层（预留，仅 .gitkeep）
+├── service/                        # 业务逻辑层接口（预留，仅 .gitkeep）
+│   └── impl/                       # 业务逻辑实现类（预留，仅 .gitkeep）
+└── util/                           # 工具类（预留，仅 .gitkeep）
+```
+
+### 关键类说明
+
+| 类名 | 包路径 | 功能描述 |
+|------|--------|----------|
+| `BizApplication` | `org.cloudstrolling.cloudoffice.biz` | 企业服务启动入口，@SpringBootApplication + @EnableDiscoveryClient 集成 Nacos 服务发现 |
+| `HealthController` | `org.cloudstrolling.cloudoffice.biz.controller` | 健康检查控制器：GET /api/v1/biz/health，返回服务名称/状态/版本/时间戳 |
+
+---
+
+## cloudoffice-system-service/ 系统服务模块（v0.1.4）
+
+### 源码结构
+
+```
+cloudoffice-system-service/src/main/java/org/cloudstrolling/cloudoffice/system/
+├── SystemApplication.java          # 系统服务启动入口（@SpringBootApplication + @EnableDiscoveryClient）
+├── config/                         # 配置类（预留，仅 .gitkeep）
+├── controller/                     # 控制器层
+│   └── HealthController.java       # 健康检查控制器（GET /api/v1/system/health 返回服务状态）
+├── dto/                            # 数据传输对象（预留，仅 .gitkeep）
+├── entity/                         # 实体类（预留，仅 .gitkeep）
+├── enums/                          # 枚举类（预留，仅 .gitkeep）
+├── exception/                      # 异常处理类（预留，仅 .gitkeep）
+├── filter/                         # 过滤器（预留，仅 .gitkeep）
+├── interceptor/                    # 拦截器（预留，仅 .gitkeep）
+├── mapper/                         # 数据访问层（预留，仅 .gitkeep）
+├── service/                        # 业务逻辑层接口（预留，仅 .gitkeep）
+│   └── impl/                       # 业务逻辑实现类（预留，仅 .gitkeep）
+└── util/                           # 工具类（预留，仅 .gitkeep）
+```
+
+**资源文件：**
+```
+cloudoffice-system-service/src/main/resources/
+├── bootstrap.yml                   # Nacos 注册/配置中心配置（server-addr 环境变量注入）
+└── application.yml                 # 应用配置（端口 9400、MariaDB 数据源、MyBatis-Plus、SpringDoc、日志级别）
+```
+
+**测试代码：**
+```
+cloudoffice-system-service/src/test/java/org/cloudstrolling/cloudoffice/system/
+├── SystemApplicationTest.java              # 应用启动测试：验证 Spring 上下文加载、@EnableDiscoveryClient 注解
+└── controller/
+    └── HealthControllerTest.java           # 健康检查控制器测试：MockMvc 单元测试，验证 200 状态码和响应体
+
+cloudoffice-system-service/src/test/resources/
+└── bootstrap.yml                           # 测试环境 Nacos 禁用配置
+```
+
+### 关键类说明
+
+| 类名 | 包路径 | 功能描述 |
+|------|--------|----------|
+| `SystemApplication` | `org.cloudstrolling.cloudoffice.system` | 系统服务启动入口，@SpringBootApplication + @EnableDiscoveryClient 集成 Nacos 服务发现 |
+| `HealthController` | `org.cloudstrolling.cloudoffice.system.controller` | 健康检查控制器：GET /api/v1/system/health，返回服务名称/状态/版本/时间戳，@Slf4j 日志记录 |
+| `SystemApplicationTest` | `org.cloudstrolling.cloudoffice.system` | 应用启动测试：验证 Spring 上下文正常加载、@EnableDiscoveryClient 注解存在 |
+| `HealthControllerTest` | `org.cloudstrolling.cloudoffice.system.controller` | 健康检查控制器单元测试：反射注入 Mock Environment，验证 HTTP 200 状态码、ApiResult 响应体各字段正确性 |
+
+---
+
+> **说明：** 项目地图持续更新中，反映当前 v0.1.4 阶段的代码实现状态。
 
 ---
 
@@ -284,4 +389,5 @@ cloudoffice-auth-service/src/main/java/org/cloudstrolling/cloudoffice/auth/
 
 | 日期 | 版本 | 变更说明 |
 |------|------|----------|
+| 2026-06-19 | v0.1.4 | 系统服务模块搭建 - 完成 cloudoffice-system-service 基础框架 |
 | 2026-06-19 | v0.1.0 | 项目文档更新 - 移除cloud-service微服务模块 |
