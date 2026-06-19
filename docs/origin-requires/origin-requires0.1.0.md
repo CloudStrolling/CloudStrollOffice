@@ -155,7 +155,7 @@ CloudStrollOffice/
 ├── cloudoffice-gateway/                # API 网关
 ├── cloudoffice-auth-service/           # 认证服务
 ├── cloudoffice-biz-service/            # 企业服务
-├── cloudoffice-cloud-service/          # 云服务
+├── cloudoffice-cloud-service/          # 云服务（已移除）
 ├── cloudoffice-system-service/         # 系统服务
 ├── .idea/                           # IDEA 配置文件
 └── scripts/                         # 脚本文件

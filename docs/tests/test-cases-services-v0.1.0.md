@@ -131,26 +131,9 @@
 
 ---
 
-## 5. Cloud Service 模块测试
-
-### 5.1 CloudApplicationTest
-
-**文件**：`cloudoffice-cloud-service/src/test/java/org/cloudstrolling/cloudoffice/cloud/CloudApplicationTest.java`
-
-| 编号 | 测试方法 | 场景 | 预期结果 |
-|------|---------|------|---------|
-| TC-CLOUD-001 | `contextLoads_shouldLoadSuccessfully_whenApplicationStarts` | 启动 Spring 上下文 | 上下文加载成功 |
-| TC-CLOUD-002 | `enableDiscoveryClient_shouldBePresent_whenAnnotationCheck` | 检查 `@EnableDiscoveryClient` 注解 | 注解存在 |
-
-### 5.2 HealthControllerTest（Cloud）
-
-**文件**：`cloudoffice-cloud-service/src/test/java/org/cloudstrolling/cloudoffice/cloud/controller/HealthControllerTest.java`
-
-| 编号 | 测试方法 | 场景 | 预期结果 |
-|------|---------|------|---------|
-| TC-CLOUD-003 | `health_shouldReturn200AndApiResult_whenCalled` | GET /api/v1/cloud/health | 200 + ApiResult，data 含 service/status/version/timestamp |
-
 ---
+
+> **注意：** Cloud Service（cloudoffice-cloud-service）已于 v0.1.0 版本中移除，相关测试用例（TC-CLOUD-001 ~ TC-CLOUD-003）不再适用。
 
 ## 6. System Service 模块测试
 

@@ -12,7 +12,7 @@
 
 **云漫智企 (CloudStrollOffice)** 是一个基于 **Java 21 + Spring Boot 3.2.x + Spring Cloud 2023.x** 技术栈构建的微服务企业办公套件。
 
-项目采用 Maven 多模块架构，由认证服务（auth-service）、企业服务（biz-service）、云服务（cloud-service）、系统服务（system-service）、API 网关（gateway）及公共模块（common）组成，为企业提供企业信息管理、人事管理、工作流审批、薪酬管理、统一认证授权等综合服务能力。
+项目采用 Maven 多模块架构，由认证服务（auth-service）、企业服务（biz-service）、系统服务（system-service）、API 网关（gateway）及公共模块（common）组成，为企业提供企业信息管理、人事管理、工作流审批、薪酬管理、统一认证授权等综合服务能力。
 
 当前版本 **v0.1.0** 为骨架搭建阶段，完成了微服务项目的基础架构搭建，为后续业务功能的开发奠定微服务基础设施。
 
@@ -20,7 +20,7 @@
 
 | 特性 | 说明 |
 |------|------|
-| 微服务架构 | 6 个 Maven 模块，服务间解耦，独立开发、测试和部署 |
+| 微服务架构 | 5 个 Maven 模块，服务间解耦，独立开发、测试和部署 |
 | 统一响应体 | `ApiResult<T>` 统一封装所有 REST 接口响应，含状态码、消息、数据和时间戳 |
 | 分层异常体系 | `BaseException` → `BusinessException` / `AuthException`，按模块划分错误码 |
 | 全局异常处理 | `@RestControllerAdvice` 统一捕获 7 类异常，兜底不泄露堆栈信息 |
@@ -30,7 +30,7 @@
 | API 网关 | Spring Cloud Gateway，路由转发、CORS 跨域、Nacos 服务发现集成 |
 | 服务注册发现 | Nacos 2.3.0 统一管理，各服务启动后自动注册 |
 | 健康检查链路 | 所有业务服务提供 `/api/v1/{module}/health` 健康检查端点 |
-| Docker 部署 | 多阶段构建镜像 + Docker Compose 一键编排 8 个容器 |
+| Docker 部署 | 多阶段构建镜像 + Docker Compose 一键编排 7 个容器 |
 | 开发环境配置 | IDEA 运行配置、.editorconfig、Checkstyle、代码风格统一 |
 
 ## 项目架构
@@ -49,15 +49,15 @@
 └────────────────────────────────────────────────────────────────────────────┘
                                     │
            ┌────────────────────────┼────────────────────────┐
-           ▼                        ▼                        ▼
-┌────────────────────┐ ┌────────────────────┐ ┌────────────────────┐
-│   认证服务          │ │   企业服务          │ │   云服务            │
-│  auth-service(9100) │ │  biz-service(9200) │ │ cloud-service(9300)│
-│ Spring Security +   │ │ 企业信息 / 人事管理 │ │ 云资源管理 / 编排   │
-│ OAuth2 骨架 + JWT   │ │ v0.1.0 骨架        │ │ v0.1.0 骨架        │
-└──────────┬─────────┘ └──────────┬─────────┘ └──────────┬─────────┘
-           │                      │                      │
-           ▼                      ▼                      ▼
+            ▼                        ▼
+┌────────────────────┐ ┌────────────────────┐
+│   认证服务          │ │   企业服务          │
+│  auth-service(9100) │ │  biz-service(9200) │
+│ Spring Security +   │ │ 企业信息 / 人事管理 │
+│ OAuth2 骨架 + JWT   │ │ v0.1.0 骨架        │
+└──────────┬─────────┘ └──────────┬─────────┘
+           │                      │
+           ▼                      ▼
 ┌────────────────────────────────────────────────────────────────────────────┐
 │                          系统服务 (system-service)                          │
 │                          (端口 9400)                                        │
@@ -106,10 +106,9 @@
 | 模块 | 端口 | 依赖 | 功能描述 |
 |------|------|------|---------|
 | `cloudoffice-common` | - | 无 | 公共模块：统一响应体 `ApiResult<T>`、分页响应 `PageResult<T>`、异常体系（`BaseException`/`BusinessException`/`AuthException`）、全局异常处理器 `GlobalExceptionHandler`、实体基类 `BaseEntity`、SpringDoc 配置、MyBatis-Plus 自动填充配置、JSON 工具类等 |
-| `cloudoffice-gateway` | 9000 | common, Nacos | API 网关：请求路由转发（4 条路由规则）、CORS 跨域配置、Nacos 服务发现集成 |
+| `cloudoffice-gateway` | 9000 | common, Nacos | API 网关：请求路由转发（3 条路由规则）、CORS 跨域配置、Nacos 服务发现集成 |
 | `cloudoffice-auth-service` | 9100 | common, Nacos | 认证服务：Spring Security 安全配置（BCrypt 密码编码器、无状态会话、CSRF 关闭、自定义 401/403 响应）、OAuth2 授权服务器骨架配置、JWT 令牌工具类（签发/解析/校验）、健康检查接口 |
 | `cloudoffice-biz-service` | 9200 | common, Nacos, MyBatis-Plus, MariaDB | 企业服务（骨架）：企业信息/人事管理业务骨架、健康检查接口 |
-| `cloudoffice-cloud-service` | 9300 | common, Nacos, MyBatis-Plus, MariaDB | 云服务（骨架）：云资源管理业务骨架、健康检查接口 |
 | `cloudoffice-system-service` | 9400 | common, Nacos, MyBatis-Plus, MariaDB | 系统服务（骨架）：系统配置/日志/监控/定时任务骨架、健康检查接口 |
 
 ## 快速开始
@@ -143,7 +142,6 @@ mariadb -u root -p < scripts/sql/init.sql
 
 - `cloudstroll_office_auth` — 含 `t_auth_user` 用户表
 - `cloudstroll_office_biz` — 预留，仅建库不建表
-- `cloudstroll_office_cloud` — 预留，仅建库不建表
 - `cloudstroll_office_system` — 预留，仅建库不建表
 
 ### 3. 启动 Nacos
@@ -201,8 +199,7 @@ mvn clean package -DskipTests
 2. GatewayApplication（端口 9000）
 3. AuthApplication（端口 9100）
 4. BizApplication（端口 9200）
-5. CloudApplication（端口 9300）
-6. SystemApplication（端口 9400）
+5. SystemApplication（端口 9400）
 
 **方式二：命令行启动**
 
@@ -215,9 +212,6 @@ mvn spring-boot:run -pl cloudoffice-auth-service
 
 # 启动企业服务
 mvn spring-boot:run -pl cloudoffice-biz-service
-
-# 启动云服务
-mvn spring-boot:run -pl cloudoffice-cloud-service
 
 # 启动系统服务
 mvn spring-boot:run -pl cloudoffice-system-service
@@ -238,13 +232,11 @@ docker compose -f scripts/docker/docker-compose.yml up -d --build
 # 验证网关路由可用性
 curl http://localhost:9000/api/v1/auth/health
 curl http://localhost:9000/api/v1/biz/health
-curl http://localhost:9000/api/v1/cloud/health
 curl http://localhost:9000/api/v1/system/health
 
 # 直接验证服务
 curl http://localhost:9100/api/v1/auth/health
 curl http://localhost:9200/api/v1/biz/health
-curl http://localhost:9300/api/v1/cloud/health
 curl http://localhost:9400/api/v1/system/health
 
 # 查看 API 文档
@@ -290,7 +282,6 @@ IDEA 运行配置已预设于 `.idea/runConfigurations/` 目录下：
 | `GatewayApplication` | cloudoffice-gateway | 9000 | `GatewayApplication` |
 | `AuthApplication` | cloudoffice-auth-service | 9100 | `AuthApplication` |
 | `BizApplication` | cloudoffice-biz-service | 9200 | `BizApplication` |
-| `CloudApplication` | cloudoffice-cloud-service | 9300 | `CloudApplication` |
 | `SystemApplication` | cloudoffice-system-service | 9400 | `SystemApplication` |
 
 ### 编译与测试
@@ -377,13 +368,6 @@ CloudStrollOffice/
 │       └── controller/
 │           └── HealthController.java
 │
-├── cloudoffice-cloud-service/      # 云服务（端口 9300）
-│   └── src/main/java/org/cloudstrolling/cloudoffice/cloud/
-│       ├── CloudApplication.java   # 启动类
-│       ├── config/
-│       └── controller/
-│           └── HealthController.java
-│
 ├── cloudoffice-system-service/     # 系统服务（端口 9400）
 │   └── src/main/java/org/cloudstrolling/cloudoffice/system/
 │       ├── SystemApplication.java  # 启动类
@@ -409,7 +393,6 @@ CloudStrollOffice/
         ├── gateway/Dockerfile
         ├── auth-service/Dockerfile
         ├── biz-service/Dockerfile
-        ├── cloud-service/Dockerfile
         └── system-service/Dockerfile
 ```
 
@@ -420,7 +403,6 @@ CloudStrollOffice/
 | cloudoffice-gateway | 9000 | API 网关 |
 | cloudoffice-auth-service | 9100 | 认证服务 |
 | cloudoffice-biz-service | 9200 | 企业服务 |
-| cloudoffice-cloud-service | 9300 | 云服务 |
 | cloudoffice-system-service | 9400 | 系统服务 |
 | Nacos Server | 8848 | 注册中心 & 配置中心 |
 | MariaDB | 3306 | 关系型数据库 |
@@ -435,7 +417,6 @@ CloudStrollOffice/
                                 │
                                 ├──▶ [auth-service:9100] ──▶ [MariaDB:3306]
                                 ├──▶ [biz-service:9200]  ──▶ [MariaDB:3306]
-                                ├──▶ [cloud-service:9300] ──▶ [MariaDB:3306]
                                 └──▶ [system-service:9400] ──▶ [MariaDB:3306]
                                 │
                                 └──▶ [Nacos Cluster:8848] ──▶ [Nacos Cluster]

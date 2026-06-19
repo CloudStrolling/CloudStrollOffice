@@ -17,7 +17,7 @@
 
 - 搭建基于微服务架构的企业管理平台基础骨架，实现服务解耦与独立部署，完成 Maven 多模块项目结构、公共通用组件封装和 API 网关统一入口
 - 统一技术栈和中间件选型（Spring Boot 3.2.x、Spring Cloud 2023.x、Nacos、MariaDB、Redis 等），降低维护成本，提升开发效率
-- 搭建认证服务骨架和各业务服务（企业服务、云服务、系统服务）骨架模块，为后续业务功能（人事管理、工作流审批、薪酬管理等）提供可扩展的基础设施
+- 搭建认证服务骨架和各业务服务（企业服务、系统服务）骨架模块，为后续业务功能（人事管理、工作流审批、薪酬管理等）提供可扩展的基础设施
 
 ### 1.3 核心设计理念
 
@@ -34,7 +34,6 @@
 | API 网关 | API Gateway | 基于 Spring Cloud Gateway 的统一入口，负责请求路由转发、CORS 跨域支持 |
 | 认证服务 | Auth Service | 负责用户认证、授权、OAuth2 骨架、JWT 令牌管理的统一认证服务 |
 | 企业服务 | Biz Service | 负责企业信息管理、人事管理、工作流审批等业务模块的承载服务 |
-| 云服务 | Cloud Service | 负责云资源管理与资源编排等业务模块的承载服务 |
 | 系统服务 | System Service | 负责系统配置、日志管理、监控告警、定时任务等公共服务模块的承载服务 |
 | Nacos | Nacos | 阿里巴巴开源的动态服务发现、配置管理平台，本阶段作为注册中心和配置中心使用 |
 
@@ -61,7 +60,7 @@
 
 #### 故事描述
 - **作为** 后端开发工程师
-- **我想要** 搭建 Maven 多模块项目骨架，父 POM 通过 `<dependencyManagement>` 统一管理所有第三方依赖版本，6 个子模块正确继承父 POM
+- **我想要** 搭建 Maven 多模块项目骨架，父 POM 通过 `<dependencyManagement>` 统一管理所有第三方依赖版本，5 个子模块正确继承父 POM
 - **以便** 项目可在 IDEA 中正常导入和编译，各模块依赖版本统一管理，消除版本冲突风险
 
 #### 前置条件
@@ -75,7 +74,7 @@
 
 - [ ] **AC1：** Given 父 POM 和所有子模块 POM 已创建，When 在项目根目录执行 `mvn clean compile`，Then 整个项目编译成功，控制台输出 `BUILD SUCCESS`，无错误和 Warning
 - [ ] **AC2：** Given 父 POM 已通过 `<dependencyManagement>` 定义所有依赖版本（Spring Boot 3.2.5、Spring Cloud 2023.0.1 等），When 查看各子模块的 `pom.xml`，Then 所有第三方依赖均未出现硬编码版本号，版本号统一引用父 POM 管理
-- [ ] **AC3：** Given IDEA 已通过 Import Project 导入项目，When 查看 Project 面板中的模块结构，Then 正确显示 6 个子模块（`cloudoffice-common`、`cloudoffice-gateway`、`cloudoffice-auth-service`、`cloudoffice-biz-service`、`cloudoffice-cloud-service`、`cloudoffice-system-service`），模块图标正常
+- [ ] **AC3：** Given IDEA 已通过 Import Project 导入项目，When 查看 Project 面板中的模块结构，Then 正确显示 5 个子模块（`cloudoffice-common`、`cloudoffice-gateway`、`cloudoffice-auth-service`、`cloudoffice-biz-service`、`cloudoffice-system-service`），模块图标正常
 
 #### 边界情况与错误处理
 | 场景 | 预期行为 |
@@ -91,7 +90,6 @@
 - `cloudoffice-gateway/pom.xml` — API 网关模块 POM
 - `cloudoffice-auth-service/pom.xml` — 认证服务模块 POM
 - `cloudoffice-biz-service/pom.xml` — 企业服务模块 POM
-- `cloudoffice-cloud-service/pom.xml` — 云服务模块 POM
 - `cloudoffice-system-service/pom.xml` — 系统服务模块 POM
 
 #### 备注
@@ -139,7 +137,7 @@
 - `cloudoffice-common/src/main/java/org/cloudstrolling/cloudoffice/common/exception/BaseException.java` — 异常抽象基类
 - `cloudoffice-common/src/main/java/org/cloudstrolling/cloudoffice/common/exception/BusinessException.java` — 业务异常类
 - `cloudoffice-common/src/main/java/org/cloudstrolling/cloudoffice/common/exception/GlobalExceptionHandler.java` — 全局异常处理器
-- `cloudoffice-common/src/main/java/org/cloudstrolling/cloudoffice/common/exception/ErrorCode.java` — 错误码枚举（含 AUTH/BIZ/CLOUD/SYS/COMMON 分段）
+- `cloudoffice-common/src/main/java/org/cloudstrolling/cloudoffice/common/exception/ErrorCode.java` — 错误码枚举（含 AUTH/BIZ/SYS/COMMON 分段）
 - `cloudoffice-common/src/main/java/org/cloudstrolling/cloudoffice/common/model/BaseEntity.java` — 基础实体类（含 id、createTime、updateTime、deleted）
 - `cloudoffice-common/src/main/java/org/cloudstrolling/cloudoffice/common/config/SpringDocConfig.java` — SpringDoc OpenAPI 3 配置
 - `cloudoffice-common/src/main/java/org/cloudstrolling/cloudoffice/common/util/` — 通用工具类目录
@@ -147,7 +145,7 @@
 #### 备注
 - common 模块作为纯依赖模块，不得依赖任何业务模块
 - 统一响应体 `ApiResult<T>` 中的 `code` 字段使用 Integer 类型，遵循 HTTP 状态码语义（200 成功、400 参数错误、401 未认证、403 无权限、500 服务器错误）
-- 错误码分段见 project.md 规范（AUTH-0001~9999、BIZ-0001~9999、CLOUD-0001~9999、SYS-0001~9999、COMMON-0001~9999）
+- 错误码分段见 project.md 规范（AUTH-0001~9999、BIZ-0001~9999、SYS-0001~9999、COMMON-0001~9999）
 
 ---
 
@@ -294,51 +292,6 @@
 
 ---
 
-### US-006: 云服务骨架搭建
-
-**优先级：** 中
-**关联需求：**
-需求文档：`docs/requires/CloudStrollOffice-requirement-v0.1.0.md`
-需求编号：FR-006（云服务骨架搭建）
-
-#### 故事描述
-- **作为** 后端开发工程师
-- **我想要** 搭建云服务骨架模块，创建标准的 Spring Boot 应用，集成 Nacos 服务发现，建立标准的包目录结构
-- **以便** 后续云资源管理、资源编排等业务功能有标准化的代码组织框架
-
-#### 前置条件
-1. US-001（Maven 多模块骨架）已完成
-2. Nacos 2.3.x 服务已启动并可访问
-3. US-002（common 模块）已编译完成
-4. 运行端口 9300 未被占用
-
-#### 验收标准（Acceptance Criteria）
-> 采用 Given-When-Then 格式，确保可测试。
-
-- [ ] **AC1：** Given cloud-service 的 `bootstrap.yml` 已配置 Nacos 注册中心，When 启动 cloud-service 模块（端口 9300），Then 在 Nacos 控制台可看到 `cloudoffice-cloud-service` 服务实例
-- [ ] **AC2：** Given cloud-service 已启动，When 发送 GET 请求 `http://localhost:9300/api/v1/cloud/health`，Then 返回 `ApiResult` 格式的成功响应
-- [ ] **AC3：** Given 项目已导入 IDEA，When 展开 `cloudoffice-cloud-service` 的包目录，Then 包结构包含 config、controller、service、mapper、entity、dto、vo、enums、exception、filter、interceptor、util 等标准目录
-
-#### 边界情况与错误处理
-| 场景 | 预期行为 |
-|------|---------|
-| Nacos 连接失败 | 日志提示 `NacosRegistration failed`，检查 Nacos 连通性 |
-| 健康检查端点异常 | 返回 `ApiResult.error()` + 500 状态码 |
-| 端口 9300 被占用 | 启动失败，报 `Address already in use`，更换端口或释放占用 |
-
-#### 交付物
-- `cloudoffice-cloud-service/pom.xml` — 云服务 POM
-- `cloudoffice-cloud-service/src/main/java/org/cloudstrolling/cloudoffice/cloud/CloudApplication.java` — 启动类
-- `cloudoffice-cloud-service/src/main/resources/bootstrap.yml` — Nacos 配置
-- `cloudoffice-cloud-service/src/main/resources/application.yml` — 应用配置
-- 标准包结构下的各目录
-
-#### 备注
-- 本期仅搭建骨架，云服务是面向云资源管理场景的业务模块，功能将在后续版本实现
-- 云服务可能涉及云主机管理、存储管理、网络资源编排等业务领域
-
----
-
 ### US-007: 系统服务骨架搭建
 
 **优先级：** 中
@@ -406,7 +359,7 @@
 
 - [ ] **AC1：** Given `.idea/codeStyles/` 目录下包含代码风格配置文件，When 开发者导入项目到 IDEA，Then 代码缩进自动为 4 空格、编码为 UTF-8、行宽限制为 120 字符
 - [ ] **AC2：** Given 项目根目录包含 `.editorconfig` 文件，When 开发者使用任意编辑器（VS Code、IDEA 等）打开项目，Then 编辑器自动应用 `.editorconfig` 中的缩进和编码规则
-- [ ] **AC3：** Given `.idea/runConfigurations/` 目录包含各模块的 Spring Boot 运行配置，When 开发者打开 IDEA Run/Debug 下拉菜单，Then 可看到 6 个服务的运行配置项（GatewayApplication、AuthApplication、BizApplication、CloudApplication、SystemApplication 等），一键启动和调试
+- [ ] **AC3：** Given `.idea/runConfigurations/` 目录包含各模块的 Spring Boot 运行配置，When 开发者打开 IDEA Run/Debug 下拉菜单，Then 可看到 5 个服务的运行配置项（GatewayApplication、AuthApplication、BizApplication、SystemApplication 等），一键启动和调试
 
 #### 边界情况与错误处理
 | 场景 | 预期行为 |
@@ -422,7 +375,6 @@
 - `.idea/runConfigurations/GatewayApplication.xml` — 网关模块运行配置
 - `.idea/runConfigurations/AuthApplication.xml` — 认证服务运行配置
 - `.idea/runConfigurations/BizApplication.xml` — 企业服务运行配置
-- `.idea/runConfigurations/CloudApplication.xml` — 云服务运行配置
 - `.idea/runConfigurations/SystemApplication.xml` — 系统服务运行配置
 - `checkstyle.xml` — Checkstyle 规则文件（匹配 Alibaba Java 开发规范）
 
@@ -452,7 +404,7 @@
 #### 验收标准（Acceptance Criteria）
 > 采用 Given-When-Then 格式，确保可测试。
 
-- [ ] **AC1：** Given `scripts/docker/` 目录已创建，When 查看目录内容，Then 包含各微服务（gateway、auth-service、biz-service、cloud-service、system-service）的 Dockerfile 模板，使用多阶段构建方式
+- [ ] **AC1：** Given `scripts/docker/` 目录已创建，When 查看目录内容，Then 包含各微服务（gateway、auth-service、biz-service、system-service）的 Dockerfile 模板，使用多阶段构建方式
 - [ ] **AC2：** Given `scripts/docker/docker-compose.yml` 已创建，When 查看文件内容，Then 包含 Nacos、MariaDB、Redis 等中间件的基础服务定义，以及各微服务的构建和运行配置
 - [ ] **AC3：** Given `scripts/sql/` 目录已创建，When 查看目录内容，Then 包含数据库初始化脚本模板，至少包含一个基础表结构示例（如 `t_auth_user` 用户表），含 `create_time`、`update_time`、`deleted` 等公共字段
 
@@ -467,7 +419,6 @@
 - `scripts/docker/gateway/Dockerfile` — 网关 Docker 构建模板
 - `scripts/docker/auth-service/Dockerfile` — 认证服务 Docker 构建模板
 - `scripts/docker/biz-service/Dockerfile` — 企业服务 Docker 构建模板
-- `scripts/docker/cloud-service/Dockerfile` — 云服务 Docker 构建模板
 - `scripts/docker/system-service/Dockerfile` — 系统服务 Docker 构建模板
 - `scripts/docker/docker-compose.yml` — Docker Compose 编排模板（含 Nacos、MariaDB、Redis 等中间件）
 - `scripts/sql/init.sql` — 数据库初始化脚本模板（含基础表结构示例）
@@ -563,7 +514,6 @@
 | **Must (必须有)** | FR-003 | US-003 | API 网关基础配置 |
 | **Should (应该有)** | FR-004 | US-004 | 认证服务骨架搭建 |
 | **Should (应该有)** | FR-005 | US-005 | 企业服务骨架搭建 |
-| **Should (应该有)** | FR-006 | US-006 | 云服务骨架搭建 |
 | **Should (应该有)** | FR-007 | US-007 | 系统服务骨架搭建 |
 | **Could (可以有)** | FR-008 | US-008 | IDEA 配置文件与开发环境最佳实践 |
 | **Could (可以有)** | FR-009 | US-009 | 脚本与 Docker 模板 |
@@ -575,25 +525,24 @@ cloudoffice-common (无依赖，纯工具模块)
        ▲
        │ 所有业务模块依赖 common
        │
-┌──────┴──────┬──────────┬──────────┬──────────────┐
-│             │          │          │              │
-▼             ▼          ▼          ▼              ▼
-gateway   auth-service  biz-service  cloud-service  system-service
-(端口9000)  (端口9100)   (端口9200)   (端口9300)     (端口9400)
+┌──────┴──────┬──────────┬──────────────┐
+│             │          │              │
+▼             ▼          ▼              ▼
+gateway   auth-service  biz-service    system-service
+(端口9000)  (端口9100)   (端口9200)     (端口9400)
 ```
 
 - **common 模块：** 基础模块，无其他模块依赖，所有业务服务模块通过 Maven 依赖引用
 - **gateway 模块：** 依赖 common，通过 Nacos 服务发现将请求路由到下游服务
 - **auth-service：** 依赖 common，独立认证模块
 - **biz-service：** 依赖 common，企业业务模块
-- **cloud-service：** 依赖 common，云资源模块
 - **system-service：** 依赖 common，系统公共模块
 - **各业务服务之间无直接代码依赖**，服务间通信通过 OpenFeign（同步）或 RocketMQ（异步）在后续版本中实现
 
 ### 5.4 验收总体标准
 
 1. 所有 Must 优先级需求（US-001、US-002、US-003）必须全部完成并通过验收
-2. 所有 Should 优先级需求（US-004、US-005、US-006、US-007）应在资源允许的情况下尽量完成
+2. 所有 Should 优先级需求（US-004、US-005、US-007）应在资源允许的情况下尽量完成
 3. Could 优先级需求（US-008、US-009）可根据实际进度酌情调整
 4. 项目通过 `mvn clean compile` 编译无错误
 5. 各服务模块均可在本地开发环境中正常启动

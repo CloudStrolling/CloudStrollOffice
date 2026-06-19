@@ -51,7 +51,7 @@
 | 3306 | TCP | MariaDB 数据库连接 | 127.0.0.1 |
 | 6379 | TCP | Redis 缓存（预留） | 127.0.0.1 |
 | 9000 | TCP | API 网关 | 0.0.0.0 |
-| 9100-9400 | TCP | 各微服务 | 0.0.0.0 |
+| 9100-9400 | TCP | 各微服务（cloud-service已移除） | 0.0.0.0 |
 
 > **安全提示：** 生产环境应限制数据库和 Nacos 仅对内网开放，各微服务端口仅在内部子网可访问，外部统一通过网关（9000 端口）访问。
 
@@ -138,7 +138,6 @@ mariadb -u root -p -e "SHOW DATABASES;"
 # 预期输出：
 # cloudstroll_office_auth
 # cloudstroll_office_biz
-# cloudstroll_office_cloud
 # cloudstroll_office_system
 ```
 
@@ -170,10 +169,10 @@ CloudStrollOffice 使用双层配置体系：
 |--------|--------|---------|------|
 | `NACOS_ADDR` | `127.0.0.1:8848` | 全部 | Nacos 服务地址 |
 | `JWT_SECRET` | 开发环境默认值（见 auth-service application.yml） | auth-service | JWT 签名密钥，生产环境必须修改，长度 ≥ 32 字符 |
-| `DB_HOST` | `127.0.0.1` | biz/cloud/system 服务 | 数据库主机地址 |
-| `DB_PORT` | `3306` | biz/cloud/system 服务 | 数据库端口 |
-| `DB_USER` | `root` | biz/cloud/system 服务 | 数据库用户名 |
-| `DB_PASSWORD` | `root123` | biz/cloud/system 服务 | 数据库密码 |
+| `DB_HOST` | `127.0.0.1` | biz/system 服务 | 数据库主机地址 |
+| `DB_PORT` | `3306` | biz/system 服务 | 数据库端口 |
+| `DB_USER` | `root` | biz/system 服务 | 数据库用户名 |
+| `DB_PASSWORD` | `root123` | biz/system 服务 | 数据库密码 |
 | `MARIADB_ROOT_PASSWORD` | `root123` | Docker 环境 | MariaDB root 密码（仅 docker-compose 使用） |
 | `TZ` | `Asia/Shanghai` | Docker 环境 | 容器时区设置 |
 
@@ -184,7 +183,7 @@ CloudStrollOffice 使用双层配置体系：
 | Gateway | `cloudoffice-gateway/src/main/resources/bootstrap.yml` | `cloudoffice-gateway/src/main/resources/application.yml` |
 | auth-service | `cloudoffice-auth-service/src/main/resources/bootstrap.yml` | `cloudoffice-auth-service/src/main/resources/application.yml` |
 | biz-service | `cloudoffice-biz-service/src/main/resources/bootstrap.yml` | `cloudoffice-biz-service/src/main/resources/application.yml` |
-| cloud-service | `cloudoffice-cloud-service/src/main/resources/bootstrap.yml` | `cloudoffice-cloud-service/src/main/resources/application.yml` |
+
 | system-service | `cloudoffice-system-service/src/main/resources/bootstrap.yml` | `cloudoffice-system-service/src/main/resources/application.yml` |
 
 ### 3.4 Nacos 配置中心（预留）
@@ -240,7 +239,6 @@ mvn clean package -pl cloudoffice-biz-service -am -DskipTests
 | Gateway | `cloudoffice-gateway/target/cloudoffice-gateway-0.0.1-SNAPSHOT.jar` |
 | auth-service | `cloudoffice-auth-service/target/cloudoffice-auth-service-0.0.1-SNAPSHOT.jar` |
 | biz-service | `cloudoffice-biz-service/target/cloudoffice-biz-service-0.0.1-SNAPSHOT.jar` |
-| cloud-service | `cloudoffice-cloud-service/target/cloudoffice-cloud-service-0.0.1-SNAPSHOT.jar` |
 | system-service | `cloudoffice-system-service/target/cloudoffice-system-service-0.0.1-SNAPSHOT.jar` |
 
 > **注意：** `cloudoffice-common` 模块为公共依赖库，不含启动类，不生成可执行 JAR。
@@ -264,13 +262,13 @@ mvn dependency:go-offline
 
 ### 5.1 整体架构
 
-Docker 部署将启动 8 个容器，分为三层：
+Docker 部署将启动 7 个容器，分为三层：
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                   应用层 (5个容器)                        │
+│                   应用层 (4个容器)                        │
 │  gateway(9000) auth-service(9100) biz-service(9200)      │
-│  cloud-service(9300) system-service(9400)                │
+│  system-service(9400)                                    │
 └─────────────────────────────────────────────────────────┘
                             │
 ┌─────────────────────────────────────────────────────────┐
@@ -326,7 +324,7 @@ docker compose up -d --build auth-service
 
 1. **必须最先启动：** Nacos（注册中心）、MariaDB（数据库）
 2. **之后启动：** Gateway（依赖 Nacos 获取服务列表）
-3. **最后启动：** auth-service、biz-service、cloud-service、system-service（需 Nacos 和 Gateway 就绪）
+3. **最后启动：** auth-service、biz-service、system-service（需 Nacos 和 Gateway 就绪）
 
 Docker Compose 中已通过 `depends_on` 配置了启动顺序。
 
@@ -374,7 +372,6 @@ TZ=Asia/Shanghai
 | gateway | eclipse-temurin:21-jre-alpine | ~30MB | ~180MB |
 | auth-service | eclipse-temurin:21-jre-alpine | ~35MB | ~185MB |
 | biz-service | eclipse-temurin:21-jre-alpine | ~30MB | ~180MB |
-| cloud-service | eclipse-temurin:21-jre-alpine | ~30MB | ~180MB |
 | system-service | eclipse-temurin:21-jre-alpine | ~30MB | ~180MB |
 
 ---
@@ -402,11 +399,6 @@ java -jar cloudoffice-biz-service/target/cloudoffice-biz-service-0.0.1-SNAPSHOT.
   --DB_HOST=127.0.0.1 \
   --DB_PASSWORD=root123
 
-java -jar cloudoffice-cloud-service/target/cloudoffice-cloud-service-0.0.1-SNAPSHOT.jar \
-  --NACOS_ADDR=127.0.0.1:8848 \
-  --DB_HOST=127.0.0.1 \
-  --DB_PASSWORD=root123
-
 java -jar cloudoffice-system-service/target/cloudoffice-system-service-0.0.1-SNAPSHOT.jar \
   --NACOS_ADDR=127.0.0.1:8848 \
   --DB_HOST=127.0.0.1 \
@@ -420,7 +412,6 @@ java -jar cloudoffice-system-service/target/cloudoffice-system-service-0.0.1-SNA
 mvn spring-boot:run -pl cloudoffice-gateway
 mvn spring-boot:run -pl cloudoffice-auth-service
 mvn spring-boot:run -pl cloudoffice-biz-service
-mvn spring-boot:run -pl cloudoffice-cloud-service
 mvn spring-boot:run -pl cloudoffice-system-service
 ```
 
@@ -436,7 +427,6 @@ mvn spring-boot:run -pl cloudoffice-system-service
 | `cloud-stroll-gateway` | API 网关 | 9000 | 9000 | HTTP |
 | `cloud-stroll-auth-service` | 认证服务 | 9100 | 9100 | HTTP |
 | `cloud-stroll-biz-service` | 企业服务 | 9200 | 9200 | HTTP |
-| `cloud-stroll-cloud-service` | 云服务 | 9300 | 9300 | HTTP |
 | `cloud-stroll-system-service` | 系统服务 | 9400 | 9400 | HTTP |
 
 ---
@@ -451,13 +441,11 @@ mvn spring-boot:run -pl cloudoffice-system-service
 # 通过网关验证各服务路由
 curl -s http://localhost:9000/api/v1/auth/health    | jq .
 curl -s http://localhost:9000/api/v1/biz/health     | jq .
-curl -s http://localhost:9000/api/v1/cloud/health   | jq .
 curl -s http://localhost:9000/api/v1/system/health  | jq .
 
 # 直接访问各服务验证
 curl -s http://localhost:9100/api/v1/auth/health    | jq .
 curl -s http://localhost:9200/api/v1/biz/health     | jq .
-curl -s http://localhost:9300/api/v1/cloud/health   | jq .
 curl -s http://localhost:9400/api/v1/system/health  | jq .
 ```
 
@@ -483,11 +471,11 @@ curl -s http://localhost:9400/api/v1/system/health  | jq .
 |------|--------|---------|---------|
 | 1 | Nacos 可访问 | 浏览器访问 `http://localhost:8848/nacos/` | 显示 Nacos 控制台登录页 |
 | 2 | MariaDB 可连接 | `mariadb -h 127.0.0.1 -u root -p -e "SELECT 1"` | 返回 1 |
-| 3 | 数据库已初始化 | `mariadb -u root -p -e "SHOW DATABASES;"` | 4 个业务数据库已创建 |
+| 3 | 数据库已初始化 | `mariadb -u root -p -e "SHOW DATABASES;"` | 3 个业务数据库已创建 |
 | 4 | Gateway 路由正常 | `curl http://localhost:9000/api/v1/auth/health` | 返回 200 和健康数据 |
-| 5 | 各服务健康检查 | 分别验证 4 个健康检查接口 | 均返回 200 和 `status: "UP"` |
+| 5 | 各服务健康检查 | 分别验证 3 个健康检查接口 | 均返回 200 和 `status: "UP"` |
 | 6 | API 文档可访问 | 访问 `http://localhost:9100/swagger-ui.html` | 显示 Swagger UI 页面 |
-| 7 | Nacos 服务列表 | Nacos 控制台 → 服务管理 → 服务列表 | 显示 5 个已注册服务 |
+| 7 | Nacos 服务列表 | Nacos 控制台 → 服务管理 → 服务列表 | 显示 4 个已注册服务 |
 | 8 | JWT 令牌可签发 | 调用 JwtUtils 测试（详见测试用例） | 生成有效 JWT 令牌 |
 
 ### 8.3 服务未就绪时的处理
@@ -537,7 +525,7 @@ mariadb-dump \
   --password=${MYSQL_ROOT_PASSWORD} \
   --single-transaction \
   --databases cloudstroll_office_auth cloudstroll_office_biz \
-    cloudstroll_office_cloud cloudstroll_office_system \
+    cloudstroll_office_system \
   | gzip > backup_$(date +%Y%m%d_%H%M%S).sql.gz
 ```
 

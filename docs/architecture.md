@@ -3,7 +3,7 @@
 **项目中文名称：** 云漫智企
 **项目名称：** CloudStrollOffice
 **版本号：** v0.1.0
-**日期：** 2026-06-18
+**日期：** 2026-06-19
 
 ---
 
@@ -33,17 +33,17 @@
 │               路由转发 │ CORS │ 负载均衡 │ 服务发现集成                       │
 └──────────────────────────────────────────────────────────────────────────┘
                                   │
-        ┌─────────────────────────┼─────────────────────────────┐
-        ▼                         ▼                             ▼
-┌─────────────────┐   ┌──────────────────────┐   ┌──────────────────────────┐
-│  认证服务         │   │   企业服务            │   │   云服务                  │
-│  auth-service   │   │   biz-service        │   │   cloud-service          │
-│  (端口 9100)     │   │   (端口 9200)        │   │   (端口 9300)            │
-│  Spring Security│   │   企业信息/人事管理      │   │   云资源管理/资源编排       │
-│  OAuth2 + JWT   │   │   v0.1.0 骨架阶段      │   │   v0.1.0 骨架阶段         │
-└─────────────────┘   └──────────────────────┘   └──────────────────────────┘
-        │                       │                           │
-        ▼                       ▼                           ▼
+        ┌─────────────────────────┼─────────────────────┐
+        ▼                         ▼
+┌─────────────────┐   ┌──────────────────────┐
+│  认证服务         │   │   企业服务            │
+│  auth-service   │   │   biz-service        │
+│  (端口 9100)     │   │   (端口 9200)        │
+│  Spring Security│   │   企业信息/人事管理      │
+│  OAuth2 + JWT   │   │   v0.1.0 骨架阶段      │
+└─────────────────┘   └──────────────────────┘
+        │                       │
+        ▼                       ▼
 ┌──────────────────────────────────────────────────────────────────────────┐
 │                          系统服务 (system-service)                         │
 │                          (端口 9400)                                       │
@@ -69,7 +69,7 @@
 
 | 特点 | 说明 |
 |------|------|
-| 服务解耦 | 每个业务域独立为微服务（auth/biz/cloud/system），通过 API 网关统一入口，服务间无直接代码依赖 |
+| 服务解耦 | 每个业务域独立为微服务（auth/biz/system），通过 API 网关统一入口，服务间无直接代码依赖 |
 | 统一治理 | Nacos 统一注册发现与配置管理，父 POM 统一管理所有第三方依赖版本 |
 | 规范驱动 | 从项目起始阶段建立统一的包结构、命名规范、异常处理体系和代码风格 |
 | 渐进演进 | v0.1.0 搭建骨架，后续版本逐步注入业务功能、中间件集成和增强特性 |
@@ -94,7 +94,6 @@
 - **路由规则：**
   - `/api/v1/auth/**` → `cloudoffice-auth-service`
   - `/api/v1/biz/**` → `cloudoffice-biz-service`
-  - `/api/v1/cloud/**` → `cloudoffice-cloud-service`
   - `/api/v1/system/**` → `cloudoffice-system-service`
 
 ### 2.3 认证服务（cloudoffice-auth-service）
@@ -111,14 +110,7 @@
 - **端口：** 9200
 - **说明：** v0.1.0 仅搭建骨架，不实现具体业务逻辑
 
-### 2.5 云服务（cloudoffice-cloud-service）
-
-- **职责：** 云资源管理承载服务，本阶段为骨架模块。后续将承载云主机管理、存储管理、网络资源编排等业务功能。
-- **依赖：** Spring Boot Starter Web、Nacos Discovery/Config、MyBatis-Plus、MariaDB Driver、common 模块
-- **端口：** 9300
-- **说明：** v0.1.0 仅搭建骨架，不实现具体业务逻辑
-
-### 2.6 系统服务（cloudoffice-system-service）
+### 2.5 系统服务（cloudoffice-system-service）
 
 - **职责：** 基础公共服务承载服务，本阶段为骨架模块。后续将承载系统参数配置管理、操作日志、监控告警、定时任务等功能。
 - **依赖：** Spring Boot Starter Web、Nacos Discovery/Config、MyBatis-Plus、MariaDB Driver、common 模块
@@ -132,15 +124,15 @@
 │                    cloudoffice-common                           │
 │            (无业务依赖，所有服务模块的公共依赖)                       │
 └────────────────────────────────────────────────────────────────┘
-                    ▲           ▲           ▲           ▲
-                    │依赖       │依赖       │依赖       │依赖
-                    │           │           │           │
-┌───────────┐ ┌───────────┐ ┌──────────┐ ┌───────────┐ ┌──────────────┐
-│  gateway  │ │auth-service│ │biz-service││cloud-service││system-service│
-│ (端口9000) │ │(端口9100) │ │(端口9200) ││(端口9300)  ││ (端口9400)   │
-└───────────┘ └───────────┘ └──────────┘ └───────────┘ └──────────────┘
+                    ▲           ▲           ▲
+                    │依赖       │依赖       │依赖
                     │           │           │
-                    └───────────┼───────────┘
+┌───────────┐ ┌───────────┐ ┌──────────┐ ┌──────────────┐
+│  gateway  │ │auth-service│ │biz-service││system-service│
+│ (端口9000) │ │(端口9100) │ │(端口9200) ││ (端口9400)   │
+└───────────┘ └───────────┘ └──────────┘ └──────────────┘
+                    │           │
+                    └───────────┘
                                 │
                     ┌───────────▼───────────┐
                     │    Nacos 注册中心       │
@@ -182,7 +174,7 @@
 
 | ADR编号 | 决策内容 | 选项对比 | 最终选择 | 理由 | 后果/权衡 |
 |---------|---------|---------|---------|------|----------|
-| ADR-001 | 架构风格选型 | 单体架构 vs 微服务架构 | 微服务架构 | ① 各业务域（认证/企业/云/系统）职责清晰，天然适合微服务拆分；② 支持独立开发、测试、部署和扩展，满足 NFR-003 服务解耦要求；③ 团队可并行开发不同服务，提升研发效率 | 引入了服务间通信（OpenFeign/RocketMQ）、分布式事务（Seata）、服务治理等额外的架构复杂度，需要更多的运维投入 |
+| ADR-001 | 架构风格选型 | 单体架构 vs 微服务架构 | 微服务架构 | ① 各业务域（认证/企业/系统）职责清晰，天然适合微服务拆分；② 支持独立开发、测试、部署和扩展，满足 NFR-003 服务解耦要求；③ 团队可并行开发不同服务，提升研发效率 | 引入了服务间通信（OpenFeign/RocketMQ）、分布式事务（Seata）、服务治理等额外的架构复杂度，需要更多的运维投入 |
 | ADR-002 | 微服务框架选型 | Spring Cloud Alibaba vs Spring Cloud Netflix | Spring Cloud Alibaba | ① Netflix 组件多数进入维护期（Hystrix 停更、Ribbon 停更、Zuul 停更）；② Alibaba 组件（Nacos、Sentinel、Seata、RocketMQ）生态活跃，持续迭代；③ 国产技术栈，中文文档丰富，社区支持好 | 对阿里云生态的依赖性增强，但各组件均为开源项目，不存在厂商锁定风险 |
 | ADR-003 | 注册/配置中心选型 | Nacos vs Eureka vs Zookeeper | Nacos | ① 同时支持服务注册发现和配置管理，减少运维组件数量；② Eureka 2.x 已停更；③ Nacos 支持配置动态刷新、命名空间隔离、灰度发布等高级特性；④ 与 Spring Cloud Alibaba 深度集成 | Nacos Server 需要额外部署维护，相比 Eureka 仅注册中心功能，部署成本略高 |
 | ADR-004 | API 网关选型 | Spring Cloud Gateway vs APISIX vs Kong | Spring Cloud Gateway（本期） | ① 与 Spring Cloud 生态原生集成，开发配置一致性好；② 基于 WebFlux 响应式编程，性能高；③ 本阶段功能需求简单（路由转发 + CORS），Gateway 足够胜任 | 后期若需高级功能（动态路由、插件热加载），可迁移至 APISIX；Gateway 的配置变更需重启服务 |
@@ -255,8 +247,6 @@ cloudstroll_office_auth        # 认证服务数据库
 
 cloudstroll_office_biz         # 企业服务数据库（预留）
 
-cloudstroll_office_cloud       # 云服务数据库（预留）
-
 cloudstroll_office_system      # 系统服务数据库（预留）
 ```
 
@@ -266,7 +256,6 @@ cloudstroll_office_system      # 系统服务数据库（预留）
 |---------|---------|------|-----------|
 | 用户账号与认证数据 | MariaDB（auth 库） | 关系型数据，支持事务 | 强一致性 |
 | 企业业务数据 | MariaDB（biz 库） | 关系型数据，需 ACID 保证 | 强一致性 |
-| 云资源数据 | MariaDB（cloud 库） | 关系型数据 | 强一致性 |
 | 系统配置与日志 | MariaDB（system 库） | 关系型数据 | 最终一致性（日志可接受） |
 | 用户登录会话/令牌黑名单 | Redis | 高速读写，TTL 自动过期 | 最终一致性 |
 | 操作日志/审计日志 | MariaDB / 文件 | 持久化存储，支持查询 | 最终一致性 |
@@ -300,7 +289,6 @@ cloudstroll_office_system      # 系统服务数据库（预留）
 | 网关入口 | HTTP | `http://localhost:9000/api/v1/{module}/**` | JWT（下期实现） | Flutter 客户端/第三方 | 统一 API 入口 |
 | 认证-健康检查 | HTTP GET | `/api/v1/auth/health` | 无 | 客户端/监控 | 认证服务存活检测 |
 | 企业-健康检查 | HTTP GET | `/api/v1/biz/health` | 无 | 客户端/监控 | 企业服务存活检测 |
-| 云-健康检查 | HTTP GET | `/api/v1/cloud/health` | 无 | 客户端/监控 | 云服务存活检测 |
 | 系统-健康检查 | HTTP GET | `/api/v1/system/health` | 无 | 客户端/监控 | 系统服务存活检测 |
 | API 文档 | HTTP GET | `/swagger-ui.html` 或 `/v3/api-docs` | 无（开发环境） | 开发者 | SpringDoc 在线文档 |
 
@@ -352,7 +340,6 @@ public class PageResult<T> {
 |---------|---------|------------|------|
 | `/api/v1/auth/**` | `cloudoffice-auth-service` | 轮询 | 认证相关请求 |
 | `/api/v1/biz/**` | `cloudoffice-biz-service` | 轮询 | 企业业务请求 |
-| `/api/v1/cloud/**` | `cloudoffice-cloud-service` | 轮询 | 云资源请求 |
 | `/api/v1/system/**` | `cloudoffice-system-service` | 轮询 | 系统管理请求 |
 
 ---
@@ -396,10 +383,10 @@ public class PageResult<T> {
 │  │   :9000     │  │   :9100     │  │   :9200           │         │
 │  └─────────────┘  └─────────────┘  └──────────────────┘         │
 │                                                                   │
-│  ┌──────────────────┐  ┌──────────────────────┐                  │
-│  │  Cloud Service   │  │  System Service      │                  │
-│  │   :9300          │  │   :9400              │                  │
-│  └──────────────────┘  └──────────────────────┘                  │
+│  ┌──────────────────────────────────────────────────────┐        │
+│  │                   System Service                      │        │
+│  │                       :9400                           │        │
+│  └──────────────────────────────────────────────────────┘        │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -477,7 +464,7 @@ public class PageResult<T> {
 
 ```
 CloudStrollOffice/
-├── pom.xml                                    # 父 POM（依赖版本统一管理，定义 6 个子模块）
+├── pom.xml                                    # 父 POM（依赖版本统一管理，定义 5 个子模块）
 ├── opencode.json                              # OpenCode AI 开发工具配置
 ├── .gitignore                                 # Git 忽略规则
 ├── .editorconfig                              # 跨编辑器代码风格配置
@@ -568,26 +555,6 @@ CloudStrollOffice/
 │           ├── bootstrap.yml
 │           └── application.yml
 │
-├── cloudoffice-cloud-service/                 # 云服务（端口 9300）
-│   ├── pom.xml
-│   └── src/main/java/org/cloudstrolling/cloudoffice/cloud/
-│       ├── CloudApplication.java
-│       ├── config/
-│       ├── controller/
-│       ├── service/
-│       │   └── impl/
-│       ├── mapper/
-│       ├── entity/
-│       ├── dto/
-│       ├── vo/
-│       ├── enums/
-│       ├── exception/
-│       ├── filter/
-│       └── interceptor/
-│       └── main/resources/
-│           ├── bootstrap.yml
-│           └── application.yml
-│
 ├── cloudoffice-system-service/                # 系统服务（端口 9400）
 │   ├── pom.xml
 │   └── src/main/java/org/cloudstrolling/cloudoffice/system/
@@ -613,7 +580,6 @@ CloudStrollOffice/
 │   │   ├── gateway/Dockerfile
 │   │   ├── auth-service/Dockerfile
 │   │   ├── biz-service/Dockerfile
-│   │   ├── cloud-service/Dockerfile
 │   │   ├── system-service/Dockerfile
 │   │   └── docker-compose.yml                 # Compose 编排（含 Nacos/MariaDB/Redis）
 │   └── sql/
@@ -627,7 +593,6 @@ CloudStrollOffice/
         ├── GatewayApplication.xml
         ├── AuthApplication.xml
         ├── BizApplication.xml
-        ├── CloudApplication.xml
         └── SystemApplication.xml
 ```
 
@@ -695,3 +660,11 @@ public class PageResult<T> {
 - `docs/origin-requires/origin-requires0.1.0.md` — 原始需求文档
 - `docs/project.md` — 项目信息与编码规范
 - `opencode.json` — OpenCode AI 配置
+
+---
+
+## 13. 变更记录
+
+| 变更日期 | 版本号 | 变更说明 |
+|---------|-------|---------|
+| 2026-06-19 | v0.1.0 | 移除cloud-service微服务模块 |

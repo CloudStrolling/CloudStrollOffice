@@ -19,7 +19,6 @@
         <module>cloudoffice-gateway</module>
         <module>cloudoffice-auth-service</module>
         <module>cloudoffice-biz-service</module>
-        <module>cloudoffice-cloud-service</module>
         <module>cloudoffice-system-service</module>
     </modules>
 

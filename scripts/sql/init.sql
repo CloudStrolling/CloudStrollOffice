@@ -15,11 +15,6 @@ CREATE DATABASE IF NOT EXISTS `cloudstroll_office_biz`
   DEFAULT CHARACTER SET utf8mb4
   DEFAULT COLLATE utf8mb4_general_ci;
 
-DROP DATABASE IF EXISTS `cloudstroll_office_cloud`;
-CREATE DATABASE IF NOT EXISTS `cloudstroll_office_cloud`
-  DEFAULT CHARACTER SET utf8mb4
-  DEFAULT COLLATE utf8mb4_general_ci;
-
 DROP DATABASE IF EXISTS `cloudstroll_office_system`;
 CREATE DATABASE IF NOT EXISTS `cloudstroll_office_system`
   DEFAULT CHARACTER SET utf8mb4

@@ -13,10 +13,6 @@ spring:
           uri: lb://cloudoffice-biz-service
           predicates:
             - Path=/api/v1/biz/**
-        - id: cloud-service
-          uri: lb://cloudoffice-cloud-service
-          predicates:
-            - Path=/api/v1/cloud/**
         - id: system-service
           uri: lb://cloudoffice-system-service
           predicates:

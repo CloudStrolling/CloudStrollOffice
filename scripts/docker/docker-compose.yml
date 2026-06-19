@@ -114,29 +114,6 @@ services:
       - cloud-stroll-network
     restart: unless-stopped
 
-  # 云服务
-  cloud-service:
-    build:
-      context: ../../
-      dockerfile: scripts/docker/cloud-service/Dockerfile
-    image: cloud-stroll-cloud-service:latest
-    container_name: cloud-stroll-cloud-service
-    ports:
-      - "9300:9300"
-    depends_on:
-      - nacos
-      - mariadb
-    environment:
-      - NACOS_ADDR=${NACOS_ADDR:-nacos:8848}
-      - DB_HOST=${DB_HOST:-mariadb}
-      - DB_PORT=${DB_PORT:-3306}
-      - DB_USER=${DB_USER:-root}
-      - DB_PASSWORD=${DB_PASSWORD:-root123}
-      - JWT_SECRET=${JWT_SECRET}
-    networks:
-      - cloud-stroll-network
-    restart: unless-stopped
-
   # 系统服务
   system-service:
     build:
