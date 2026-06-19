@@ -1,7 +1,7 @@
 # 云漫智企 (CloudStrollOffice) 部署指南
 
-**版本：** v0.1.0  
-**日期：** 2026-06-18  
+**版本：** v0.1.4  
+**日期：** 2026-06-19  
 **适用环境：** 开发环境 / 测试环境 / 生产环境
 
 ---
@@ -51,7 +51,7 @@
 | 3306 | TCP | MariaDB 数据库连接 | 127.0.0.1 |
 | 6379 | TCP | Redis 缓存（预留） | 127.0.0.1 |
 | 9000 | TCP | API 网关 | 0.0.0.0 |
-| 9100-9400 | TCP | 各微服务（cloud-service已移除） | 0.0.0.0 |
+| 9100-9400 | TCP | 各微服务（auth/biz/system） | 0.0.0.0 |
 
 > **安全提示：** 生产环境应限制数据库和 Nacos 仅对内网开放，各微服务端口仅在内部子网可访问，外部统一通过网关（9000 端口）访问。
 
@@ -183,12 +183,11 @@ CloudStrollOffice 使用双层配置体系：
 | Gateway | `cloudoffice-gateway/src/main/resources/bootstrap.yml` | `cloudoffice-gateway/src/main/resources/application.yml` |
 | auth-service | `cloudoffice-auth-service/src/main/resources/bootstrap.yml` | `cloudoffice-auth-service/src/main/resources/application.yml` |
 | biz-service | `cloudoffice-biz-service/src/main/resources/bootstrap.yml` | `cloudoffice-biz-service/src/main/resources/application.yml` |
-
 | system-service | `cloudoffice-system-service/src/main/resources/bootstrap.yml` | `cloudoffice-system-service/src/main/resources/application.yml` |
 
 ### 3.4 Nacos 配置中心（预留）
 
-v0.1.0 骨架阶段各服务的配置文件存储在本地 `src/main/resources/` 目录中。后续版本将迁移至 Nacos 配置中心集中管理。
+v0.1.4 骨架阶段各服务的配置文件存储在本地 `src/main/resources/` 目录中。后续版本将迁移至 Nacos 配置中心集中管理。
 
 ---
 
@@ -228,6 +227,9 @@ mvn clean package -pl cloudoffice-auth-service -am -DskipTests
 
 # 构建企业服务及其依赖模块
 mvn clean package -pl cloudoffice-biz-service -am -DskipTests
+
+# 构建系统服务及其依赖模块
+mvn clean package -pl cloudoffice-system-service -am -DskipTests
 ```
 
 ### 4.3 编译产物
@@ -475,7 +477,7 @@ curl -s http://localhost:9400/api/v1/system/health  | jq .
 | 4 | Gateway 路由正常 | `curl http://localhost:9000/api/v1/auth/health` | 返回 200 和健康数据 |
 | 5 | 各服务健康检查 | 分别验证 3 个健康检查接口 | 均返回 200 和 `status: "UP"` |
 | 6 | API 文档可访问 | 访问 `http://localhost:9100/swagger-ui.html` | 显示 Swagger UI 页面 |
-| 7 | Nacos 服务列表 | Nacos 控制台 → 服务管理 → 服务列表 | 显示 4 个已注册服务 |
+| 7 | Nacos 服务列表 | Nacos 控制台 → 服务管理 → 服务列表 | 显示 4 个已注册服务（gateway + 3 个业务服务） |
 | 8 | JWT 令牌可签发 | 调用 JwtUtils 测试（详见测试用例） | 生成有效 JWT 令牌 |
 
 ### 8.3 服务未就绪时的处理
@@ -531,7 +533,7 @@ mariadb-dump \
 
 ### 9.4 监控
 
-v0.1.0 骨架阶段提供以下监控能力：
+v0.1.4 骨架阶段提供以下监控能力：
 
 - **应用日志：** 使用 `@Slf4j` + Logback 输出结构化日志
 - **API 文档：** SpringDoc 自动生成 OpenAPI 3 规范文档
@@ -608,6 +610,6 @@ A：确保所有容器处于同一 Docker 网络（`cloud-stroll-network`），D
 ---
 
 > **文档信息：**
-> - 本文档适用于 CloudStrollOffice v0.1.0 骨架搭建阶段
+> - 本文档适用于 CloudStrollOffice v0.1.4 系统服务搭建阶段
 > - 后续版本将补充 Kubernetes 部署、CI/CD 流程、生产环境安全加固等内容
 > - 如有问题请联系项目维护者或提交 GitHub Issue
