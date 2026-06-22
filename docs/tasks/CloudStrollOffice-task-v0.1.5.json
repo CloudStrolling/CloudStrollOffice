@@ -43,7 +43,7 @@
       "upstreamTaskIds": [],
       "downstreamTaskIds": ["TASK-018", "TASK-030"],
       "priority": "P1",
-      "status": "pending",
+      "status": "commit_finish",
       "testMethod": "单元测试验证字段正常访问、序列化 ID 存在、roles/permissions 默认空列表、Builder 模式可用",
       "acceptanceCriteria": "TokenPairDTO 和 LoginUserDTO 字段定义完整，Lombok 注解正确，实现 Serializable 并定义 serialVersionUID，roles/permissions 默认空列表处理",
       "contextObtain": "PRD US-003 AC1~AC3, SDS 2.3 公共模块, SDS 4.5 DTO 定义, project.md 编码规范"

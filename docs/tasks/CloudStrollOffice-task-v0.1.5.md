@@ -171,7 +171,7 @@
 **任务类型：** common
 **关联UserStory：** US-003
 **优先级：** P1
-**当前状态：** pending
+**当前状态：** commit_finish
 
 #### 上下游任务
 - 下游任务：TASK-018（JwtUtils 使用 LoginUserDTO）、TASK-030（AuthController 使用 TokenPairDTO）

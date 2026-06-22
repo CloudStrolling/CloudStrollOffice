@@ -212,6 +212,9 @@ cloudoffice-common/src/main/java/org/cloudstrolling/cloudoffice/common/
 ├── config/                         # 配置类（Spring 配置等）
 │   ├── MyBatisPlusConfig.java      # MyBatis-Plus 配置：自动填充处理器（createTime/updateTime/deleted）
 │   └── SpringDocConfig.java        # SpringDoc OpenAPI 配置，API 文档分组与基本信息
+├── dto/                            # 数据传输对象
+│   ├── TokenPairDTO.java           # 双Token响应DTO（accessToken/refreshToken/过期时间/tokenType）
+│   └── LoginUserDTO.java           # 登录用户信息DTO（userId/tenantId/userName/clientType/roles/permissions）
 ├── exception/                      # 异常定义
 │   ├── ErrorCode.java              # 通用错误码枚举：10个HTTP基础错误码 + 19个认证授权错误码（AUTH-0001~AUTH-0019）（实现 model.ErrorCode 接口）
 │   ├── BaseException.java          # 异常基类（继承 RuntimeException，含 code/message）
@@ -233,6 +236,9 @@ cloudoffice-common/src/main/java/org/cloudstrolling/cloudoffice/common/
 cloudoffice-common/src/test/java/org/cloudstrolling/cloudoffice/common/
 ├── config/
 │   └── MyBatisPlusConfigTest.java          # MyBatis-Plus 自动填充配置测试
+├── dto/
+│   ├── TokenPairDTOTest.java               # 双Token响应DTO测试（getter/setter/Builder/序列化）
+│   └── LoginUserDTOTest.java               # 登录用户信息DTO测试（getter/setter/Builder/默认空列表/序列化）
 ├── exception/
 │   ├── BaseExceptionTest.java              # 异常基类测试
 │   ├── BusinessExceptionTest.java          # 业务异常测试
@@ -252,6 +258,8 @@ cloudoffice-common/src/test/java/org/cloudstrolling/cloudoffice/common/
 |------|--------|----------|
 | `MyBatisPlusConfig` | `org.cloudstrolling.cloudoffice.common.config` | MyBatis-Plus 自动填充处理器：插入时填充 createTime/updateTime/deleted，更新时填充 updateTime |
 | `SpringDocConfig` | `org.cloudstrolling.cloudoffice.common.config` | SpringDoc OpenAPI 3 文档配置：包含认证/业务/云资源/系统管理 4 个 API 分组 |
+| `TokenPairDTO` | `org.cloudstrolling.cloudoffice.common.dto` | 双 Token 响应 DTO：Lombok 注解，实现 Serializable，含 accessToken/refreshToken/过期时间/tokenType |
+| `LoginUserDTO` | `org.cloudstrolling.cloudoffice.common.dto` | 登录用户信息 DTO：Lombok 注解，实现 Serializable，含 userId/tenantId/userName/clientType/roles/permissions |
 | `ErrorCode` | `org.cloudstrolling.cloudoffice.common.exception` | 通用错误码枚举：包含10个HTTP基础错误码（SUCCESS/BAD_REQUEST/UNAUTHORIZED/FORBIDDEN/NOT_FOUND等）和19个认证授权错误码（TOKEN_EXPIRED/ACCOUNT_DISABLED/LOGIN_FAILED等AUTH-0001~AUTH-0019），共29个枚举常量 |
 | `BaseException` | `org.cloudstrolling.cloudoffice.common.exception` | 运行时异常基类（抽象类）：含 code 和 message 属性 |
 | `BusinessException` | `org.cloudstrolling.cloudoffice.common.exception` | 业务异常：继承 BaseException，增加 module 模块标识，构造时自动记录错误日志 |
