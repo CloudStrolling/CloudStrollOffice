@@ -5,6 +5,7 @@
 
 package org.cloudstrolling.cloudoffice.gateway;
 
+import org.cloudstrolling.cloudoffice.gateway.TestRsaKeyProvider;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -24,9 +25,11 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
         "spring.cloud.nacos.config.enabled=false",
         "spring.cloud.nacos.config.import-check.enabled=false",
         "spring.main.web-application-type=reactive",
-        "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration,org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration,org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration,com.baomidou.mybatisplus.autoconfigure.MybatisPlusAutoConfiguration"
+        "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration,org.springframework.boot.autoconfigure.jdbc.DataSourceTransactionManagerAutoConfiguration,org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration,com.baomidou.mybatisplus.autoconfigure.MybatisPlusAutoConfiguration",
+        "auth.rsa.public-key=${test.rsa.public-key}"
 })
 class GatewayApplicationTest {
+    static { TestRsaKeyProvider.initialize(); }
 
     /**
      * 测试 Spring 上下文能否正常加载。
