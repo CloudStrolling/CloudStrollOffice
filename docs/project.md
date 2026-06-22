@@ -4,7 +4,7 @@
 **项目名称：** CloudStrollOffice
 **编程语言：** Java 21 (OpenJDK 21 LTS)
 **项目类型：** 微服务应用程序（Spring Boot + Spring Cloud）
-**当前进度：** impm-docs-update（系统服务搭建 v0.1.4）
+**当前进度：** impm-task（登录认证与权限管理 v0.1.5）
 **本地化语言：** 简体中文
 **项目总体介绍：** 云漫智企（CloudStrollOffice）是一个基于 Java 21 + Spring Boot 3.2.x + Spring Cloud 2023.x 技术栈构建的微服务互联网应用程序。采用 Maven 多模块架构，由认证服务（auth-service）、企业服务（biz-service）、系统服务（system-service）、API 网关（gateway）及公共模块（common）组成，为企业提供企业信息管理、人事管理、工作流审批、薪酬管理、统一认证授权等综合服务能力。数据库采用 MariaDB 10.6 (LTS)，缓存使用 Redis 7.2.x，消息队列使用 RocketMQ 5.1.x，注册中心和配置中心使用 Nacos 2.3.x。
 
@@ -174,6 +174,7 @@ docs/
 │   └── CloudStrollOffice-requirement-v0.1.0.md  # 项目需求文档 v0.1.0（User Story 格式，含 FR/NFR/约束条件）
 ├── prds/                          # PRD 文档
 ├── sds/                           # 技术规格说明书
+│   └── CloudStrollOffice-sds-v0.1.5.md  # 登录认证与权限管理技术规格说明书 v0.1.5
 ├── tasks/                         # 任务清单
 ├── prompts/                       # AI 交互历史记录
 │   ├── prompt-20260618-090703.md
@@ -227,6 +228,24 @@ cloudoffice-common/src/main/java/org/cloudstrolling/cloudoffice/common/
     └── JsonUtils.java              # JSON 工具类（基于 Jackson ObjectMapper 单例，支持 JavaTimeModule）
 ```
 
+**测试代码：**
+```
+cloudoffice-common/src/test/java/org/cloudstrolling/cloudoffice/common/
+├── config/
+│   └── MyBatisPlusConfigTest.java          # MyBatis-Plus 自动填充配置测试
+├── exception/
+│   ├── BaseExceptionTest.java              # 异常基类测试
+│   ├── BusinessExceptionTest.java          # 业务异常测试
+│   ├── ErrorCodeTest.java                  # 通用错误码枚举测试
+│   └── GlobalExceptionHandlerTest.java     # 全局异常处理器测试
+├── model/
+│   ├── ApiResultTest.java                  # 统一响应体测试
+│   ├── BaseEntityTest.java                 # 实体基类测试
+│   └── PageResultTest.java                 # 分页结果封装测试
+└── util/
+    └── JsonUtilsTest.java                  # JSON 工具类测试
+```
+
 ### 关键类说明
 
 | 类名 | 包路径 | 功能描述 |
@@ -265,8 +284,24 @@ cloudoffice-auth-service/src/main/java/org/cloudstrolling/cloudoffice/auth/
 ├── mapper/                         # 数据访问层（预留，仅 .gitkeep）
 ├── service/                        # 业务逻辑层接口（预留，仅 .gitkeep）
 │   └── impl/                       # 业务逻辑实现类（预留，仅 .gitkeep）
-└── util/                           # 工具类
-    └── JwtUtils.java               # JWT 令牌工具类（签发、验证、解析，支持 HS256 算法）
+├── util/                           # 工具类
+│   └── JwtUtils.java               # JWT 令牌工具类（签发、验证、解析，支持 HS256 算法）
+└── vo/                             # 视图对象（预留，仅 .gitkeep）
+```
+
+**测试代码：**
+```
+cloudoffice-auth-service/src/test/java/org/cloudstrolling/cloudoffice/auth/
+├── AuthApplicationTest.java                # 应用启动测试：验证 Spring 上下文加载、@EnableDiscoveryClient 注解
+├── config/
+│   └── SecurityConfigTest.java             # 安全配置测试：BCrypt 编码器、匿名访问路径、401/403 响应
+├── controller/
+│   └── HealthControllerTest.java           # 健康检查控制器测试：MockMvc 单元测试，验证 200 状态码和响应体
+└── util/
+    └── JwtUtilsTest.java                   # JWT 工具类测试：令牌生成、解析、验证、过期校验
+
+cloudoffice-auth-service/src/test/resources/
+└── bootstrap.yml                           # 测试环境 Nacos 禁用配置
 ```
 
 ### 关键类说明
@@ -291,11 +326,28 @@ cloudoffice-gateway/src/main/java/org/cloudstrolling/cloudoffice/gateway/
 └── config/                         # 配置类目录（预留，待实现鉴权过滤器等）
 ```
 
+**资源文件：**
+```
+cloudoffice-gateway/src/main/resources/
+├── bootstrap.yml                   # Nacos 注册/配置中心配置（server-addr 环境变量注入）
+└── application.yml                 # 应用配置（端口 9000、路由规则、CORS 配置）
+```
+
+**测试代码：**
+```
+cloudoffice-gateway/src/test/java/org/cloudstrolling/cloudoffice/gateway/
+└── GatewayApplicationTest.java             # 应用启动测试：验证 Spring 上下文加载、@EnableDiscoveryClient 注解
+
+cloudoffice-gateway/src/test/resources/
+└── bootstrap.yml                           # 测试环境 Nacos 禁用配置
+```
+
 ### 关键类说明
 
 | 类名 | 包路径 | 功能描述 |
 |------|--------|----------|
 | `GatewayApplication` | `org.cloudstrolling.cloudoffice.gateway` | API 网关启动入口，@SpringBootApplication + @EnableDiscoveryClient 集成 Nacos 服务发现，统一流量入口（端口 9000） |
+| `GatewayApplicationTest` | `org.cloudstrolling.cloudoffice.gateway` | 应用启动测试：验证 Spring 上下文正常加载、@EnableDiscoveryClient 注解存在 |
 
 ---
 
@@ -318,7 +370,26 @@ cloudoffice-biz-service/src/main/java/org/cloudstrolling/cloudoffice/biz/
 ├── mapper/                         # 数据访问层（预留，仅 .gitkeep）
 ├── service/                        # 业务逻辑层接口（预留，仅 .gitkeep）
 │   └── impl/                       # 业务逻辑实现类（预留，仅 .gitkeep）
-└── util/                           # 工具类（预留，仅 .gitkeep）
+├── util/                           # 工具类（预留，仅 .gitkeep）
+└── vo/                             # 视图对象（预留，仅 .gitkeep）
+```
+
+**资源文件：**
+```
+cloudoffice-biz-service/src/main/resources/
+├── bootstrap.yml                   # Nacos 注册/配置中心配置（server-addr 环境变量注入）
+└── application.yml                 # 应用配置（端口 9200、MariaDB 数据源、MyBatis-Plus、SpringDoc、日志级别）
+```
+
+**测试代码：**
+```
+cloudoffice-biz-service/src/test/java/org/cloudstrolling/cloudoffice/biz/
+├── BizApplicationTest.java                 # 应用启动测试：验证 Spring 上下文加载、@EnableDiscoveryClient 注解
+└── controller/
+    └── HealthControllerTest.java           # 健康检查控制器测试：MockMvc 单元测试，验证 200 状态码和响应体
+
+cloudoffice-biz-service/src/test/resources/
+└── bootstrap.yml                           # 测试环境 Nacos 禁用配置
 ```
 
 ### 关键类说明
@@ -327,6 +398,8 @@ cloudoffice-biz-service/src/main/java/org/cloudstrolling/cloudoffice/biz/
 |------|--------|----------|
 | `BizApplication` | `org.cloudstrolling.cloudoffice.biz` | 企业服务启动入口，@SpringBootApplication + @EnableDiscoveryClient 集成 Nacos 服务发现 |
 | `HealthController` | `org.cloudstrolling.cloudoffice.biz.controller` | 健康检查控制器：GET /api/v1/biz/health，返回服务名称/状态/版本/时间戳 |
+| `BizApplicationTest` | `org.cloudstrolling.cloudoffice.biz` | 应用启动测试：验证 Spring 上下文正常加载、@EnableDiscoveryClient 注解存在 |
+| `HealthControllerTest` | `org.cloudstrolling.cloudoffice.biz.controller` | 健康检查控制器单元测试：MockMvc 测试，验证 HTTP 200 状态码和响应体 |
 
 ---
 
@@ -349,7 +422,8 @@ cloudoffice-system-service/src/main/java/org/cloudstrolling/cloudoffice/system/
 ├── mapper/                         # 数据访问层（预留，仅 .gitkeep）
 ├── service/                        # 业务逻辑层接口（预留，仅 .gitkeep）
 │   └── impl/                       # 业务逻辑实现类（预留，仅 .gitkeep）
-└── util/                           # 工具类（预留，仅 .gitkeep）
+├── util/                           # 工具类（预留，仅 .gitkeep）
+└── vo/                             # 视图对象（预留，仅 .gitkeep）
 ```
 
 **资源文件：**
@@ -381,7 +455,7 @@ cloudoffice-system-service/src/test/resources/
 
 ---
 
-> **说明：** 项目地图持续更新中，反映当前 v0.1.4 阶段的代码实现状态。
+> **说明：** 项目地图持续更新中，反映当前 v0.1.5 阶段的代码实现状态。
 
 ---
 
@@ -389,5 +463,6 @@ cloudoffice-system-service/src/test/resources/
 
 | 日期 | 版本 | 变更说明 |
 |------|------|----------|
+| 2026-06-22 | v0.1.5 | 项目文档更新 - 登录认证与权限管理开发 |
 | 2026-06-19 | v0.1.4 | 系统服务模块搭建 - 完成 cloudoffice-system-service 基础框架 |
 | 2026-06-19 | v0.1.0 | 项目文档更新 - 移除cloud-service微服务模块 |
