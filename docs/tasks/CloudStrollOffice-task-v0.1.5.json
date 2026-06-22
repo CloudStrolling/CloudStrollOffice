@@ -253,7 +253,7 @@
       "upstreamTaskIds": ["TASK-017", "TASK-003"],
       "downstreamTaskIds": ["TASK-022", "TASK-023"],
       "priority": "P0",
-      "status": "pending",
+      "status": "commit_finish",
       "testMethod": "单元测试覆盖率≥90%：签发→解析成功，tokenType 校验，签名指纹提取，过期/签名错误异常，mvn test 通过",
       "acceptanceCriteria": "generateAccessToken 含 sub/tenantId/clientType/tokenType=access/roles/permissions 声明（2h），generateRefreshToken 含 tokenType=refresh/tokenVersion 声明（7d），parseAccessToken 校验 tokenType=access，parseRefreshToken 校验 tokenType=refresh，getTokenSignature 返回 SHA-256 摘要，构造器注入",
       "contextObtain": "PRD US-020 AC1~AC8 及边界情况, SDS 附录 C JwtUtils 方法签名, SDS 5.2 认证机制"

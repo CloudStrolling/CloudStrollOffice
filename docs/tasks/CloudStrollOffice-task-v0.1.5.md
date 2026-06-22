@@ -989,7 +989,7 @@ jwt:
 **任务类型：** backend
 **关联UserStory：** US-020
 **优先级：** P0
-**当前状态：** pending
+**当前状态：** commit_finish
 
 #### 上下游任务
 - 上游任务：TASK-017（RSA 密钥配置）

@@ -306,7 +306,7 @@ cloudoffice-auth-service/src/test/java/org/cloudstrolling/cloudoffice/auth/
 ├── controller/
 │   └── HealthControllerTest.java           # 健康检查控制器测试：MockMvc 单元测试，验证 200 状态码和响应体
 └── util/
-    └── JwtUtilsTest.java                   # JWT 工具类测试：令牌生成、解析、验证、过期校验
+    └── JwtUtilsTest.java                   # JWT 工具类测试（RS256 双 Token）：Access Token 签发/解析、Refresh Token 签发/解析、tokenType 校验、过期校验、签名指纹提取、签名错误处理
 
 cloudoffice-auth-service/src/test/resources/
 └── bootstrap.yml                           # 测试环境 Nacos 禁用配置
@@ -320,7 +320,7 @@ cloudoffice-auth-service/src/test/resources/
 | `SecurityConfig` | `org.cloudstrolling.cloudoffice.auth.config` | Spring Security 安全配置：BCryptPasswordEncoder 密码编码器、无状态会话管理、CSRF 关闭、健康检查/Swagger 端点匿名访问、自定义 401/403 JSON 响应 |
 | `OAuth2Config` | `org.cloudstrolling.cloudoffice.auth.config` | OAuth2 授权服务器骨架配置类，预留下期扩展点 |
 | `HealthController` | `org.cloudstrolling.cloudoffice.auth.controller` | 健康检查控制器：GET /api/v1/auth/health，返回服务名称/状态/版本/时间戳 |
-| `JwtUtils` | `org.cloudstrolling.cloudoffice.auth.util` | JWT 令牌工具类：构造器注入配置属性（secret/expiration/algorithm），@PostConstruct 校验密钥长度并初始化 HMAC 密钥，提供 generateToken/parseToken/validateToken/getUserIdFromToken/getUserNameFromToken 方法 |
+| `JwtUtils` | `org.cloudstrolling.cloudoffice.auth.util` | JWT 令牌工具类（RS256 双 Token）：构造器注入 RsaKeyConfig，提供 generateAccessToken/generateRefreshToken/parseAccessToken/parseRefreshToken/getTokenSignature 方法 |
 
 ---
 
@@ -473,5 +473,6 @@ cloudoffice-system-service/src/test/resources/
 |------|------|----------|
 | 2026-06-22 | v0.1.5 | 项目文档更新 - 登录认证与权限管理开发 |
 | 2026-06-22 | v0.1.5 | 项目地图更新 - ErrorCode枚举新增AUTH-0001~AUTH-0019认证错误码（共29个），ErrorCodeTest同步新增19个认证错误码测试方法 |
+| 2026-06-22 | v0.1.5 | JwtUtils 重构完成 - HS256 → RS256 双 Token，新增 generateAccessToken/generateRefreshToken/parseAccessToken/parseRefreshToken/getTokenSignature 方法，JwtUtilsTest 新增 17 个测试用例 |
 | 2026-06-19 | v0.1.4 | 系统服务模块搭建 - 完成 cloudoffice-system-service 基础框架 |
 | 2026-06-19 | v0.1.0 | 项目文档更新 - 移除cloud-service微服务模块 |
