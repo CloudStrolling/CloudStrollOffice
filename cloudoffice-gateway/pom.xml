@@ -55,13 +55,6 @@
             <scope>provided</scope>
         </dependency>
 
-        <!-- Lombok -->
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <scope>provided</scope>
-        </dependency>
-
         <!-- 公共模块 -->
         <dependency>
             <groupId>org.cloudstrolling</groupId>

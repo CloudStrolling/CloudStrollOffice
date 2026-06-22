@@ -1,0 +1,5 @@
+# 测试环境 RSA 密钥配置
+# 提供测试用的 RSA 2048 位公钥，确保服务启动时 RsaKeyConfig 初始化成功
+auth:
+  rsa:
+    public-key: MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEApqgJr/NPvWKayjwJ1BMxQHVZB6o4C/BeBMZk/dbeIyW9R7tKu5QWY1rKYQoeK95F4gmdr70ar0HHohC1XTRsOE40plIkhJYFr5jgkgjVgG9SuoTOBRji2fW4mxPOtjwzI1+w+gET6fWDt+khyNS0RrqwLqcCrIzXuGKqKtvPl+vC6SYXlg1VOQFtnwkdu4+OO9dbtvfyjf2r/qgyfvJFHbucAD/GxvE593r6wlzhr7gnV978D0CLrPsVlb/GV4PT1/7w8SoXqxLQUyDjAVkRSDhVMJNnYe9j+xxot3Ghog6ejkqpKU9VayzF8AGQr5+qqUaq8RSbf8wAEhqyCGkSGQIDAQAB
