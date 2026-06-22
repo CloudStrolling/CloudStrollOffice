@@ -155,7 +155,7 @@
       "upstreamTaskIds": ["TASK-010"],
       "downstreamTaskIds": ["TASK-012", "TASK-019"],
       "priority": "P0",
-      "status": "pending",
+      "status": "commit_finish",
       "testMethod": "服务启动后数据库和 Redis 连接正常；环境变量覆盖生效；curl 健康检查返回 200",
       "acceptanceCriteria": "MariaDB 数据源 URL/用户名/密码/驱动类配置完整，Redis host/port/password/database/连接池配置完整，JWT access-token-expiration(2h)/refresh-token-expiration(7d)/RSA 密钥配置完整，所有密码/密钥通过环境变量注入不硬编码",
       "contextObtain": "PRD US-023 AC2/AC3, SDS 3.1 数据库概述, architecture.md 5.6 数据库设计规范"
