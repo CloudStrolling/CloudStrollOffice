@@ -28,6 +28,13 @@ spring:
         locator:
           enabled: true
 
+# RSA 公钥配置
+# 优先级：环境变量 > 配置文件 Base64 > PEM 文件路径
+auth:
+  rsa:
+    public-key: ${RSA_PUBLIC_KEY:}
+    public-key-path: ${RSA_PUBLIC_KEY_PATH:}
+
 logging:
   level:
     org.springframework.cloud.gateway: INFO

@@ -2,7 +2,10 @@ package org.cloudstrolling.cloudoffice.gateway;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
+
+import org.cloudstrolling.cloudoffice.gateway.config.AuthProperties;
 
 /**
  * Gateway 服务启动类。
@@ -14,6 +17,7 @@ import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
  */
 @SpringBootApplication
 @EnableDiscoveryClient
+@EnableConfigurationProperties(AuthProperties.class)
 public class GatewayApplication {
 
     /**
