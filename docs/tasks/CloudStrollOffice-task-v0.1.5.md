@@ -54,7 +54,7 @@
 **任务类型：** common
 **关联UserStory：** US-001
 **优先级：** P0
-**当前状态：** pending
+**当前状态：** code_finish
 
 #### 上下游任务
 - 下游任务：TASK-009（AuthFilter 使用错误码）、TASK-030（AuthController 使用错误码）

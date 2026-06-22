@@ -15,7 +15,7 @@
       "upstreamTaskIds": [],
       "downstreamTaskIds": ["TASK-009", "TASK-030"],
       "priority": "P0",
-      "status": "pending",
+      "status": "code_finish",
       "testMethod": "单元测试验证每个新增错误码的 getCode() 和 getMessage() 返回值；mvn compile -pl cloudoffice-common 编译通过",
       "acceptanceCriteria": "19 个错误码枚举常量全部新增，HTTP 状态码正确映射，消息文本与 PRD 一致，现有错误码未被修改或删除",
       "contextObtain": "PRD US-001 AC1~AC3, SDS 2.3 公共模块, SDS 4.4 错误码定义, project.md 统一错误处理规范"

@@ -213,7 +213,7 @@ cloudoffice-common/src/main/java/org/cloudstrolling/cloudoffice/common/
 │   ├── MyBatisPlusConfig.java      # MyBatis-Plus 配置：自动填充处理器（createTime/updateTime/deleted）
 │   └── SpringDocConfig.java        # SpringDoc OpenAPI 配置，API 文档分组与基本信息
 ├── exception/                      # 异常定义
-│   ├── ErrorCode.java              # 通用错误码枚举（实现 model.ErrorCode 接口）
+│   ├── ErrorCode.java              # 通用错误码枚举：10个HTTP基础错误码 + 19个认证授权错误码（AUTH-0001~AUTH-0019）（实现 model.ErrorCode 接口）
 │   ├── BaseException.java          # 异常基类（继承 RuntimeException，含 code/message）
 │   ├── BusinessException.java      # 业务异常（带模块标识 module）
 │   ├── AuthException.java          # 认证异常（401）
@@ -236,7 +236,7 @@ cloudoffice-common/src/test/java/org/cloudstrolling/cloudoffice/common/
 ├── exception/
 │   ├── BaseExceptionTest.java              # 异常基类测试
 │   ├── BusinessExceptionTest.java          # 业务异常测试
-│   ├── ErrorCodeTest.java                  # 通用错误码枚举测试
+│   ├── ErrorCodeTest.java                  # 通用错误码枚举测试（10个HTTP基础错误码 + 19个认证授权错误码，共29个枚举常量的非空校验和预期值验证）
 │   └── GlobalExceptionHandlerTest.java     # 全局异常处理器测试
 ├── model/
 │   ├── ApiResultTest.java                  # 统一响应体测试
@@ -252,7 +252,7 @@ cloudoffice-common/src/test/java/org/cloudstrolling/cloudoffice/common/
 |------|--------|----------|
 | `MyBatisPlusConfig` | `org.cloudstrolling.cloudoffice.common.config` | MyBatis-Plus 自动填充处理器：插入时填充 createTime/updateTime/deleted，更新时填充 updateTime |
 | `SpringDocConfig` | `org.cloudstrolling.cloudoffice.common.config` | SpringDoc OpenAPI 3 文档配置：包含认证/业务/云资源/系统管理 4 个 API 分组 |
-| `ErrorCode` | `org.cloudstrolling.cloudoffice.common.exception` | 通用错误码枚举：SUCCESS/BAD_REQUEST/UNAUTHORIZED/FORBIDDEN/NOT_FOUND 等 10 个错误码 |
+| `ErrorCode` | `org.cloudstrolling.cloudoffice.common.exception` | 通用错误码枚举：包含10个HTTP基础错误码（SUCCESS/BAD_REQUEST/UNAUTHORIZED/FORBIDDEN/NOT_FOUND等）和19个认证授权错误码（TOKEN_EXPIRED/ACCOUNT_DISABLED/LOGIN_FAILED等AUTH-0001~AUTH-0019），共29个枚举常量 |
 | `BaseException` | `org.cloudstrolling.cloudoffice.common.exception` | 运行时异常基类（抽象类）：含 code 和 message 属性 |
 | `BusinessException` | `org.cloudstrolling.cloudoffice.common.exception` | 业务异常：继承 BaseException，增加 module 模块标识，构造时自动记录错误日志 |
 | `AuthException` | `org.cloudstrolling.cloudoffice.common.exception` | 认证异常：继承 BaseException，映射 HTTP 401 状态码 |
@@ -464,5 +464,6 @@ cloudoffice-system-service/src/test/resources/
 | 日期 | 版本 | 变更说明 |
 |------|------|----------|
 | 2026-06-22 | v0.1.5 | 项目文档更新 - 登录认证与权限管理开发 |
+| 2026-06-22 | v0.1.5 | 项目地图更新 - ErrorCode枚举新增AUTH-0001~AUTH-0019认证错误码（共29个），ErrorCodeTest同步新增19个认证错误码测试方法 |
 | 2026-06-19 | v0.1.4 | 系统服务模块搭建 - 完成 cloudoffice-system-service 基础框架 |
 | 2026-06-19 | v0.1.0 | 项目文档更新 - 移除cloud-service微服务模块 |

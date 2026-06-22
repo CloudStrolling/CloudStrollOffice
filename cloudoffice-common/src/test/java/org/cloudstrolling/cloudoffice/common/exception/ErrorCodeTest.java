@@ -100,4 +100,139 @@ class ErrorCodeTest {
         assertEquals(503, ErrorCode.SERVICE_UNAVAILABLE.getCode());
         assertEquals("服务暂不可用", ErrorCode.SERVICE_UNAVAILABLE.getMessage());
     }
+
+    // ========== 认证授权错误码测试 (AUTH-0001 ~ AUTH-0019) ==========
+
+    @Test
+    @DisplayName("TOKEN_EXPIRED 应具有 code=401, message=令牌已过期，请刷新令牌")
+    void tokenExpired_shouldHaveCode401() {
+        assertEquals(401, ErrorCode.TOKEN_EXPIRED.getCode());
+        assertEquals("令牌已过期，请刷新令牌", ErrorCode.TOKEN_EXPIRED.getMessage());
+    }
+
+    @Test
+    @DisplayName("TOKEN_INVALID 应具有 code=401, message=令牌无效")
+    void tokenInvalid_shouldHaveCode401() {
+        assertEquals(401, ErrorCode.TOKEN_INVALID.getCode());
+        assertEquals("令牌无效", ErrorCode.TOKEN_INVALID.getMessage());
+    }
+
+    @Test
+    @DisplayName("TOKEN_BLACKLISTED 应具有 code=401, message=令牌已被吊销")
+    void tokenBlacklisted_shouldHaveCode401() {
+        assertEquals(401, ErrorCode.TOKEN_BLACKLISTED.getCode());
+        assertEquals("令牌已被吊销", ErrorCode.TOKEN_BLACKLISTED.getMessage());
+    }
+
+    @Test
+    @DisplayName("REFRESH_TOKEN_EXPIRED 应具有 code=401, message=刷新令牌已过期，请重新登录")
+    void refreshTokenExpired_shouldHaveCode401() {
+        assertEquals(401, ErrorCode.REFRESH_TOKEN_EXPIRED.getCode());
+        assertEquals("刷新令牌已过期，请重新登录", ErrorCode.REFRESH_TOKEN_EXPIRED.getMessage());
+    }
+
+    @Test
+    @DisplayName("REFRESH_TOKEN_INVALID 应具有 code=401, message=刷新令牌无效")
+    void refreshTokenInvalid_shouldHaveCode401() {
+        assertEquals(401, ErrorCode.REFRESH_TOKEN_INVALID.getCode());
+        assertEquals("刷新令牌无效", ErrorCode.REFRESH_TOKEN_INVALID.getMessage());
+    }
+
+    @Test
+    @DisplayName("ACCOUNT_DISABLED 应具有 code=403, message=账号已被禁用")
+    void accountDisabled_shouldHaveCode403() {
+        assertEquals(403, ErrorCode.ACCOUNT_DISABLED.getCode());
+        assertEquals("账号已被禁用", ErrorCode.ACCOUNT_DISABLED.getMessage());
+    }
+
+    @Test
+    @DisplayName("ACCOUNT_LOCKED 应具有 code=403, message=账号已被锁定")
+    void accountLocked_shouldHaveCode403() {
+        assertEquals(403, ErrorCode.ACCOUNT_LOCKED.getCode());
+        assertEquals("账号已被锁定", ErrorCode.ACCOUNT_LOCKED.getMessage());
+    }
+
+    @Test
+    @DisplayName("ACCOUNT_BANNED 应具有 code=403, message=账号已被封禁")
+    void accountBanned_shouldHaveCode403() {
+        assertEquals(403, ErrorCode.ACCOUNT_BANNED.getCode());
+        assertEquals("账号已被封禁", ErrorCode.ACCOUNT_BANNED.getMessage());
+    }
+
+    @Test
+    @DisplayName("ACCOUNT_EXPIRED 应具有 code=403, message=账号已过期")
+    void accountExpired_shouldHaveCode403() {
+        assertEquals(403, ErrorCode.ACCOUNT_EXPIRED.getCode());
+        assertEquals("账号已过期", ErrorCode.ACCOUNT_EXPIRED.getMessage());
+    }
+
+    @Test
+    @DisplayName("LOGIN_FAILED 应具有 code=401, message=用户名或密码错误")
+    void loginFailed_shouldHaveCode401() {
+        assertEquals(401, ErrorCode.LOGIN_FAILED.getCode());
+        assertEquals("用户名或密码错误", ErrorCode.LOGIN_FAILED.getMessage());
+    }
+
+    @Test
+    @DisplayName("CAPTCHA_ERROR 应具有 code=400, message=验证码错误")
+    void captchaError_shouldHaveCode400() {
+        assertEquals(400, ErrorCode.CAPTCHA_ERROR.getCode());
+        assertEquals("验证码错误", ErrorCode.CAPTCHA_ERROR.getMessage());
+    }
+
+    @Test
+    @DisplayName("CLIENT_TYPE_INVALID 应具有 code=400, message=无效的客户端类型")
+    void clientTypeInvalid_shouldHaveCode400() {
+        assertEquals(400, ErrorCode.CLIENT_TYPE_INVALID.getCode());
+        assertEquals("无效的客户端类型", ErrorCode.CLIENT_TYPE_INVALID.getMessage());
+    }
+
+    @Test
+    @DisplayName("SESSION_KICKED_OUT 应具有 code=401, message=账号已在其他设备登录，您已被踢下线")
+    void sessionKickedOut_shouldHaveCode401() {
+        assertEquals(401, ErrorCode.SESSION_KICKED_OUT.getCode());
+        assertEquals("账号已在其他设备登录，您已被踢下线", ErrorCode.SESSION_KICKED_OUT.getMessage());
+    }
+
+    @Test
+    @DisplayName("TENANT_DISABLED 应具有 code=403, message=租户已被禁用")
+    void tenantDisabled_shouldHaveCode403() {
+        assertEquals(403, ErrorCode.TENANT_DISABLED.getCode());
+        assertEquals("租户已被禁用", ErrorCode.TENANT_DISABLED.getMessage());
+    }
+
+    @Test
+    @DisplayName("TENANT_EXPIRED 应具有 code=403, message=租户已过期")
+    void tenantExpired_shouldHaveCode403() {
+        assertEquals(403, ErrorCode.TENANT_EXPIRED.getCode());
+        assertEquals("租户已过期", ErrorCode.TENANT_EXPIRED.getMessage());
+    }
+
+    @Test
+    @DisplayName("PERMISSION_DENIED 应具有 code=403, message=权限不足")
+    void permissionDenied_shouldHaveCode403() {
+        assertEquals(403, ErrorCode.PERMISSION_DENIED.getCode());
+        assertEquals("权限不足", ErrorCode.PERMISSION_DENIED.getMessage());
+    }
+
+    @Test
+    @DisplayName("ROLE_NOT_FOUND 应具有 code=404, message=角色不存在")
+    void roleNotFound_shouldHaveCode404() {
+        assertEquals(404, ErrorCode.ROLE_NOT_FOUND.getCode());
+        assertEquals("角色不存在", ErrorCode.ROLE_NOT_FOUND.getMessage());
+    }
+
+    @Test
+    @DisplayName("USER_NOT_FOUND 应具有 code=404, message=用户不存在")
+    void userNotFound_shouldHaveCode404() {
+        assertEquals(404, ErrorCode.USER_NOT_FOUND.getCode());
+        assertEquals("用户不存在", ErrorCode.USER_NOT_FOUND.getMessage());
+    }
+
+    @Test
+    @DisplayName("CAPTCHA_EXPIRED 应具有 code=400, message=验证码已过期")
+    void captchaExpired_shouldHaveCode400() {
+        assertEquals(400, ErrorCode.CAPTCHA_EXPIRED.getCode());
+        assertEquals("验证码已过期", ErrorCode.CAPTCHA_EXPIRED.getMessage());
+    }
 }
