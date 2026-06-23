@@ -7,6 +7,7 @@ package org.cloudstrolling.cloudoffice.auth.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.cloudstrolling.cloudoffice.auth.dto.RegisterRequest;
@@ -22,11 +23,14 @@ import org.cloudstrolling.cloudoffice.auth.service.LoginSessionService;
 import org.cloudstrolling.cloudoffice.auth.service.UserService;
 import org.cloudstrolling.cloudoffice.common.exception.BusinessException;
 import org.cloudstrolling.cloudoffice.common.exception.ErrorCode;
+import org.cloudstrolling.cloudoffice.common.model.PageResult;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -119,6 +123,8 @@ public class UserServiceImpl implements UserService {
         UserEntity user = userMapper.selectById(id);
         if (user != null) {
             user.setPassword(null);
+            // 加载角色编码列表
+            user.setRoleCodes(userMapper.selectRoleCodesByUserId(id));
         }
         return user;
     }
@@ -215,6 +221,167 @@ public class UserServiceImpl implements UserService {
         log.info("用户已解锁 | userId={}", userId);
 
         loginSessionService.removeAccountStatus(userId);
+    }
+
+    @Override
+    public PageResult<UserEntity> list(Long tenantId, String keyword, int page, int pageSize) {
+        log.debug("分页查询用户列表 | tenantId={} | keyword={} | page={} | pageSize={}",
+                tenantId, keyword, page, pageSize);
+
+        // 1. 构建分页参数
+        Page<UserEntity> pageParam = new Page<>(page, pageSize);
+
+        // 2. 构建查询条件
+        LambdaQueryWrapper<UserEntity> wrapper = Wrappers.lambdaQuery(UserEntity.class)
+                .eq(tenantId != null, UserEntity::getTenantId, tenantId);
+
+        // 3. 关键词模糊搜索（login_name 或 user_name）
+        if (StringUtils.hasText(keyword)) {
+            wrapper.and(w -> w.like(UserEntity::getLoginName, keyword)
+                    .or()
+                    .like(UserEntity::getUserName, keyword));
+        }
+
+        // 4. 按创建时间降序排列
+        wrapper.orderByDesc(UserEntity::getCreateTime);
+
+        // 5. 执行分页查询
+        Page<UserEntity> result = userMapper.selectPage(pageParam, wrapper);
+
+        // 6. 密码脱敏
+        result.getRecords().forEach(u -> u.setPassword(null));
+
+        log.info("分页查询完成 | total={} | page={} | pageSize={}", result.getTotal(), page, pageSize);
+        return PageResult.of(result.getRecords(), result.getTotal(), page, pageSize);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public UserEntity update(UserEntity user) {
+        Long userId = user.getId();
+        Objects.requireNonNull(userId, "userId must not be null");
+
+        // 1. 校验用户存在
+        UserEntity existing = userMapper.selectById(userId);
+        if (existing == null) {
+            log.warn("更新用户失败：用户不存在 | userId={}", userId);
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+        }
+
+        // 2. 密码变更需通过独立接口，此处屏蔽
+        user.setPassword(null);
+
+        // 3. 执行更新
+        userMapper.updateById(user);
+        log.info("用户信息已更新 | userId={}", userId);
+
+        // 4. 返回更新后的用户信息
+        UserEntity updated = userMapper.selectById(userId);
+        updated.setPassword(null);
+        return updated;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void assignRoles(Long userId, List<Long> roleIds) {
+        Objects.requireNonNull(userId, "userId must not be null");
+
+        // 1. 校验用户存在
+        UserEntity user = userMapper.selectById(userId);
+        if (user == null) {
+            log.warn("角色分配失败：用户不存在 | userId={}", userId);
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+        }
+
+        // 2. 先删除现有角色关联（物理删除关联记录）
+        LambdaQueryWrapper<UserRoleEntity> deleteWrapper = Wrappers.lambdaQuery(UserRoleEntity.class)
+                .eq(UserRoleEntity::getUserId, userId);
+        userRoleMapper.delete(deleteWrapper);
+        log.debug("已清除用户现有角色 | userId={}", userId);
+
+        // 3. 插入新角色关联
+        if (roleIds != null && !roleIds.isEmpty()) {
+            for (Long roleId : roleIds) {
+                UserRoleEntity userRole = new UserRoleEntity();
+                userRole.setUserId(userId);
+                userRole.setRoleId(roleId);
+                userRoleMapper.insert(userRole);
+            }
+            log.info("角色分配完成 | userId={} | roleCount={}", userId, roleIds.size());
+        } else {
+            log.info("角色分配完成（清空所有角色） | userId={}", userId);
+        }
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void delete(Long userId) {
+        Objects.requireNonNull(userId, "userId must not be null");
+
+        // 1. 校验用户存在
+        UserEntity user = userMapper.selectById(userId);
+        if (user == null) {
+            log.warn("删除用户失败：用户不存在 | userId={}", userId);
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+        }
+
+        // 2. 逻辑删除（@TableLogic 自动填充 deleted = 1）
+        userMapper.deleteById(userId);
+        log.info("用户已逻辑删除 | userId={}", userId);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void updateStatus(Long userId, Integer status, String lockReason) {
+        Objects.requireNonNull(userId, "userId must not be null");
+        Objects.requireNonNull(status, "status must not be null");
+
+        // 1. 校验用户存在
+        UserEntity user = userMapper.selectById(userId);
+        if (user == null) {
+            log.warn("状态变更失败：用户不存在 | userId={}", userId);
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+        }
+
+        // 2. 幂等处理：状态相同则跳过
+        if (status.equals(user.getStatus())) {
+            log.info("状态变更幂等跳过：状态相同 | userId={} | status={}", userId, status);
+            return;
+        }
+
+        // 3. 根据目标状态委派到对应方法
+        switch (status) {
+            case 0:
+                // 恢复正常 - 根据当前状态选择解封或解锁
+                if (Integer.valueOf(3).equals(user.getStatus())) {
+                    unbanUser(userId);
+                } else if (Integer.valueOf(2).equals(user.getStatus())) {
+                    unlockUser(userId);
+                } else {
+                    // 从停用直接恢复
+                    user.setStatus(0);
+                    userMapper.updateById(user);
+                    log.info("用户状态已恢复正常 | userId={}", userId);
+                }
+                break;
+            case 1:
+                // 停用 - 仅更新数据库
+                user.setStatus(1);
+                userMapper.updateById(user);
+                log.info("用户已停用 | userId={}", userId);
+                break;
+            case 2:
+                // 锁定 - 委托 lockUser 方法（含 Redis 更新）
+                lockUser(userId);
+                break;
+            case 3:
+                // 封禁 - 委托 banUser 方法（含 Redis 更新 + 清除会话）
+                banUser(userId);
+                break;
+            default:
+                log.warn("无效的用户状态 | status={}", status);
+                throw new BusinessException(ErrorCode.BAD_REQUEST.getCode(), "无效的用户状态");
+        }
     }
 
     /**
