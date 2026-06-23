@@ -34,6 +34,12 @@ public class RedisKeyConstants {
     /** 租户状态缓存 Key 前缀：auth:tenant:status:{tenantId} */
     public static final String TENANT_STATUS_KEY_PREFIX = "auth:tenant:status:";
 
+    /** 验证码缓存 Key 前缀：auth:verification:{purpose}:{target} */
+    public static final String VERIFICATION_CODE = "auth:verification:";
+
+    /** 验证码频率控制 Key 前缀：auth:verification:freq:{purpose}:{target} */
+    public static final String VERIFICATION_CODE_FREQ = "auth:verification:freq:";
+
     // ========== Key 构建方法 ==========
 
     /**
@@ -106,5 +112,49 @@ public class RedisKeyConstants {
             throw new IllegalArgumentException("tenantId must not be null");
         }
         return TENANT_STATUS_KEY_PREFIX + tenantId;
+    }
+
+    // ========== 验证码 Key 构建方法 ==========
+
+    /**
+     * 构建验证码缓存 Key。
+     * <p>
+     * 格式：auth:verification:{purpose}:{target}
+     * </p>
+     *
+     * @param purpose 验证码用途，不能为 null
+     * @param target  验证码目标（如手机号、邮箱），不能为 null
+     * @return 完整的 Redis Key 字符串
+     * @throws IllegalArgumentException 如果 purpose 或 target 为 null
+     */
+    public static String buildVerificationCodeKey(String purpose, String target) {
+        if (purpose == null) {
+            throw new IllegalArgumentException("purpose must not be null");
+        }
+        if (target == null) {
+            throw new IllegalArgumentException("target must not be null");
+        }
+        return VERIFICATION_CODE + purpose + ":" + target;
+    }
+
+    /**
+     * 构建验证码频率控制 Key。
+     * <p>
+     * 格式：auth:verification:freq:{purpose}:{target}
+     * </p>
+     *
+     * @param purpose 验证码用途，不能为 null
+     * @param target  验证码目标（如手机号、邮箱），不能为 null
+     * @return 完整的 Redis Key 字符串
+     * @throws IllegalArgumentException 如果 purpose 或 target 为 null
+     */
+    public static String buildVerificationCodeFreqKey(String purpose, String target) {
+        if (purpose == null) {
+            throw new IllegalArgumentException("purpose must not be null");
+        }
+        if (target == null) {
+            throw new IllegalArgumentException("target must not be null");
+        }
+        return VERIFICATION_CODE_FREQ + purpose + ":" + target;
     }
 }

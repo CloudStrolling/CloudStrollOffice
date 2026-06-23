@@ -81,6 +81,36 @@ public class UserEntity extends BaseEntity {
     private String lastLoginIp;
 
     /**
+     * 注册模式，默认 USERNAME
+     */
+    @TableField("register_mode")
+    private String registerMode = "USERNAME";
+
+    /**
+     * 账号信息是否完善：0-未完善，1-已完善，默认 1
+     */
+    @TableField("account_settled")
+    private Integer accountSettled = 1;
+
+    /**
+     * 手机号是否已验证：0-未验证，1-已验证，默认 0
+     */
+    @TableField("phone_verified")
+    private Integer phoneVerified = 0;
+
+    /**
+     * 邮箱是否已验证：0-未验证，1-已验证，默认 0
+     */
+    @TableField("email_verified")
+    private Integer emailVerified = 0;
+
+    /**
+     * 最后修改密码时间
+     */
+    @TableField("last_password_change_time")
+    private LocalDateTime lastPasswordChangeTime;
+
+    /**
      * 角色编码列表（非数据库字段，用于返回用户详情时携带角色信息）
      */
     @TableField(exist = false)

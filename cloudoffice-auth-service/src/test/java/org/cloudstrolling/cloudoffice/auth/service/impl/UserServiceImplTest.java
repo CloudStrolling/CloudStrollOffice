@@ -81,12 +81,13 @@ class UserServiceImplTest {
     void register_shouldReturnUserWithoutPassword_whenSuccess() {
         // Given
         Long tenantId = 1L;
+        String tenantCode = "default";
         String loginName = "testuser";
         String rawPassword = "password123";
         String encryptedPassword = "$2a$10$encryptedHash";
 
         RegisterRequest request = new RegisterRequest();
-        request.setTenantId(tenantId);
+        request.setTenantCode(tenantCode);
         request.setLoginName(loginName);
         request.setPassword(rawPassword);
         request.setUserName("测试用户");
@@ -95,6 +96,7 @@ class UserServiceImplTest {
 
         TenantEntity tenant = new TenantEntity();
         tenant.setId(tenantId);
+        tenant.setTenantCode(tenantCode);
         tenant.setStatus(0); // 正常
 
         RoleEntity defaultRole = new RoleEntity();
@@ -103,8 +105,8 @@ class UserServiceImplTest {
         defaultRole.setRoleCode("user");
         defaultRole.setStatus(0);
 
-        // Mock 租户查询
-        when(tenantMapper.selectById(tenantId)).thenReturn(tenant);
+        // Mock 租户查询（通过 tenantCode）
+        when(tenantMapper.selectOne(any())).thenReturn(tenant);
         // Mock 唯一性校验（无重复）
         when(userMapper.selectByTenantIdAndLoginName(tenantId, loginName)).thenReturn(null);
         // Mock 密码加密
@@ -147,16 +149,18 @@ class UserServiceImplTest {
     void register_shouldThrowBusinessException_whenLoginNameDuplicate() {
         // Given
         Long tenantId = 1L;
+        String tenantCode = "default";
         String loginName = "existinguser";
 
         RegisterRequest request = new RegisterRequest();
-        request.setTenantId(tenantId);
+        request.setTenantCode(tenantCode);
         request.setLoginName(loginName);
         request.setPassword("password123");
         request.setUserName("已存在用户");
 
         TenantEntity tenant = new TenantEntity();
         tenant.setId(tenantId);
+        tenant.setTenantCode(tenantCode);
         tenant.setStatus(0);
 
         UserEntity existingUser = new UserEntity();
@@ -164,8 +168,8 @@ class UserServiceImplTest {
         existingUser.setTenantId(tenantId);
         existingUser.setLoginName(loginName);
 
-        // Mock 租户查询
-        when(tenantMapper.selectById(tenantId)).thenReturn(tenant);
+        // Mock 租户查询（通过 tenantCode）
+        when(tenantMapper.selectOne(any())).thenReturn(tenant);
         // Mock 唯一性校验（已存在）
         when(userMapper.selectByTenantIdAndLoginName(tenantId, loginName)).thenReturn(existingUser);
 
@@ -185,15 +189,15 @@ class UserServiceImplTest {
     @DisplayName("注册失败：租户不存在抛出 BusinessException")
     void register_shouldThrowBusinessException_whenTenantNotFound() {
         // Given
-        Long tenantId = 999L;
+        String tenantCode = "nonexistent";
 
         RegisterRequest request = new RegisterRequest();
-        request.setTenantId(tenantId);
+        request.setTenantCode(tenantCode);
         request.setLoginName("newuser");
         request.setPassword("password123");
         request.setUserName("新用户");
 
-        when(tenantMapper.selectById(tenantId)).thenReturn(null);
+        when(tenantMapper.selectOne(any())).thenReturn(null);
 
         // When & Then
         BusinessException exception = assertThrows(BusinessException.class,
@@ -207,18 +211,20 @@ class UserServiceImplTest {
     void register_shouldThrowBusinessException_whenTenantDisabled() {
         // Given
         Long tenantId = 1L;
+        String tenantCode = "default";
 
         RegisterRequest request = new RegisterRequest();
-        request.setTenantId(tenantId);
+        request.setTenantCode(tenantCode);
         request.setLoginName("newuser");
         request.setPassword("password123");
         request.setUserName("新用户");
 
         TenantEntity tenant = new TenantEntity();
         tenant.setId(tenantId);
+        tenant.setTenantCode(tenantCode);
         tenant.setStatus(1); // 禁用
 
-        when(tenantMapper.selectById(tenantId)).thenReturn(tenant);
+        when(tenantMapper.selectOne(any())).thenReturn(tenant);
 
         // When & Then
         BusinessException exception = assertThrows(BusinessException.class,
@@ -232,18 +238,20 @@ class UserServiceImplTest {
     void register_shouldThrowBusinessException_whenTenantExpired() {
         // Given
         Long tenantId = 1L;
+        String tenantCode = "default";
 
         RegisterRequest request = new RegisterRequest();
-        request.setTenantId(tenantId);
+        request.setTenantCode(tenantCode);
         request.setLoginName("newuser");
         request.setPassword("password123");
         request.setUserName("新用户");
 
         TenantEntity tenant = new TenantEntity();
         tenant.setId(tenantId);
+        tenant.setTenantCode(tenantCode);
         tenant.setStatus(2); // 过期
 
-        when(tenantMapper.selectById(tenantId)).thenReturn(tenant);
+        when(tenantMapper.selectOne(any())).thenReturn(tenant);
 
         // When & Then
         BusinessException exception = assertThrows(BusinessException.class,

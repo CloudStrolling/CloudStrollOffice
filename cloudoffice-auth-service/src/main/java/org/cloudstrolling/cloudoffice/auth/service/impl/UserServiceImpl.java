@@ -10,6 +10,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.cloudstrolling.cloudoffice.auth.dto.AccountSettlementRequest;
 import org.cloudstrolling.cloudoffice.auth.dto.RegisterRequest;
 import org.cloudstrolling.cloudoffice.auth.entity.RoleEntity;
 import org.cloudstrolling.cloudoffice.auth.entity.TenantEntity;
@@ -61,34 +62,37 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public UserEntity register(RegisterRequest request) {
-        log.info("用户注册开始 | loginName={} | tenantId={}", request.getLoginName(), request.getTenantId());
+        log.info("用户注册开始 | loginName={} | tenantCode={}", request.getLoginName(), request.getTenantCode());
 
-        // 1. 校验租户
-        TenantEntity tenant = tenantMapper.selectById(request.getTenantId());
+        // 1. 通过 tenantCode 查询租户
+        LambdaQueryWrapper<TenantEntity> tenantQuery = Wrappers.lambdaQuery(TenantEntity.class)
+                .eq(TenantEntity::getTenantCode, request.getTenantCode());
+        TenantEntity tenant = tenantMapper.selectOne(tenantQuery);
         if (tenant == null) {
-            log.warn("租户不存在 | tenantId={}", request.getTenantId());
+            log.warn("租户不存在 | tenantCode={}", request.getTenantCode());
             throw new BusinessException(ErrorCode.NOT_FOUND.getCode(), "租户不存在");
         }
+        Long tenantId = tenant.getId();
         // 校验租户状态（0-正常，1-禁用，2-过期）
         if (tenant.getStatus() != null && tenant.getStatus() != 0) {
             if (tenant.getStatus() == 1) {
-                log.warn("租户已被禁用 | tenantId={}", request.getTenantId());
+                log.warn("租户已被禁用 | tenantId={}", tenantId);
                 throw new BusinessException(ErrorCode.TENANT_DISABLED);
             }
-            log.warn("租户已过期 | tenantId={}", request.getTenantId());
+            log.warn("租户已过期 | tenantId={}", tenantId);
             throw new BusinessException(ErrorCode.TENANT_EXPIRED);
         }
         // 校验租户有效期
         if (tenant.getExpireTime() != null && tenant.getExpireTime().isBefore(LocalDateTime.now())) {
-            log.warn("租户已过期 | tenantId={} | expireTime={}", request.getTenantId(), tenant.getExpireTime());
+            log.warn("租户已过期 | tenantId={} | expireTime={}", tenantId, tenant.getExpireTime());
             throw new BusinessException(ErrorCode.TENANT_EXPIRED);
         }
 
         // 2. 校验 loginName 唯一性（同一租户内）
         UserEntity existingUser = userMapper.selectByTenantIdAndLoginName(
-                request.getTenantId(), request.getLoginName());
+                tenantId, request.getLoginName());
         if (existingUser != null) {
-            log.warn("登录名已存在 | loginName={} | tenantId={}", request.getLoginName(), request.getTenantId());
+            log.warn("登录名已存在 | loginName={} | tenantId={}", request.getLoginName(), tenantId);
             throw new BusinessException(ErrorCode.BAD_REQUEST.getCode(), "登录名已存在");
         }
 
@@ -98,7 +102,7 @@ public class UserServiceImpl implements UserService {
 
         // 4. 创建用户记录
         UserEntity user = new UserEntity();
-        user.setTenantId(request.getTenantId());
+        user.setTenantId(tenantId);
         user.setLoginName(request.getLoginName());
         user.setPassword(encryptedPassword);
         user.setUserName(request.getUserName());
@@ -382,6 +386,66 @@ public class UserServiceImpl implements UserService {
                 log.warn("无效的用户状态 | status={}", status);
                 throw new BusinessException(ErrorCode.BAD_REQUEST.getCode(), "无效的用户状态");
         }
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void accountSettlement(Long userId, AccountSettlementRequest request) {
+        Objects.requireNonNull(userId, "userId must not be null");
+        Objects.requireNonNull(request, "request must not be null");
+
+        // 1. 查询用户
+        UserEntity user = userMapper.selectById(userId);
+        if (user == null) {
+            log.warn("账号完善失败：用户不存在 | userId={}", userId);
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+        }
+
+        // 2. 校验账号信息未完善
+        if (user.getAccountSettled() != null && user.getAccountSettled() == 1) {
+            log.warn("账号完善失败：账号信息已完善 | userId={}", userId);
+            throw new BusinessException(ErrorCode.BAD_REQUEST.getCode(), "账号信息已完善，无需重复操作");
+        }
+
+        // 3. 更新登录名（如果提供）
+        if (StringUtils.hasText(request.getLoginName())) {
+            // 校验同一租户内登录名唯一性
+            UserEntity existingUser = userMapper.selectByTenantIdAndLoginName(
+                    user.getTenantId(), request.getLoginName());
+            if (existingUser != null && !existingUser.getId().equals(userId)) {
+                log.warn("账号完善失败：登录名已存在 | loginName={} | tenantId={}",
+                        request.getLoginName(), user.getTenantId());
+                throw new BusinessException(ErrorCode.BAD_REQUEST.getCode(), "登录名已存在");
+            }
+            user.setLoginName(request.getLoginName());
+        }
+
+        // 4. 更新密码（如果提供）
+        if (StringUtils.hasText(request.getPassword())) {
+            String encryptedPassword = passwordEncoder.encode(request.getPassword());
+            user.setPassword(encryptedPassword);
+            user.setLastPasswordChangeTime(LocalDateTime.now());
+        }
+
+        // 5. 更新手机号（如果提供）
+        if (StringUtils.hasText(request.getPhone())) {
+            // 校验手机号是否已被其他账号绑定
+            LambdaQueryWrapper<UserEntity> phoneQuery = Wrappers.lambdaQuery();
+            phoneQuery.eq(UserEntity::getPhone, request.getPhone());
+            UserEntity userWithPhone = userMapper.selectOne(phoneQuery);
+            if (userWithPhone != null && !userWithPhone.getId().equals(userId)) {
+                log.warn("账号完善失败：手机号已被其他账号绑定 | phone={}", request.getPhone());
+                throw new BusinessException(ErrorCode.PHONE_ALREADY_BOUND);
+            }
+            user.setPhone(request.getPhone());
+        }
+
+        // 6. 设置账号信息已完善
+        user.setAccountSettled(1);
+
+        // 7. 执行更新
+        userMapper.updateById(user);
+        log.info("账号信息完善成功 | userId={} | loginName={}", userId, user.getLoginName());
     }
 
     /**

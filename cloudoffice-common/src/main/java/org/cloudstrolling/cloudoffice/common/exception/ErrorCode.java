@@ -48,7 +48,38 @@ public enum ErrorCode implements org.cloudstrolling.cloudoffice.common.model.Err
     PERMISSION_DENIED(403, "权限不足"),                                                      /* AUTH-0016 */
     ROLE_NOT_FOUND(404, "角色不存在"),                                                       /* AUTH-0017 */
     USER_NOT_FOUND(404, "用户不存在"),                                                       /* AUTH-0018 */
-    CAPTCHA_EXPIRED(400, "验证码已过期");                                                    /* AUTH-0019 */
+    CAPTCHA_EXPIRED(400, "验证码已过期"),                                                    /* AUTH-0019 */
+
+    // ===== 密码管理错误码 =====
+    PASSWORD_RESET_TOKEN_INVALID("AUTH-0020", 400, "密码重置令牌无效"),
+    PASSWORD_RESET_TOKEN_EXPIRED("AUTH-0021", 400, "密码重置令牌已过期"),
+    OLD_PASSWORD_INCORRECT("AUTH-0022", 400, "原密码错误"),
+
+    // ===== 短信验证码错误码 =====
+    SMS_CODE_INVALID("AUTH-0023", 400, "短信验证码无效"),
+    SMS_CODE_EXPIRED("AUTH-0024", 400, "短信验证码已过期"),
+    SMS_SEND_TOO_FREQUENT("AUTH-0025", 429, "验证码发送过于频繁"),
+
+    // ===== OAuth认证错误码 =====
+    OAUTH_LOGIN_FAILED("AUTH-0026", 401, "第三方登录失败"),
+    OAUTH_ACCOUNT_NOT_BOUND("AUTH-0027", 404, "第三方账号未绑定"),
+    OAUTH_ACCOUNT_ALREADY_BOUND("AUTH-0029", 409, "第三方账号已被其他用户绑定"),
+
+    // ===== 手机号错误码 =====
+    PHONE_ALREADY_BOUND("AUTH-0028", 409, "手机号已被其他账号绑定"),
+
+    // ===== 账号状态错误码 =====
+    EMAIL_VERIFICATION_REQUIRED("AUTH-0030", 403, "需要邮箱验证"),
+    ACCOUNT_NOT_SETTLED("AUTH-0031", 403, "账号信息未完善，请先补充资料"),
+
+    // ===== 模式错误码 =====
+    REGISTER_MODE_INVALID("AUTH-0032", 400, "无效的注册模式"),
+    LOGIN_MODE_INVALID("AUTH-0033", 400, "无效的登录模式");
+
+    /**
+     * 业务错误码（如 AUTH-0020）
+     */
+    private final String bizCode;
 
     /**
      * 错误码（通常对应 HTTP 状态码）
@@ -61,12 +92,26 @@ public enum ErrorCode implements org.cloudstrolling.cloudoffice.common.model.Err
     private final String message;
 
     /**
-     * 构造错误码枚举常量
+     * 构造错误码枚举常量（用于业务错误码）。
+     *
+     * @param bizCode 业务错误码，如 "AUTH-0020"
+     * @param code    错误码，通常对应 HTTP 状态码
+     * @param message 错误描述
+     */
+    ErrorCode(String bizCode, Integer code, String message) {
+        this.bizCode = bizCode;
+        this.code = code;
+        this.message = message;
+    }
+
+    /**
+     * 构造错误码枚举常量（用于基础 HTTP 错误码）。
      *
      * @param code    错误码，通常对应 HTTP 状态码
      * @param message 错误描述
      */
     ErrorCode(Integer code, String message) {
+        this.bizCode = null;
         this.code = code;
         this.message = message;
     }

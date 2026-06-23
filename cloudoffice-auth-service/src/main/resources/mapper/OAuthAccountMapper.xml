@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.cloudstrolling.cloudoffice.auth.mapper.OAuthAccountMapper">
+
+    <!-- 根据用户 ID 查询所有绑定的 OAuth 账号（含逻辑删除条件） -->
+    <select id="selectByUserId"
+            resultType="org.cloudstrolling.cloudoffice.auth.entity.OAuthAccountEntity">
+        SELECT * FROM t_auth_oauth_account
+        WHERE user_id = #{userId}
+          AND deleted = 0
+    </select>
+
+    <!-- 根据提供商和 openId 查询 OAuth 账号（含逻辑删除条件） -->
+    <select id="selectByProviderAndOpenId"
+            resultType="org.cloudstrolling.cloudoffice.auth.entity.OAuthAccountEntity">
+        SELECT * FROM t_auth_oauth_account
+        WHERE oauth_provider = #{provider}
+          AND oauth_open_id = #{openId}
+          AND deleted = 0
+    </select>
+
+</mapper>

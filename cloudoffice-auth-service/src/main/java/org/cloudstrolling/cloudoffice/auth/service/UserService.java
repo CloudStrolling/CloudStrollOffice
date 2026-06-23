@@ -5,6 +5,7 @@
 
 package org.cloudstrolling.cloudoffice.auth.service;
 
+import org.cloudstrolling.cloudoffice.auth.dto.AccountSettlementRequest;
 import org.cloudstrolling.cloudoffice.auth.dto.RegisterRequest;
 import org.cloudstrolling.cloudoffice.auth.entity.UserEntity;
 import org.cloudstrolling.cloudoffice.common.exception.BusinessException;
@@ -145,4 +146,17 @@ public interface UserService {
      * @throws BusinessException 用户不存在或状态值无效
      */
     void updateStatus(Long userId, Integer status, String lockReason);
+
+    /**
+     * 完善账号信息（两步注册第二步）。
+     *
+     * <p>用户在首次登录或信息不完整时补全账号信息。
+     * 校验用户状态为 {@code account_settled=false}，
+     * 然后更新登录名、密码和手机号，最后设置 {@code account_settled=true}。</p>
+     *
+     * @param userId  当前登录用户 ID
+     * @param request 账号补全请求
+     * @throws BusinessException 用户不存在、账号信息已完善或参数非法
+     */
+    void accountSettlement(Long userId, AccountSettlementRequest request);
 }

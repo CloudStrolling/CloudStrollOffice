@@ -7,17 +7,28 @@ package org.cloudstrolling.cloudoffice.auth.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jsonwebtoken.Claims;
+import org.cloudstrolling.cloudoffice.auth.dto.AccountSettlementRequest;
 import org.cloudstrolling.cloudoffice.auth.dto.KickoutRequest;
 import org.cloudstrolling.cloudoffice.auth.dto.LoginRequest;
+import org.cloudstrolling.cloudoffice.auth.dto.PasswordChangeRequest;
+import org.cloudstrolling.cloudoffice.auth.dto.PasswordForgotRequest;
+import org.cloudstrolling.cloudoffice.auth.dto.PhoneChangeRequest;
 import org.cloudstrolling.cloudoffice.auth.dto.RefreshTokenRequest;
 import org.cloudstrolling.cloudoffice.auth.dto.RegisterRequest;
+import org.cloudstrolling.cloudoffice.auth.dto.SendVerificationCodeRequest;
+import org.cloudstrolling.cloudoffice.auth.dto.result.RegisterResult;
 import org.cloudstrolling.cloudoffice.auth.entity.UserEntity;
+import org.cloudstrolling.cloudoffice.auth.service.AuthenticationService;
 import org.cloudstrolling.cloudoffice.auth.service.LoginService;
+import org.cloudstrolling.cloudoffice.auth.service.PasswordService;
 import org.cloudstrolling.cloudoffice.auth.service.TokenService;
 import org.cloudstrolling.cloudoffice.auth.service.UserService;
+import org.cloudstrolling.cloudoffice.auth.service.VerificationCodeManager;
+import org.cloudstrolling.cloudoffice.auth.service.VerificationCodeService;
 import org.cloudstrolling.cloudoffice.auth.util.JwtUtils;
 import org.cloudstrolling.cloudoffice.common.dto.TokenPairDTO;
 import org.cloudstrolling.cloudoffice.common.exception.AuthException;
+import org.cloudstrolling.cloudoffice.common.exception.BusinessException;
 import org.cloudstrolling.cloudoffice.common.exception.ErrorCode;
 import org.cloudstrolling.cloudoffice.common.exception.GlobalExceptionHandler;
 import org.junit.jupiter.api.BeforeEach;
@@ -76,6 +87,22 @@ class AuthControllerTest {
     @Mock
     private JwtUtils jwtUtils;
 
+    /** 模拟的统一认证编排服务 */
+    @Mock
+    private AuthenticationService authenticationService;
+
+    /** 模拟的密码管理服务 */
+    @Mock
+    private PasswordService passwordService;
+
+    /** 模拟的验证码管理器 */
+    @Mock
+    private VerificationCodeManager verificationCodeManager;
+
+    /** 模拟的验证码发送服务 */
+    @Mock
+    private VerificationCodeService verificationCodeService;
+
     @InjectMocks
     private AuthController authController;
 
@@ -113,7 +140,7 @@ class AuthControllerTest {
                 .tokenType("Bearer")
                 .build();
 
-        when(loginService.login(any(LoginRequest.class))).thenReturn(tokenPair);
+        when(authenticationService.authenticate(any(LoginRequest.class))).thenReturn(tokenPair);
 
         // When & Then
         mockMvc.perform(post("/api/v1/auth/login")
@@ -144,20 +171,23 @@ class AuthControllerTest {
     // ========== POST /api/v1/auth/register - 注册 ==========
 
     @Test
-    @DisplayName("TC-003: POST /api/v1/auth/register 成功 -> 200 + UserEntity")
-    void register_shouldReturnUserEntity() throws Exception {
+    @DisplayName("TC-003: POST /api/v1/auth/register 成功 -> 200 + RegisterResult")
+    void register_shouldReturnRegisterResult() throws Exception {
         // Given
         RegisterRequest request = new RegisterRequest();
         request.setLoginName("newuser");
         request.setPassword("password123");
         request.setUserName("新用户");
-        request.setTenantId(1L);
+        request.setTenantCode("default");
 
-        UserEntity user = new UserEntity();
-        user.setId(100L);
-        user.setLoginName("newuser");
+        RegisterResult result = RegisterResult.builder()
+                .userId(100L)
+                .loginName("newuser")
+                .userName("新用户")
+                .accountSettled(true)
+                .build();
 
-        when(userService.register(any(RegisterRequest.class))).thenReturn(user);
+        when(authenticationService.register(any(RegisterRequest.class))).thenReturn(result);
 
         // When & Then
         mockMvc.perform(post("/api/v1/auth/register")
@@ -166,8 +196,9 @@ class AuthControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.message").value("注册成功"))
-                .andExpect(jsonPath("$.data.id").value(100))
-                .andExpect(jsonPath("$.data.loginName").value("newuser"));
+                .andExpect(jsonPath("$.data.userId").value(100))
+                .andExpect(jsonPath("$.data.loginName").value("newuser"))
+                .andExpect(jsonPath("$.data.accountSettled").value(true));
     }
 
     @Test

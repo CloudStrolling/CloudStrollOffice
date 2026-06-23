@@ -59,6 +59,17 @@ jwt:
     private-key: ${RSA_PRIVATE_KEY:}
     public-key: ${RSA_PUBLIC_KEY:}
 
+app:
+  verification-code:
+    mock: true                       # 开发环境模拟模式，直接返回固定验证码
+    expire-seconds: 300              # 验证码过期时间（秒），默认 5 分钟
+    send-interval-seconds: 60        # 发送间隔（秒），默认 1 分钟
+    length: 6                        # 验证码长度
+
+  password:
+    min-length: 8                    # 密码最小长度
+    max-length: 64                   # 密码最大长度
+
 logging:
   level:
     org.cloudstrolling: DEBUG
