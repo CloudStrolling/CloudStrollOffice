@@ -1,5 +1,12 @@
-# 测试环境 RSA 密钥配置
-# 提供测试用的 RSA 2048 位公钥，确保服务启动时 RsaKeyConfig 初始化成功
 auth:
+  white-list:
+    - /api/v1/auth/login
+    - /api/v1/auth/register
+    - /api/v1/auth/refresh
+    - /api/v1/auth/health
+    - /swagger-ui/**
+    - /v3/api-docs/**
+    - /favicon.ico
+    - /webjars/**
   rsa:
-    public-key: MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEApqgJr/NPvWKayjwJ1BMxQHVZB6o4C/BeBMZk/dbeIyW9R7tKu5QWY1rKYQoeK95F4gmdr70ar0HHohC1XTRsOE40plIkhJYFr5jgkgjVgG9SuoTOBRji2fW4mxPOtjwzI1+w+gET6fWDt+khyNS0RrqwLqcCrIzXuGKqKtvPl+vC6SYXlg1VOQFtnwkdu4+OO9dbtvfyjf2r/qgyfvJFHbucAD/GxvE593r6wlzhr7gnV978D0CLrPsVlb/GV4PT1/7w8SoXqxLQUyDjAVkRSDhVMJNnYe9j+xxot3Ghog6ejkqpKU9VayzF8AGQr5+qqUaq8RSbf8wAEhqyCGkSGQIDAQAB
+    public-key: MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA9uVdbps/od+OpgdAvRV4ThmIim8F0EAh8i0D23zS1eprd3z34JU2So/Jun5LAJgBowDXOLEoYjaMdfDteoH89zQGGu5TInOIipmI9ebVJ95Gl2Y+cA9B5+sU08xqGXHd8msjLlNBgmReljQhD8RDmworLEueZ55JWnh04ocAe8UWRoRO6xs1swVTYWDWREXyfCf2pSfn1pLYXCKHFua/9+eeaz10UuKjbEfjScUrfVUacdSM9rrdHodTmlayzRcom7xHBDDs8uaZTc8ox9eDRT1KIUIvz3YT1w7eWxlXqhIjpkGtHy0aQjwEmNbZpcuQWdZMV+uZ5TU9wqDHWabVowIDAQAB

@@ -73,6 +73,24 @@ public class JwtUtils {
     }
 
     /**
+     * 获取 Access Token 过期时间（秒）。
+     *
+     * @return Access Token 过期时间秒数
+     */
+    public long getAccessTokenExpiration() {
+        return accessTokenExpiration;
+    }
+
+    /**
+     * 获取 Refresh Token 过期时间（秒）。
+     *
+     * @return Refresh Token 过期时间秒数
+     */
+    public long getRefreshTokenExpiration() {
+        return refreshTokenExpiration;
+    }
+
+    /**
      * 生成 Access Token。
      *
      * <p>使用 RS256 算法和 RSA 私钥签名，包含以下声明：</p>

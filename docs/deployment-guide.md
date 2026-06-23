@@ -1,7 +1,7 @@
 # 云漫智企 (CloudStrollOffice) 部署指南
 
-**版本：** v0.1.4  
-**日期：** 2026-06-19  
+**版本：** v0.1.5  
+**日期：** 2026-06-23  
 **适用环境：** 开发环境 / 测试环境 / 生产环境
 
 ---
@@ -38,6 +38,7 @@
 | JDK | 21+ (LTS) | 推荐 Eclipse Temurin 21 (https://adoptium.net/) |
 | Maven | 3.9+ | 项目构建工具 (https://maven.apache.org/download.cgi) |
 | MariaDB | 10.6+ (LTS) | 关系型数据库 (https://mariadb.org/download/) |
+| Redis | 7.2.x | 缓存（登录态会话、Token 黑名单、账号/租户状态缓存）|
 | Nacos | 2.3.x | 服务注册中心与配置中心 (https://nacos.io/download/) |
 | Docker | 24+ | 容器化运行环境（可选，推荐） |
 | Docker Compose | 2.x | 多容器编排（可选，推荐） |
@@ -49,7 +50,7 @@
 |------|------|------|---------|
 | 8848 | TCP | Nacos 服务注册与配置 | 0.0.0.0 |
 | 3306 | TCP | MariaDB 数据库连接 | 127.0.0.1 |
-| 6379 | TCP | Redis 缓存（预留） | 127.0.0.1 |
+| 6379 | TCP | Redis 缓存 | 127.0.0.1 |
 | 9000 | TCP | API 网关 | 0.0.0.0 |
 | 9100-9400 | TCP | 各微服务（auth/biz/system） | 0.0.0.0 |
 
@@ -141,13 +142,36 @@ mariadb -u root -p -e "SHOW DATABASES;"
 # cloudstroll_office_system
 ```
 
-### 2.3 Redis（预留，v0.1.0 不强制部署）
+### 2.3 Redis（缓存，v0.1.5 必须部署）
+
+认证服务需 Redis 存储登录态会话、Token 黑名单、账号/租户状态缓存。网关也需要 Redis 进行 Token 校验。
+
+#### Docker 部署（推荐）
 
 ```bash
 docker run -d \
   --name cloud-stroll-redis \
   -p 6379:6379 \
   redis:7.2
+
+# 验证连接
+redis-cli -h 127.0.0.1 -p 6379 ping
+# 返回 PONG 表示连接成功
+```
+
+#### 手动部署
+
+```bash
+# Ubuntu/Debian
+sudo apt update
+sudo apt install redis-server
+
+# 启动服务
+sudo systemctl start redis-server
+sudo systemctl enable redis-server
+
+# 检查状态
+redis-cli ping
 ```
 
 ---
@@ -168,11 +192,16 @@ CloudStrollOffice 使用双层配置体系：
 | 变量名 | 默认值 | 适用服务 | 说明 |
 |--------|--------|---------|------|
 | `NACOS_ADDR` | `127.0.0.1:8848` | 全部 | Nacos 服务地址 |
-| `JWT_SECRET` | 开发环境默认值（见 auth-service application.yml） | auth-service | JWT 签名密钥，生产环境必须修改，长度 ≥ 32 字符 |
-| `DB_HOST` | `127.0.0.1` | biz/system 服务 | 数据库主机地址 |
-| `DB_PORT` | `3306` | biz/system 服务 | 数据库端口 |
-| `DB_USER` | `root` | biz/system 服务 | 数据库用户名 |
-| `DB_PASSWORD` | `root123` | biz/system 服务 | 数据库密码 |
+| `DB_HOST` | `127.0.0.1` | auth/biz/system | 数据库主机地址 |
+| `DB_PORT` | `3306` | auth/biz/system | 数据库端口 |
+| `DB_USERNAME` | `root` | auth/biz/system | 数据库用户名 |
+| `DB_PASSWORD` | `root` | auth/biz/system | 数据库密码 |
+| `REDIS_HOST` | `127.0.0.1` | auth/gateway | Redis 主机地址 |
+| `REDIS_PORT` | `6379` | auth/gateway | Redis 端口 |
+| `REDIS_PASSWORD` | (空) | auth/gateway | Redis 密码 |
+| `REDIS_DATABASE` | `0` | auth/gateway | Redis 数据库编号 |
+| `RSA_PRIVATE_KEY` | (必填) | auth-service | RSA 私钥（Base64 编码），用于 JWT RS256 签名 |
+| `RSA_PUBLIC_KEY` | (必填) | auth/gateway | RSA 公钥（Base64 编码），用于 JWT RS256 验签 |
 | `MARIADB_ROOT_PASSWORD` | `root123` | Docker 环境 | MariaDB root 密码（仅 docker-compose 使用） |
 | `TZ` | `Asia/Shanghai` | Docker 环境 | 容器时区设置 |
 
@@ -185,9 +214,33 @@ CloudStrollOffice 使用双层配置体系：
 | biz-service | `cloudoffice-biz-service/src/main/resources/bootstrap.yml` | `cloudoffice-biz-service/src/main/resources/application.yml` |
 | system-service | `cloudoffice-system-service/src/main/resources/bootstrap.yml` | `cloudoffice-system-service/src/main/resources/application.yml` |
 
-### 3.4 Nacos 配置中心（预留）
+### 3.4 RSA 密钥对生成
 
-v0.1.4 骨架阶段各服务的配置文件存储在本地 `src/main/resources/` 目录中。后续版本将迁移至 Nacos 配置中心集中管理。
+v0.1.5 使用 RS256 非对称签名算法，需提前生成 RSA 2048 位密钥对：
+
+```bash
+# 1. 生成 RSA 2048 位私钥（PKCS#8 格式）
+openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 \
+  -outform PEM -out private_key.pem
+
+# 2. 提取公钥
+openssl pkey -in private_key.pem -pubout -outform PEM -out public_key.pem
+
+# 3. 转换为 Base64（去掉 PEM 头尾和换行符）
+# Linux/Mac
+base64 -w0 private_key.pem > private_key_base64.txt
+base64 -w0 public_key.pem > public_key_base64.txt
+
+# Windows (PowerShell)
+[Convert]::ToBase64String([IO.File]::ReadAllBytes(".\private_key.pem")) > private_key_base64.txt
+[Convert]::ToBase64String([IO.File]::ReadAllBytes(".\public_key.pem")) > public_key_base64.txt
+```
+
+将 Base64 编码的私钥和公钥分别配置到 `RSA_PRIVATE_KEY` 和 `RSA_PUBLIC_KEY` 环境变量中。
+
+### 3.5 Nacos 配置中心（预留）
+
+v0.1.5 阶段各服务的配置文件存储在本地 `src/main/resources/` 目录中。后续版本将迁移至 Nacos 配置中心集中管理。
 
 ---
 
@@ -264,7 +317,7 @@ mvn dependency:go-offline
 
 ### 5.1 整体架构
 
-Docker 部署将启动 7 个容器，分为三层：
+Docker 部署将启动 8 个容器，分为三层：
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -275,7 +328,7 @@ Docker 部署将启动 7 个容器，分为三层：
                             │
 ┌─────────────────────────────────────────────────────────┐
 │                   中间件层 (3个容器)                      │
-│  nacos(8848) mariadb(3306) redis(6379, 预留)            │
+│  nacos(8848) mariadb(3306) redis(6379)                   │
 └─────────────────────────────────────────────────────────┘
                             │
 ┌─────────────────────────────────────────────────────────┐
@@ -353,8 +406,16 @@ DB_PORT=3306
 DB_USER=root
 DB_PASSWORD=your_secure_password
 
-# JWT 配置
-JWT_SECRET=your-jwt-secret-key-at-least-32-characters-long
+# Redis 配置
+REDIS_HOST=redis
+REDIS_PORT=6379
+REDIS_PASSWORD=
+REDIS_DATABASE=0
+
+# RSA 密钥配置（JWT RS256 签名）
+# 使用 OpenSSL 生成：openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048
+RSA_PRIVATE_KEY=your-base64-encoded-private-key
+RSA_PUBLIC_KEY=your-base64-encoded-public-key
 
 # 时区
 TZ=Asia/Shanghai
@@ -383,18 +444,27 @@ TZ=Asia/Shanghai
 ### 6.1 直接运行 JAR
 
 ```bash
-# 1. 确保 Nacos 和 MariaDB 已启动
+# 1. 确保 Nacos、MariaDB 和 Redis 已启动
+#    - Nacos: curl http://127.0.0.1:8848/nacos/
+#    - MariaDB: mariadb -h 127.0.0.1 -u root -p -e "SELECT 1"
+#    - Redis: redis-cli -h 127.0.0.1 ping
 
-# 2. 编译打包
+# 2. 初始化数据库（首次部署）
+mariadb -u root -p < scripts/sql/auth-init-v0.1.5.sql
+
+# 3. 编译打包
 mvn clean package -DskipTests
 
-# 3. 按顺序启动各服务
+# 4. 按顺序启动各服务
 java -jar cloudoffice-gateway/target/cloudoffice-gateway-0.0.1-SNAPSHOT.jar \
-  --NACOS_ADDR=127.0.0.1:8848
+  --NACOS_ADDR=127.0.0.1:8848 \
+  --RSA_PUBLIC_KEY=your-base64-public-key
 
 java -jar cloudoffice-auth-service/target/cloudoffice-auth-service-0.0.1-SNAPSHOT.jar \
   --NACOS_ADDR=127.0.0.1:8848 \
-  --JWT_SECRET=your-secret-key
+  --RSA_PRIVATE_KEY=your-base64-private-key \
+  --RSA_PUBLIC_KEY=your-base64-public-key \
+  --REDIS_HOST=127.0.0.1
 
 java -jar cloudoffice-biz-service/target/cloudoffice-biz-service-0.0.1-SNAPSHOT.jar \
   --NACOS_ADDR=127.0.0.1:8848 \
@@ -425,7 +495,7 @@ mvn spring-boot:run -pl cloudoffice-system-service
 |---------|------|---------|---------|------|
 | `cloud-stroll-nacos` | Nacos Server | 8848 | 8848 | HTTP |
 | `cloud-stroll-mariadb` | MariaDB | 3306 | 3306 | MySQL |
-| `cloud-stroll-redis` | Redis（预留） | 6379 | 6379 | Redis |
+| `cloud-stroll-redis` | Redis | 6379 | 6379 | Redis |
 | `cloud-stroll-gateway` | API 网关 | 9000 | 9000 | HTTP |
 | `cloud-stroll-auth-service` | 认证服务 | 9100 | 9100 | HTTP |
 | `cloud-stroll-biz-service` | 企业服务 | 9200 | 9200 | HTTP |
@@ -473,12 +543,14 @@ curl -s http://localhost:9400/api/v1/system/health  | jq .
 |------|--------|---------|---------|
 | 1 | Nacos 可访问 | 浏览器访问 `http://localhost:8848/nacos/` | 显示 Nacos 控制台登录页 |
 | 2 | MariaDB 可连接 | `mariadb -h 127.0.0.1 -u root -p -e "SELECT 1"` | 返回 1 |
-| 3 | 数据库已初始化 | `mariadb -u root -p -e "SHOW DATABASES;"` | 3 个业务数据库已创建 |
-| 4 | Gateway 路由正常 | `curl http://localhost:9000/api/v1/auth/health` | 返回 200 和健康数据 |
-| 5 | 各服务健康检查 | 分别验证 3 个健康检查接口 | 均返回 200 和 `status: "UP"` |
-| 6 | API 文档可访问 | 访问 `http://localhost:9100/swagger-ui.html` | 显示 Swagger UI 页面 |
-| 7 | Nacos 服务列表 | Nacos 控制台 → 服务管理 → 服务列表 | 显示 4 个已注册服务（gateway + 3 个业务服务） |
-| 8 | JWT 令牌可签发 | 调用 JwtUtils 测试（详见测试用例） | 生成有效 JWT 令牌 |
+| 3 | Redis 可连接 | `redis-cli -h 127.0.0.1 ping` | 返回 PONG |
+| 4 | 数据库已初始化 | `mariadb -u root -p -e "USE cloudstroll_office_auth; SHOW TABLES;"` | 显示 7 张业务表 |
+| 5 | Gateway 路由正常 | `curl http://localhost:9000/api/v1/auth/health` | 返回 200 和健康数据 |
+| 6 | 各服务健康检查 | 分别验证 3 个健康检查接口 | 均返回 200 和 `status: "UP"` |
+| 7 | API 文档可访问 | 访问 `http://localhost:9100/swagger-ui.html` | 显示 Swagger UI 页面 |
+| 8 | Nacos 服务列表 | Nacos 控制台 → 服务管理 → 服务列表 | 显示 4 个已注册服务 |
+| 9 | 用户登录 | `curl -X POST http://localhost:9000/api/v1/auth/login -H "Content-Type: application/json" -d '{"loginName":"admin","password":"admin123","tenantCode":"DEFAULT","clientType":"H5"}'` | 返回 200，包含 accessToken 和 refreshToken |
+| 10 | 认证拦截 | 无 Token 访问 `http://localhost:9000/api/v1/auth/users` | 返回 401 未授权 |
 
 ### 8.3 服务未就绪时的处理
 
@@ -574,14 +646,31 @@ A：请确认 Nacos 服务已启动并可访问：
 curl http://127.0.0.1:8848/nacos/
 ```
 
-**Q：auth-service 启动失败，提示密钥长度不足**
+**Q：auth-service/gateway 启动失败，提示 RSA 密钥配置错误**
 
-A：JWT 签名密钥长度必须 ≥ 32 字符，通过环境变量设置：
+A：v0.1.5 使用 RS256 非对称签名，需要配置 RSA 密钥对：
 
 ```bash
-# 启动时指定
-export JWT_SECRET=your-secure-key-at-least-32-characters-long
+# 1. 生成密钥对
+openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -outform PEM -out private_key.pem
+openssl pkey -in private_key.pem -pubout -outform PEM -out public_key.pem
+
+# 2. 获取 Base64 编码
+base64 -w0 private_key.pem
+base64 -w0 public_key.pem
+
+# 3. 设置环境变量启动
+export RSA_PRIVATE_KEY="<base64-private-key>"
+export RSA_PUBLIC_KEY="<base64-public-key>"
 java -jar cloudoffice-auth-service-0.0.1-SNAPSHOT.jar
+```
+
+**Q：认证服务启动失败，提示 Redis 连接超时**
+
+A：请确认 Redis 已启动并可访问：
+
+```bash
+redis-cli -h 127.0.0.1 -p 6379 ping
 ```
 
 **Q：访问 Gateway 路由返回 502 Bad Gateway**
@@ -610,6 +699,6 @@ A：确保所有容器处于同一 Docker 网络（`cloud-stroll-network`），D
 ---
 
 > **文档信息：**
-> - 本文档适用于 CloudStrollOffice v0.1.4 系统服务搭建阶段
+> - 本文档适用于 CloudStrollOffice v0.1.5 登录认证与权限管理阶段
 > - 后续版本将补充 Kubernetes 部署、CI/CD 流程、生产环境安全加固等内容
 > - 如有问题请联系项目维护者或提交 GitHub Issue

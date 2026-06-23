@@ -58,6 +58,21 @@ public class ApiResult<T> {
     }
 
     /**
+     * 成功响应（带消息和数据）。
+     *
+     * @param message 提示消息
+     * @param data    响应数据
+     * @param <T>     数据类型
+     * @return ApiResult
+     */
+    public static <T> ApiResult<T> success(String message, T data) {
+        return new ApiResult<T>()
+                .setCode(200)
+                .setMessage(message)
+                .setData(data);
+    }
+
+    /**
      * 成功响应（无数据）。
      *
      * @param <T> 数据类型

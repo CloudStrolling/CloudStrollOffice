@@ -5,20 +5,29 @@
 
 package org.cloudstrolling.cloudoffice.auth.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import io.jsonwebtoken.Claims;
 import lombok.extern.slf4j.Slf4j;
+import org.cloudstrolling.cloudoffice.auth.dto.LoginRequest;
 import org.cloudstrolling.cloudoffice.auth.entity.LoginLogEntity;
+import org.cloudstrolling.cloudoffice.auth.entity.TenantEntity;
 import org.cloudstrolling.cloudoffice.auth.entity.UserEntity;
 import org.cloudstrolling.cloudoffice.auth.mapper.LoginLogMapper;
+import org.cloudstrolling.cloudoffice.auth.mapper.TenantMapper;
 import org.cloudstrolling.cloudoffice.auth.mapper.UserMapper;
 import org.cloudstrolling.cloudoffice.auth.service.LoginLogService;
 import org.cloudstrolling.cloudoffice.auth.service.LoginService;
 import org.cloudstrolling.cloudoffice.auth.service.LoginSessionService;
 import org.cloudstrolling.cloudoffice.auth.util.JwtUtils;
 import org.cloudstrolling.cloudoffice.common.dto.LoginUserDTO;
+import org.cloudstrolling.cloudoffice.common.dto.TokenPairDTO;
 import org.cloudstrolling.cloudoffice.common.enums.ClientTypeEnum;
+import org.cloudstrolling.cloudoffice.common.exception.AuthException;
 import org.cloudstrolling.cloudoffice.common.exception.BusinessException;
 import org.cloudstrolling.cloudoffice.common.exception.ErrorCode;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.Assert;
@@ -27,6 +36,7 @@ import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
@@ -35,7 +45,8 @@ import java.util.Optional;
  * 登录认证业务服务实现类。
  *
  * <p>实现 {@link LoginService} 接口，提供登录、登出、强制踢人等认证业务逻辑，
- * 涉及 {@link UserMapper}、{@link LoginSessionService}、{@link LoginLogMapper} 等组件协作。</p>
+ * 涉及 {@link UserMapper}、{@link TenantMapper}、{@link LoginSessionService}、
+ * {@link LoginLogMapper} 等组件协作。</p>
  *
  * @author CloudStrolling
  * @since 1.0
@@ -47,36 +58,170 @@ public class LoginServiceImpl implements LoginService {
     /** 管理员角色编码 */
     private static final String ADMIN_ROLE_CODE = "admin";
 
+    /** 正常状态 */
+    private static final int STATUS_NORMAL = 0;
+
     private final UserMapper userMapper;
+    private final TenantMapper tenantMapper;
     private final LoginSessionService loginSessionService;
     private final LoginLogMapper loginLogMapper;
     private final JwtUtils jwtUtils;
     private final LoginLogService loginLogService;
+    private final PasswordEncoder passwordEncoder;
+    private final long refreshTokenExpiration;
 
     /**
      * 构造器注入依赖。
      *
-     * @param userMapper          用户 Mapper
-     * @param loginSessionService Redis 登录态管理服务
-     * @param loginLogMapper      登录日志 Mapper
-     * @param jwtUtils            JWT 令牌工具类
-     * @param loginLogService     登录日志审计服务
+     * @param userMapper              用户 Mapper
+     * @param tenantMapper            租户 Mapper
+     * @param loginSessionService     Redis 登录态管理服务
+     * @param loginLogMapper          登录日志 Mapper
+     * @param jwtUtils                JWT 令牌工具类
+     * @param loginLogService         登录日志审计服务
+     * @param passwordEncoder         BCrypt 密码编码器
+     * @param refreshTokenExpiration  Refresh Token 过期时间（秒）
      */
     public LoginServiceImpl(UserMapper userMapper,
+                            TenantMapper tenantMapper,
                             LoginSessionService loginSessionService,
                             LoginLogMapper loginLogMapper,
                             JwtUtils jwtUtils,
-                            LoginLogService loginLogService) {
+                            LoginLogService loginLogService,
+                            PasswordEncoder passwordEncoder,
+                            @Value("${jwt.refresh-token-expiration:604800}") long refreshTokenExpiration) {
         Assert.notNull(userMapper, "userMapper must not be null");
+        Assert.notNull(tenantMapper, "tenantMapper must not be null");
         Assert.notNull(loginSessionService, "loginSessionService must not be null");
         Assert.notNull(loginLogMapper, "loginLogMapper must not be null");
         Assert.notNull(jwtUtils, "jwtUtils must not be null");
         Assert.notNull(loginLogService, "loginLogService must not be null");
+        Assert.notNull(passwordEncoder, "passwordEncoder must not be null");
         this.userMapper = userMapper;
+        this.tenantMapper = tenantMapper;
         this.loginSessionService = loginSessionService;
         this.loginLogMapper = loginLogMapper;
         this.jwtUtils = jwtUtils;
         this.loginLogService = loginLogService;
+        this.passwordEncoder = passwordEncoder;
+        this.refreshTokenExpiration = refreshTokenExpiration;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public TokenPairDTO login(LoginRequest request) {
+        // 1. 参数校验
+        Assert.hasText(request.getLoginName(), "loginName must not be empty");
+        Assert.hasText(request.getPassword(), "password must not be empty");
+        Assert.hasText(request.getTenantCode(), "tenantCode must not be empty");
+        Assert.hasText(request.getClientType(), "clientType must not be empty");
+
+        // 2. 校验 clientType 合法性
+        Optional<ClientTypeEnum> clientTypeOpt = ClientTypeEnum.fromCode(request.getClientType());
+        if (clientTypeOpt.isEmpty()) {
+            log.warn("Login failed: invalid clientType={}", request.getClientType());
+            throw new BusinessException(ErrorCode.CLIENT_TYPE_INVALID);
+        }
+        ClientTypeEnum clientTypeEnum = clientTypeOpt.get();
+
+        // 3. 查询租户
+        LambdaQueryWrapper<TenantEntity> tenantQuery = Wrappers.lambdaQuery();
+        tenantQuery.eq(TenantEntity::getTenantCode, request.getTenantCode());
+        TenantEntity tenant = tenantMapper.selectOne(tenantQuery);
+
+        // 4. 校验租户状态
+        if (tenant == null) {
+            log.warn("Login failed: tenant not found | tenantCode={}", request.getTenantCode());
+            throw new BusinessException(ErrorCode.NOT_FOUND.getCode(), "租户不存在");
+        }
+        checkTenantStatus(tenant);
+
+        // 5. 查询用户
+        UserEntity user = userMapper.selectByTenantIdAndLoginName(tenant.getId(), request.getLoginName());
+        if (user == null) {
+            log.warn("Login failed: user not found | loginName={} | tenantId={}",
+                    request.getLoginName(), tenant.getId());
+            throw new AuthException(ErrorCode.LOGIN_FAILED);
+        }
+
+        // 6. 校验用户状态
+        checkUserStatus(user);
+
+        // 7. BCrypt 密码校验
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            log.warn("Login failed: password mismatch | loginName={}", request.getLoginName());
+            String loginIp = getClientIp();
+            loginLogService.recordLoginFailure(request.getLoginName(), loginIp,
+                    request.getClientType(), "密码错误");
+            throw new AuthException(ErrorCode.LOGIN_FAILED);
+        }
+
+        // 8. 查询角色和权限
+        List<String> roles = userMapper.selectRoleCodesByUserId(user.getId());
+        List<String> permissions = userMapper.selectPermissionCodesByUserId(user.getId());
+
+        // 9. 构建 LoginUserDTO
+        LoginUserDTO loginUser = LoginUserDTO.builder()
+                .userId(user.getId())
+                .tenantId(tenant.getId())
+                .userName(user.getUserName())
+                .clientType(request.getClientType())
+                .roles(roles != null ? new ArrayList<>(roles) : new ArrayList<>())
+                .permissions(permissions != null ? new ArrayList<>(permissions) : new ArrayList<>())
+                .build();
+
+        // 10. 签发双 Token
+        String accessToken = jwtUtils.generateAccessToken(loginUser);
+        String refreshToken = jwtUtils.generateRefreshToken(loginUser);
+
+        long nowMillis = System.currentTimeMillis();
+        long accessTokenExpireIn = nowMillis + jwtUtils.getAccessTokenExpiration() * 1000L;
+        long refreshTokenExpireIn = nowMillis + refreshTokenExpiration * 1000L;
+
+        TokenPairDTO tokenPair = TokenPairDTO.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .accessTokenExpireIn(accessTokenExpireIn)
+                .refreshTokenExpireIn(refreshTokenExpireIn)
+                .tokenType("Bearer")
+                .build();
+
+        // 获取客户端 IP
+        String loginIp = getClientIp();
+
+        // 11. 同端互斥处理：清理同设备分类的旧会话
+        processMutualExclusion(user.getId(), clientTypeEnum);
+
+        // 12. 写入 Redis 登录态会话
+        try {
+            loginSessionService.createSession(user.getId(), request.getClientType(),
+                    loginUser, refreshTokenExpiration);
+        } catch (Exception e) {
+            log.error("Failed to create session for userId={}", user.getId(), e);
+        }
+
+        // 13. 写入账号/租户状态缓存
+        try {
+            loginSessionService.setAccountStatus(user.getId(), user.getStatus());
+            loginSessionService.setTenantStatus(tenant.getId(), tenant.getStatus());
+        } catch (Exception e) {
+            log.error("Failed to cache status for userId={}", user.getId(), e);
+        }
+
+        // 14. 记录登录成功日志
+        loginLogService.recordLoginSuccess(tenant.getId(), user.getId(),
+                user.getLoginName(), loginIp, request.getClientType(), null);
+
+        // 15. 更新用户表的 last_login_time 和 last_login_ip
+        user.setLastLoginTime(LocalDateTime.now());
+        user.setLastLoginIp(loginIp);
+        userMapper.updateById(user);
+
+        log.info("User login successful | userId={} | tenantId={} | clientType={} | ip={}",
+                user.getId(), tenant.getId(), request.getClientType(), loginIp);
+
+        // 16. 返回 TokenPairDTO（密码已在实体中，返回前不清空密码实体字段）
+        return tokenPair;
     }
 
     @Override
@@ -173,6 +318,110 @@ public class LoginServiceImpl implements LoginService {
         } catch (Exception e) {
             // 幂等处理：重复登出或 Token 已失效时仅记录警告，不抛出异常
             log.warn("Logout encountered issue (idempotent handling): {}", e.getMessage());
+        }
+    }
+
+    /**
+     * 获取客户端 IP 地址。
+     *
+     * <p>优先从 X-Forwarded-For 请求头获取，其次从 getRemoteAddr() 获取。</p>
+     *
+     * @return 客户端 IP 地址，无法获取时返回 "unknown"
+     */
+    private String getClientIp() {
+        try {
+            ServletRequestAttributes attributes = (ServletRequestAttributes)
+                    RequestContextHolder.currentRequestAttributes();
+            if (attributes == null) {
+                return "unknown";
+            }
+            String ip = attributes.getRequest().getHeader("X-Forwarded-For");
+            if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+                ip = attributes.getRequest().getRemoteAddr();
+            }
+            return ip != null ? ip : "unknown";
+        } catch (Exception e) {
+            log.warn("Failed to get client IP", e);
+            return "unknown";
+        }
+    }
+
+    /**
+     * 校验租户状态。
+     *
+     * <p>检查租户是否被禁用或已过期。</p>
+     *
+     * @param tenant 租户实体
+     * @throws BusinessException 如果租户已禁用或已过期
+     */
+    private void checkTenantStatus(TenantEntity tenant) {
+        if (tenant.getStatus() != null && tenant.getStatus() == 1) {
+            log.warn("Tenant disabled | tenantId={} | tenantCode={}",
+                    tenant.getId(), tenant.getTenantCode());
+            throw new BusinessException(ErrorCode.TENANT_DISABLED);
+        }
+        if (tenant.getExpireTime() != null && tenant.getExpireTime().isBefore(LocalDateTime.now())) {
+            log.warn("Tenant expired | tenantId={} | tenantCode={} | expireTime={}",
+                    tenant.getId(), tenant.getTenantCode(), tenant.getExpireTime());
+            throw new BusinessException(ErrorCode.TENANT_EXPIRED);
+        }
+    }
+
+    /**
+     * 校验用户状态。
+     *
+     * <p>检查用户账号是否被禁用、锁定、封禁或已过期。
+     * 用户状态：0-正常，1-禁用，2-锁定，3-封禁，4-过期。</p>
+     *
+     * @param user 用户实体
+     * @throws BusinessException 如果账号状态异常
+     */
+    private void checkUserStatus(UserEntity user) {
+        if (user.getStatus() == null || user.getStatus() == STATUS_NORMAL) {
+            return;
+        }
+        switch (user.getStatus()) {
+            case 1:
+                log.warn("Account disabled | userId={}", user.getId());
+                throw new BusinessException(ErrorCode.ACCOUNT_DISABLED);
+            case 2:
+                log.warn("Account locked | userId={}", user.getId());
+                throw new BusinessException(ErrorCode.ACCOUNT_LOCKED);
+            case 3:
+                log.warn("Account banned | userId={}", user.getId());
+                throw new BusinessException(ErrorCode.ACCOUNT_BANNED);
+            case 4:
+                log.warn("Account expired | userId={}", user.getId());
+                throw new BusinessException(ErrorCode.ACCOUNT_EXPIRED);
+            default:
+                log.warn("Unknown account status | userId={} | status={}", user.getId(), user.getStatus());
+                throw new BusinessException(ErrorCode.ACCOUNT_DISABLED);
+        }
+    }
+
+    /**
+     * 处理同端互斥。
+     *
+     * <p>遍历所有客户端类型，找出与当前登录客户端类型同设备分类的已有会话，
+     * 清理旧会话的 Redis 登录态。</p>
+     *
+     * @param userId         用户 ID
+     * @param clientTypeEnum 当前登录的客户端类型枚举
+     */
+    private void processMutualExclusion(Long userId, ClientTypeEnum clientTypeEnum) {
+        try {
+            for (ClientTypeEnum type : ClientTypeEnum.values()) {
+                if (type.isSameCategory(clientTypeEnum)) {
+                    LoginUserDTO oldSession = loginSessionService.getSession(userId, type.getCode());
+                    if (oldSession != null) {
+                        loginSessionService.removeSession(userId, type.getCode());
+                        log.info("Mutual exclusion: removed old session | userId={} | clientType={}",
+                                userId, type.getCode());
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.error("Mutual exclusion processing failed | userId={}", userId, e);
         }
     }
 

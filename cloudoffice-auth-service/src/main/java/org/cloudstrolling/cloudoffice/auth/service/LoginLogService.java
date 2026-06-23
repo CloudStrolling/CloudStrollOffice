@@ -26,4 +26,34 @@ public interface LoginLogService {
      * @param clientType 客户端类型，不能为 null
      */
     void updateLogoutTime(Long userId, String clientType);
+
+    /**
+     * 记录登录成功日志。
+     *
+     * <p>在数据库中插入一条登录成功的审计日志记录，包含用户、租户、IP、客户端类型和设备信息。
+     * 日志写入失败不影响主业务流程（try-catch 包裹，记录错误日志）。</p>
+     *
+     * @param tenantId   租户 ID
+     * @param userId     用户 ID
+     * @param loginName  登录名
+     * @param loginIp    登录 IP 地址
+     * @param clientType 客户端类型
+     * @param deviceInfo 设备信息（可为 null）
+     */
+    void recordLoginSuccess(Long tenantId, Long userId, String loginName,
+                            String loginIp, String clientType, String deviceInfo);
+
+    /**
+     * 记录登录失败日志。
+     *
+     * <p>在数据库中插入一条登录失败的审计日志记录，包含登录名、IP、客户端类型和失败原因。
+     * 日志写入失败不影响主业务流程（try-catch 包裹，记录错误日志）。</p>
+     *
+     * @param loginName  登录名
+     * @param loginIp    登录 IP 地址
+     * @param clientType 客户端类型
+     * @param failReason 失败原因描述
+     */
+    void recordLoginFailure(String loginName, String loginIp,
+                            String clientType, String failReason);
 }

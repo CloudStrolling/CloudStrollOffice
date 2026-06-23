@@ -5,6 +5,9 @@
 
 package org.cloudstrolling.cloudoffice.auth.service;
 
+import org.cloudstrolling.cloudoffice.auth.dto.LoginRequest;
+import org.cloudstrolling.cloudoffice.common.dto.TokenPairDTO;
+
 /**
  * 登录认证业务服务接口。
  *
@@ -14,6 +17,34 @@ package org.cloudstrolling.cloudoffice.auth.service;
  * @since 1.0
  */
 public interface LoginService {
+
+    /**
+     * 用户登录。
+     *
+     * <p>执行完整的登录认证流程：</p>
+     * <ol>
+     *   <li>参数校验</li>
+     *   <li>clientType 合法性校验</li>
+     *   <li>租户查询与状态校验</li>
+     *   <li>用户查询与状态校验</li>
+     *   <li>BCrypt 密码校验</li>
+     *   <li>角色权限查询</li>
+     *   <li>双 Token 签发（Access + Refresh）</li>
+     *   <li>同端互斥处理</li>
+     *   <li>Redis 登录态写入</li>
+     *   <li>账号/租户状态缓存</li>
+     *   <li>登录日志记录</li>
+     *   <li>用户表 last_login_time/ip 更新</li>
+     * </ol>
+     *
+     * @param request 登录请求（loginName、password、tenantCode、clientType）
+     * @return 双 Token 响应 DTO
+     * @throws org.cloudstrolling.cloudoffice.common.exception.AuthException
+     *         如果用户名或密码错误（LOGIN_FAILED）
+     * @throws org.cloudstrolling.cloudoffice.common.exception.BusinessException
+     *         如果租户不存在、租户状态异常、账号状态异常或 clientType 无效
+     */
+    TokenPairDTO login(LoginRequest request);
 
     /**
      * 强制踢人。

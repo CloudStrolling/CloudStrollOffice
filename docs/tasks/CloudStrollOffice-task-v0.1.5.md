@@ -1201,7 +1201,7 @@ public class RegisterRequest {
 **任务类型：** backend
 **关联UserStory：** US-014
 **优先级：** P0
-**当前状态：** pending
+**当前状态：** comment_finish
 
 #### 上下游任务
 - 上游任务：TASK-015（UserMapper）、TASK-018（JwtUtils）、TASK-019（LoginSessionService）、TASK-020（LoginLogService）
@@ -1636,7 +1636,7 @@ public class LoginRequest {
 **任务类型：** backend
 **关联UserStory：** US-008, US-014, US-015, US-016, US-017
 **优先级：** P0
-**当前状态：** pending
+**当前状态：** comment_finish
 
 #### 上下游任务
 - 上游任务：TASK-021（注册业务）、TASK-022（登录业务）、TASK-023（刷新业务）、TASK-024（登出业务）、TASK-025（踢人业务）

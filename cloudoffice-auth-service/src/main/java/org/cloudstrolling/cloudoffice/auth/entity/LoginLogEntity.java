@@ -34,6 +34,11 @@ public class LoginLogEntity extends BaseEntity {
     private Long tenantId;
 
     /**
+     * 登录名
+     */
+    private String loginName;
+
+    /**
      * 登录 IP
      */
     private String loginIp;

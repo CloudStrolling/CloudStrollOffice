@@ -35,7 +35,7 @@ services:
       - cloud-stroll-network
     restart: unless-stopped
 
-  # 缓存 - Redis（本期预留）
+  # 缓存 - Redis (v0.1.5 认证服务/网关必需)
   redis:
     image: redis:7.2
     container_name: cloud-stroll-redis
@@ -57,13 +57,18 @@ services:
     depends_on:
       - nacos
       - mariadb
+      - redis
     environment:
       - NACOS_ADDR=${NACOS_ADDR:-nacos:8848}
       - DB_HOST=${DB_HOST:-mariadb}
       - DB_PORT=${DB_PORT:-3306}
-      - DB_USER=${DB_USER:-root}
+      - DB_USERNAME=${DB_USERNAME:-root}
       - DB_PASSWORD=${DB_PASSWORD:-root123}
-      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+      - REDIS_DATABASE=${REDIS_DATABASE:-0}
+      - RSA_PUBLIC_KEY=${RSA_PUBLIC_KEY}
     networks:
       - cloud-stroll-network
     restart: unless-stopped
@@ -80,13 +85,19 @@ services:
     depends_on:
       - nacos
       - mariadb
+      - redis
     environment:
       - NACOS_ADDR=${NACOS_ADDR:-nacos:8848}
       - DB_HOST=${DB_HOST:-mariadb}
       - DB_PORT=${DB_PORT:-3306}
-      - DB_USER=${DB_USER:-root}
+      - DB_USERNAME=${DB_USERNAME:-root}
       - DB_PASSWORD=${DB_PASSWORD:-root123}
-      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+      - REDIS_DATABASE=${REDIS_DATABASE:-0}
+      - RSA_PRIVATE_KEY=${RSA_PRIVATE_KEY}
+      - RSA_PUBLIC_KEY=${RSA_PUBLIC_KEY}
     networks:
       - cloud-stroll-network
     restart: unless-stopped
@@ -107,9 +118,8 @@ services:
       - NACOS_ADDR=${NACOS_ADDR:-nacos:8848}
       - DB_HOST=${DB_HOST:-mariadb}
       - DB_PORT=${DB_PORT:-3306}
-      - DB_USER=${DB_USER:-root}
+      - DB_USERNAME=${DB_USERNAME:-root}
       - DB_PASSWORD=${DB_PASSWORD:-root123}
-      - JWT_SECRET=${JWT_SECRET}
     networks:
       - cloud-stroll-network
     restart: unless-stopped
@@ -130,9 +140,8 @@ services:
       - NACOS_ADDR=${NACOS_ADDR:-nacos:8848}
       - DB_HOST=${DB_HOST:-mariadb}
       - DB_PORT=${DB_PORT:-3306}
-      - DB_USER=${DB_USER:-root}
+      - DB_USERNAME=${DB_USERNAME:-root}
       - DB_PASSWORD=${DB_PASSWORD:-root123}
-      - JWT_SECRET=${JWT_SECRET}
     networks:
       - cloud-stroll-network
     restart: unless-stopped

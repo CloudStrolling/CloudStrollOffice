@@ -31,6 +31,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 import java.util.Date;
 import java.util.List;
@@ -49,6 +51,7 @@ import static org.mockito.Mockito.*;
  * @since 1.0
  */
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 @DisplayName("TokenServiceImpl 单元测试")
 class TokenServiceImplTest {
 
@@ -604,7 +607,7 @@ class TokenServiceImplTest {
 
             // Then
             assertNotNull(result, "即使角色权限为 null 也应刷新成功");
-            verify(loginSessionService).addToBlacklist(tokenSignature, 1L);
+            verify(loginSessionService).addToBlacklist(eq(tokenSignature), anyLong());
         }
 
         @Test

@@ -39,6 +39,47 @@ public class LoginLogServiceImpl implements LoginLogService {
     }
 
     @Override
+    public void recordLoginSuccess(Long tenantId, Long userId, String loginName,
+                                   String loginIp, String clientType, String deviceInfo) {
+        try {
+            LoginLogEntity logEntity = new LoginLogEntity();
+            logEntity.setTenantId(tenantId);
+            logEntity.setUserId(userId);
+            logEntity.setLoginName(loginName);
+            logEntity.setLoginIp(loginIp);
+            logEntity.setClientType(clientType);
+            logEntity.setDeviceInfo(deviceInfo);
+            logEntity.setLoginTime(LocalDateTime.now());
+            logEntity.setLoginResult(0); // 0-成功
+            loginLogMapper.insert(logEntity);
+            log.info("Login success log recorded | userId={} | tenantId={} | clientType={} | ip={}",
+                    userId, tenantId, clientType, loginIp);
+        } catch (Exception e) {
+            log.error("Failed to record login success log | userId={} | tenantId={}",
+                    userId, tenantId, e);
+        }
+    }
+
+    @Override
+    public void recordLoginFailure(String loginName, String loginIp,
+                                   String clientType, String failReason) {
+        try {
+            LoginLogEntity logEntity = new LoginLogEntity();
+            logEntity.setLoginName(loginName);
+            logEntity.setLoginIp(loginIp);
+            logEntity.setClientType(clientType);
+            logEntity.setFailReason(failReason);
+            logEntity.setLoginTime(LocalDateTime.now());
+            logEntity.setLoginResult(1); // 1-失败
+            loginLogMapper.insert(logEntity);
+            log.info("Login failure log recorded | loginName={} | clientType={} | reason={}",
+                    loginName, clientType, failReason);
+        } catch (Exception e) {
+            log.error("Failed to record login failure log | loginName={}", loginName, e);
+        }
+    }
+
+    @Override
     public void updateLogoutTime(Long userId, String clientType) {
         try {
             // 查找该用户和客户端类型的最新登录日志（logoutTime 为 null）
