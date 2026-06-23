@@ -42,6 +42,11 @@ public class RoleEntity extends BaseEntity {
     private String description;
 
     /**
+     * 排序号
+     */
+    private Integer sortOrder;
+
+    /**
      * 状态（0-正常，1-停用）
      */
     private Integer status;
