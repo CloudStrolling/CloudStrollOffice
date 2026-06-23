@@ -2,8 +2,8 @@
 
 **项目中文名称：** 云漫智企
 **项目名称：** CloudStrollOffice
-**版本号：** v0.1.5
-**日期：** 2026-06-22
+**版本号：** v0.1.6
+**日期：** 2026-06-23
 
 ---
 
@@ -11,7 +11,7 @@
 
 ### 1.1 系统定位
 
-云漫智企（CloudStrollOffice）是一个基于 Java 21 + Spring Boot 3.2.x + Spring Cloud 2023.x 技术栈构建的微服务企业管理平台，旨在为企业提供企业信息管理、人事管理、工作流审批、薪酬管理、统一认证授权等综合服务能力。v0.1.0 阶段完成基础骨架搭建，v0.1.4 阶段完成系统服务模块搭建，v0.1.5 阶段构建了完整的登录认证与权限管理系统，包括 RBAC 多租户权限模型、多端混合登录、JWT + Redis 双重会话管理、双 Token 续签机制和登录日志审计等核心能力。
+云漫智企（CloudStrollOffice）是一个基于 Java 21 + Spring Boot 3.2.x + Spring Cloud 2023.x 技术栈构建的微服务企业管理平台，旨在为企业提供企业信息管理、人事管理、工作流审批、薪酬管理、统一认证授权等综合服务能力。v0.1.0 阶段完成基础骨架搭建，v0.1.4 阶段完成系统服务模块搭建，v0.1.5 阶段构建了完整的登录认证与权限管理系统，包括 RBAC 多租户权限模型、多端混合登录、JWT + Redis 双重会话管理、双 Token 续签机制和登录日志审计等核心能力。v0.1.6 阶段完成用户认证能力全面增强，引入策略模式实现多模式注册/登录（用户名密码/手机验证码/手机密码/OAuth）、统一认证服务层（AuthenticationService）、密码管理、手机号变更、验证码管理等核心能力，使平台认证体系覆盖主流互联网应用的用户接入场景。
 
 ### 1.2 架构风格
 
@@ -39,15 +39,22 @@
                                   │
         ┌─────────────────────────┼─────────────────────┐
         ▼                         ▼
-┌──────────────────────┐   ┌──────────────────────────┐
-│  认证服务              │   │   企业服务                 │
-│  auth-service        │   │   biz-service             │
-│  (端口 9100)          │   │   (端口 9200)             │
-│  RBAC + 双Token      │   │   企业信息/人事管理          │
-│  多端混合登录          │   │   v0.1.0 骨架阶段          │
-│  登录日志审计          │   │                           │
-│  v0.1.5 完整实现      │   │                           │
-└──────────────────────┘   └──────────────────────────┘
+┌──────────────────────────────┐   ┌──────────────────────────┐
+│  认证服务                      │   │   企业服务                 │
+│  auth-service                │   │   biz-service             │
+│  (端口 9100)                  │   │   (端口 9200)             │
+│  RBAC + 双Token              │   │   企业信息/人事管理          │
+│  多端混合登录                  │   │   v0.1.0 骨架阶段          │
+│  登录日志审计                  │   │                           │
+│  v0.1.5 完整实现              │   │                           │
+│  策略模式认证架构(v0.1.6)：     │   │                           │
+│  ┌─ 统一认证服务层(AuthSvc)    │   │                           │
+│  │  LoginStrategy x4          │   │                           │
+│  │  RegisterStrategy x5      │   │                           │
+│  │  密码管理/手机号变更         │   │                           │
+│  │  验证码管理                 │   │                           │
+│  └───────────────────────────┘   │                           │
+└──────────────────────────────┘   └──────────────────────────┘
         │                       │
         ▼                       ▼
 ┌──────────────────────────────────────────────────────────────────────────┐
@@ -64,6 +71,7 @@
 │  数据库层         │   │  缓存层（本期启用）      │   │  消息队列层（本期预留）     │
 │  每服务独立数据库  │   │  Token黑名单/登录态    │   │                          │
 │  7张新表(v0.1.5) │   │  账号/租户状态缓存     │   │                          │
+│  3张新表(v0.1.6) │   │  验证码缓存(v0.1.6)   │   │                          │
 └─────────────────┘   └──────────────────────┘   └──────────────────────────┘
                                   │
 ┌──────────────────────────────────────────────────────────────────────────┐
@@ -82,7 +90,9 @@
 | 无状态+有状态混合校验 | 网关层通过 RS256 公钥本地验签（无状态）快速校验 Token，同时通过 Redis 查询登录态和黑名单（有状态），兼顾性能与安全 |
 | 多租户隔离 | 所有认证数据（用户、角色、权限）均按租户 ID 隔离，用户名在租户内唯一，租户间数据互不可见 |
 | 多端会话管理 | 以「用户 ID + 客户端类型」为维度管理登录会话，同类型端互斥（PC/WEB/MOBILE/MINI_PROGRAM），不同类型端可共存 |
-| 渐进演进 | v0.1.0 搭建骨架，v0.1.4 新增系统服务，v0.1.5 完成完整认证体系 |
+| 渐进演进 | v0.1.0 搭建骨架，v0.1.4 新增系统服务，v0.1.5 完成完整认证体系，v0.1.6 增强认证能力（策略模式多模式注册/登录、密码管理、手机号变更、验证码管理） |
+| 策略模式解耦 | 登录和注册的多种方式通过策略模式实现，新增认证方式只需新增策略实现类并注册到工厂，不修改现有核心逻辑（v0.1.6 新增） |
+| 统一认证编排 | `AuthenticationService` 统一编排凭证校验与 Token 签发/会话管理，所有登录方式共享同一套后处理流程（v0.1.6 新增） |
 
 ---
 
@@ -101,6 +111,11 @@
 - `org.cloudstrolling.cloudoffice.common.dto` 包下新增 `TokenPairDTO`（双 Token 数据传输对象，含 accessToken/refreshToken/过期时间/tokenType）和 `LoginUserDTO`（登录用户信息传输对象，含 userId/tenantId/userName/clientType/roles/permissions）
 - 新增 Redis Key 常量管理类 `RedisKeyConstants`，统一管理 Redis Key 前缀
 
+**v0.1.6 新增内容：**
+- `org.cloudstrolling.cloudoffice.common.enums` 包下新增 `RegisterModeEnum`（5 种注册模式：USERNAME / PHONE_CODE / OAUTH / PHONE_SET_USERNAME / OAUTH_SET_INFO）、`LoginModeEnum`（4 种登录模式：USERNAME_PASSWORD / PHONE_CODE / PHONE_PASSWORD / OAUTH）、`OAuthProviderEnum`（OAuth 提供商枚举：WECHAT / DINGTALK / WECHAT_WORK / ALIPAY）
+- `ErrorCode` 枚举中新增 14 个认证增强错误码（`AUTH-0020` ~ `AUTH-0033`），覆盖密码管理、短信验证码、OAuth 认证、手机号变更等场景（详见错误码速查表）
+- 新增验证码相关配置项常量类设计（Key 前缀管理扩展）
+
 ### 2.2 API 网关（cloudoffice-gateway）
 
 - **职责：** 微服务统一流量入口，基于 Spring Cloud Gateway 实现请求路由转发、CORS 跨域支持、Nacos 服务发现集成、全局认证过滤器 AuthFilter（Token 校验与用户信息透传）、Redis 集成（黑名单/登录态/状态缓存查询）。
@@ -112,7 +127,7 @@
     - 非白名单请求强制校验 `Authorization: Bearer <token>` 头
     - 校验流程：RS256 公钥验签 → Redis 黑名单查询 → Redis 登录态查询 → 账号状态校验 → 租户状态校验
     - 校验通过后向请求头透传用户信息：`X-User-Id`、`X-Tenant-Id`、`X-User-Name`、`X-Client-Type`、`X-Roles`、`X-Permissions`
-    - 白名单默认路径：`POST /api/v1/auth/login`、`POST /api/v1/auth/register`、`POST /api/v1/auth/refresh`、`GET /api/v1/auth/health`、`/swagger-ui/**`、`/v3/api-docs/**`、`/favicon.ico`
+    - 白名单默认路径：`POST /api/v1/auth/login`、`POST /api/v1/auth/register`、`POST /api/v1/auth/refresh`、`GET /api/v1/auth/health`、`POST /api/v1/auth/verification-code/send`、`POST /api/v1/auth/password/forgot/send-code`、`POST /api/v1/auth/password/forgot/reset`、`/swagger-ui/**`、`/v3/api-docs/**`、`/favicon.ico`
   - **Redis 集成**：配置 `ReactiveRedisTemplate<String, Object>` Bean，使用非阻塞响应式 Redis 客户端
   - **RSA 公钥加载**：从配置/环境变量加载 RS256 公钥用于 Token 验签
 - **路由规则：**
@@ -122,10 +137,10 @@
 
 ### 2.3 认证服务（cloudoffice-auth-service）
 
-- **职责：** 统一认证授权中心，提供完整的用户认证与权限管理能力。包括：用户名密码登录（双 Token 签发）、Token 刷新（Refresh Token Rotation）、用户登出（Token 黑名单）、强制踢人、账号封禁/解封、RBAC 多租户权限管理（用户/角色/权限 CRUD 管理）、登录日志审计。集成 Spring Security + Spring Data Redis，使用 RS256 非对称签名算法。
-- **依赖：** Spring Boot Starter Web、Spring Security、Spring Boot Starter Data Redis、commons-pool2、MyBatis-Plus、MariaDB Driver、jjwt、Nacos Discovery/Config、common 模块
+- **职责：** 统一认证授权中心，提供完整的用户认证与权限管理能力。包括：用户名密码登录（双 Token 签发）、Token 刷新（Refresh Token Rotation）、用户登出（Token 黑名单）、强制踢人、账号封禁/解封、RBAC 多租户权限管理（用户/角色/权限 CRUD 管理）、登录日志审计、**多模式注册/登录（策略模式）、密码管理、手机号变更、验证码管理**。集成 Spring Security + Spring Data Redis，使用 RS256 非对称签名算法。
+- **依赖：** Spring Boot Starter Web、Spring Security、Spring Boot Starter Data Redis、commons-pool2、MyBatis-Plus、MariaDB Driver、jjwt、Nacos Discovery/Config、common 模块、**spring-boot-starter-mail**
 - **端口：** 9100
-- **v0.1.5 新增完整能力：**
+- **v0.1.5 新增完整能力（参见下文）**
 
   **1. RBAC 权限模型（多租户隔离）：**
   - 6 张数据库表：`t_auth_tenant`（租户）、`t_auth_user`（用户）、`t_auth_role`（角色）、`t_auth_permission`（权限）、`t_auth_user_role`（用户-角色关联）、`t_auth_role_permission`（角色-权限关联）
@@ -169,6 +184,85 @@
   - `PermissionController`：树形权限列表查询、创建、修改、删除
   - 所有管理接口校验当前用户的操作权限（租户管理员或平台管理员）
 
+**v0.1.6 新增完整能力：**
+
+  **8. 策略模式认证架构（strategy 包）：**
+  - 新增 `org.cloudstrolling.cloudoffice.auth.service.strategy` 包，实现登录和注册的策略模式解耦
+  - **登录策略（LoginStrategy）**：接口 `LoginStrategy` 定义 `authenticate(LoginRequest)` 方法，返回 `AuthResult`
+    - `UsernamePasswordStrategy`：用户名+密码登录（基于现有 LoginService 逻辑重构）
+    - `PhoneCodeLoginStrategy`：手机+短信验证码登录
+    - `PhonePasswordLoginStrategy`：手机+密码登录（BCrypt 校验）
+    - `OAuthLoginStrategy`：第三方 OAuth 登录（通过 openId 关联平台用户）
+  - **注册策略（RegisterStrategy）**：接口 `RegisterStrategy` 定义 `register(RegisterRequest)` 方法
+    - `UsernamePwdStrategy`：用户名+密码+手机号注册
+    - `PhoneCodeStrategy`：手机+短信验证码注册
+    - `OAuthRegisterStrategy`：第三方 OAuth 注册
+    - `PhoneSetUsernameStrategy`：手机注册后设置用户名（两步注册第一步）
+    - `OAuthSetInfoStrategy`：OAuth 注册后完善信息（两步注册第一步）
+  - **策略工厂**：`LoginStrategyFactory` / `RegisterStrategyFactory` 根据 mode 获取对应策略实现
+  - 策略实例预先初始化（Spring 容器管理），运行时零额外开销调度
+  - 新增登录/注册模式仅需新增策略实现类并注册到工厂，无需修改核心流程（开闭原则）
+
+  **9. 统一认证服务层（AuthenticationService）：**
+  - 新增 `AuthenticationService` 统一编排认证流程
+  - **登录编排**：调用 `LoginStrategyFactory.getStrategy(loginMode).authenticate(request)` 获取 AuthResult → 校验租户状态 → 校验用户状态（含 `account_settled` 校验）→ 构建 LoginUserDTO → 签发 JWT 双 Token → 同端互斥处理 → 写入 Redis 登录态 → 缓存账号/租户状态 → 记录登录日志 → 更新最后登录时间和 IP → 返回 TokenPairDTO
+  - 所有登录模式共享同一套后处理流程，确保 Token 签发和会话管理一致
+  - 新旧请求兼容：`loginMode` 不传时默认 `USERNAME_PASSWORD` 模式
+
+  **10. 密码管理服务（PasswordService）：**
+  - `changePassword(userId, oldPassword, newPassword)`：修改密码
+    - 校验原密码（BCrypt.matches）
+    - 校验新密码与旧密码不同
+    - 新密码 BCrypt 加密存储（强度系数≥10）
+    - 密码修改后可选择清理该用户所有登录态会话
+  - `forgotPasswordSendCode(target, mode)`：密码找回发送验证码
+  - `forgotPasswordReset(target, mode, code, newPassword)`：密码找回重置密码
+    - 校验验证码有效性和过期时间
+    - 验证码使用后立即标记为已使用（防重放）
+    - 重置成功后清理该用户所有 Redis 登录态会话（强制重新登录）
+
+  **11. 验证码管理服务（VerificationCodeService / VerificationCodeManager）：**
+  - `VerificationCodeService` 接口：定义 `sendSmsCode(phone, code, purpose)` 和 `sendEmailCode(email, code, purpose)` 发送方法
+  - `SimulatedVerificationCodeService`：模拟实现（日志输出验证码，用于开发和测试）
+  - `VerificationCodeManager`：验证码生成/校验/过期管理
+    - `generateCode(target, mode, purpose)`：生成 6 位数字验证码，写入数据库
+    - `verifyCode(target, code, purpose)`：校验验证码，校验后标记为已使用
+    - `isSendTooFrequent(target, purpose)`：检查发送频率（同一 target 同一用途 60 秒内不可重复发送）
+    - `cleanExpiredCodes()`：清理过期验证码（5 分钟有效期）
+  - 验证码存储优先使用 Redis（利用 TTL 自动过期），Redis 不可用时回退到数据库存储
+
+  **12. 新增/变更 API 端点：**
+  - `POST /api/v1/auth/register`（扩展）：请求体新增 `registerMode` 字段，支持 5 种注册模式，`registerMode` 不传时默认 `USERNAME`（向后兼容）
+  - `POST /api/v1/auth/login`（扩展）：请求体新增 `loginMode` 字段，支持 4 种登录模式，`loginMode` 不传时默认 `USERNAME_PASSWORD`（向后兼容）
+  - `PUT /api/v1/auth/password/change`（新增，需登录）：修改密码
+  - `POST /api/v1/auth/password/forgot/send-code`（新增，白名单）：密码找回-发送验证码
+  - `POST /api/v1/auth/password/forgot/reset`（新增，白名单）：密码找回-重置密码
+  - `PUT /api/v1/auth/phone/change`（新增，需登录）：修改绑定手机号
+  - `PUT /api/v1/auth/account/settlement`（新增，需登录）：两步注册完善账号信息
+  - `POST /api/v1/auth/verification-code/send`（新增，白名单）：通用发送验证码
+
+  **13. 新增/变更 DTO：**
+  - `LoginRequest`（变更）：新增 `loginMode`（登录模式）、`phone`、`smsCode`、`oauthProvider`、`oauthCode` 字段，部分字段按模式改为可选
+  - `RegisterRequest`（变更）：新增 `registerMode`（注册模式）、`smsCode`、`oauthProvider`、`oauthCode` 字段，移除 `tenantId`
+  - `PasswordChangeRequest`（新增）：`oldPassword`、`newPassword`、`confirmPassword`
+  - `PasswordForgotRequest`（新增）：`mode`、`target`、`code`、`newPassword`
+  - `SendVerificationCodeRequest`（新增）：`target`、`purpose`、`mode`
+  - `PhoneChangeRequest`（新增）：`newPhone`、`oldPhoneCode`、`newPhoneCode`、`emailCode`
+  - `AccountSettlementRequest`（新增）：`userId`、`loginName`、`password`、`phone`、`smsCode`
+  - `AuthResult`（新增，策略认证结果）：`userId`、`tenantId`、`loginName`、`userName`、`phone`、`roles`、`permissions`
+
+  **14. 新增/变更实体与 Mapper：**
+  - `UserEntity`（变更）：新增 `registerMode`、`accountSettled`、`phoneVerified`、`emailVerified`、`lastPasswordChangeTime` 字段
+  - `OAuthAccountEntity`（新增）：`t_auth_oauth_account` 表实体（用户-OAuth 账号关联）
+  - `VerificationCodeEntity`（新增）：`t_auth_verification_code` 表实体（验证码记录）
+  - `OAuthAccountMapper`（新增）：OAuth 账号关联 Mapper
+  - `VerificationCodeMapper`（新增）：验证码记录 Mapper
+
+  **15. 用户表扩展：**
+  - `t_auth_user` 表新增字段：`register_mode`（注册模式）、`account_settled`（账号是否完善）、`phone_verified`（手机已验证）、`email_verified`（邮箱已验证）、`last_password_change_time`（最后修改密码时间）
+  - `account_settled=0` 的用户在登录时返回 `ACCOUNT_NOT_SETTLED` 错误，引导完善资料
+  - 已有用户记录的 `register_mode` 默认 `USERNAME`，`account_settled` 默认 `1`（完全向后兼容）
+
 ### 2.4 企业服务（cloudoffice-biz-service）
 
 - **职责：** 企业核心业务承载服务，本阶段为骨架模块，建立标准包目录结构。后续将承载企业信息管理、部门管理、员工管理、考勤管理、工作流审批、薪酬管理等业务功能。
@@ -199,6 +293,9 @@
 │ (端口9000) │ │(端口9100) │ │(端口9200) ││ (端口9400)   │
 │ AuthFilter│ │ RBAC+JWT  │ │ 骨架阶段   ││ 骨架阶段      │
 │ Redis集成  │ │ Redis会话  │ │           ││              │
+│ 白名单扩展  │ │ 策略模式   │ │           ││              │
+│ (v0.1.6)   │ │ 密码管理   │ │           ││              │
+│            │ │ 验证码     │ │           ││              │
 └─────┬─────┘ └─────┬─────┘ └──────────┘ └──────────────┘
       │             │
       │  Redis查询   │  Redis写入
@@ -210,6 +307,7 @@
 │   │ auth:token:blacklist:{sig} │  │  ← Token 黑名单
 │   │ auth:account:status:{id}  │  │  ← 账号状态缓存
 │   │ auth:tenant:status:{id}   │  │  ← 租户状态缓存
+│   │ auth:verification:{pur}:{tgt}│  │  ← 验证码缓存(v0.1.6)
 │   └─────────────────────────────┘  │
 └─────────────────────────────────────┘
                     │
@@ -249,6 +347,7 @@
 | JSON 处理 | Jackson | 2.16.x | Spring Boot 默认 JSON 框架，性能高，与 Spring 深度集成 |
 | 工具库 | Hutool | 5.8.26 | 功能全面的 Java 工具类库，减少重复造轮子 |
 | 代码简化 | Lombok | 1.18.32 | 减少 Getter/Setter/Constructor 等样板代码 |
+| 邮件发送（v0.1.6） | Spring Boot Starter Mail | 3.2.5 (继承 Boot Parent) | 邮箱验证码发送支持，本期提供模拟实现，后续对接 SMTP 服务 |
 | 可观测性 | Prometheus + Grafana + SkyWalking | 最新 | 业界标准监控方案（本期规划，后续版本集成） |
 | 容器化 | Docker + Docker Compose | 最新 | 标准化部署，开发/测试/生产环境一致性 |
 
@@ -272,6 +371,10 @@
 | **ADR-014** | **多端会话管理策略** | **同类型端互斥 vs 所有端互斥 vs 不限制** | **同类型端互斥（按设备分类）** | ① 符合实际使用场景（同一用户不会在两台 PC 上同时登录，但可以在 PC + 手机 + H5 上同时登录）；② 降低 Redis 存储压力；③ 通过 `ClientTypeEnum.isSameCategory()` 灵活扩展，新增客户端类型无需修改互斥逻辑 | 实现复杂度略高于"不限制"，但低于"所有端互斥"；需定义清晰的设备分类维度 |
 | **ADR-015** | **Refresh Token 轮换策略** | **轮换（Rotation） vs 不轮换** | **轮换（每次刷新同时更换 Access Token 和 Refresh Token）** | ① 防止 Refresh Token 泄漏后的重放攻击；② 旧 Refresh Token 加入黑名单即时失效；③ 每个 Refresh Token 仅能使用一次，安全性更高 | 增加 Token 签发频率，但双 Token 刷新周期 7 天，影响有限；需维护 Refresh Token 黑名单 |
 | **ADR-016** | **Redis 客户端选型** | **Jedis vs Lettuce** | **Lettuce + commons-pool2** | ① Spring Boot 默认集成 Lettuce，配置简化；② Lettuce 基于 Netty 异步非阻塞，适合 Spring Cloud Gateway 响应式模型；③ 支持连接池，性能稳定 | Lettuce 在极端高并发下偶有连接不稳定情况，可通过配置超时和重试缓解 |
+| **ADR-017** | **认证模式扩展方案（v0.1.6）** | **策略模式 vs if-else 分支 vs 责任链模式** | **策略模式 + 工厂模式** | ① 每种登录/注册方式独立为策略类，职责单一，不超过 200 行；② 新增认证方式只需新增实现类并注册工厂，不修改现有核心逻辑（开闭原则）；③ 工厂类集中管理策略实例，运行时零额外开销 | 策略类数量随认证方式增多而线性增长，但每个策略类代码量少，可维护性好 |
+| **ADR-018** | **验证码存储方案（v0.1.6）** | **Redis 存储 vs 数据库存储** | **Redis 优先 + 数据库回退** | ① Redis 利用 TTL 自动过期，无需定时清理任务；② Redis 读写性能远优于数据库，适合高频验证码校验场景；③ Redis 不可用时回退到数据库存储，保证可用性 | 验证码数据在 Redis 和数据库之间可能存在短暂不一致（Redis 故障切换时）；需确保验证码使用后立即标记，防重放 |
+| **ADR-019** | **密码找回实现方案（v0.1.6）** | **独立密码重置令牌表 vs 验证码记录表覆盖** | **验证码记录表覆盖（不新增密码重置令牌表）** | ① 验证码本身已满足安全需求（一次性、5 分钟过期、target + purpose 匹配）；② 不额外增加数据库表，减少维护成本；③ 密码找回业务流程与验证码生成/校验逻辑完全复用现有 VerificationCodeManager | 验证码存储在数据库中（或 Redis），无独立的密码重置令牌抗重放能力，但验证码的一次性使用已满足安全要求 |
+| **ADR-020** | **验证码发送渠道设计（v0.1.6）** | **直接引入短信/邮件 SDK vs 接口抽象 + 模拟实现** | **接口抽象 + 模拟实现** | ① VerificationCodeService 接口定义发送契约，与具体发送渠道解耦；② 模拟实现日志输出验证码，不依赖真实短信/邮件网关；③ 后续对接真实网关只需新增实现类并替换注入，不改动业务代码 | 模拟实现仅适用于开发/测试环境，生产环境需对接真实短信/邮件服务；接口抽象增加了间接层，但扩展性显著提升 |
 
 ---
 
@@ -347,6 +450,114 @@
 [客户端] ←─── JSON 响应
 ```
 
+### 4.1.1 多模式登录数据流（v0.1.6 策略模式编排）
+
+```
+[客户端]
+    │
+    │ ① POST /api/v1/auth/login
+    │ { loginMode: "PHONE_CODE" | "PHONE_PASSWORD" | "OAUTH" | "USERNAME_PASSWORD",
+    │   phone / smsCode / oauthProvider / oauthCode / loginName / password,
+    │   tenantCode, clientType }
+    ▼
+[API 网关 (端口 9000)]
+    │ 白名单路径，直接放行
+    ▼
+[认证服务 - AuthenticationService]
+    │
+    │ ② LoginStrategyFactory.getStrategy(loginMode)
+    │    ├─ loginMode="USERNAME_PASSWORD" → UsernamePasswordStrategy
+    │    │   → 校验 loginName + password（BCrypt）
+    │    ├─ loginMode="PHONE_CODE" → PhoneCodeLoginStrategy
+    │    │   → 校验 phone + smsCode（VerificationCodeManager.verifyCode）
+    │    ├─ loginMode="PHONE_PASSWORD" → PhonePasswordLoginStrategy
+    │    │   → 校验 phone + password（BCrypt）
+    │    └─ loginMode="OAUTH" → OAuthLoginStrategy
+    │        → 校验 oauthProvider + oauthCode（OAuth 提供商验证）
+    │
+    │ ③ 校验通过 → 返回 AuthResult { userId, tenantId, roles, permissions }
+    │
+    │ ④ 统一认证后处理（所有模式共享）：
+    │    ├─ 校验用户状态（含 account_settled 校验）
+    │    ├─ 校验租户状态
+    │    ├─ 构建 LoginUserDTO
+    │    ├─ JwtUtils.generateAccessToken → Access Token (2h)
+    │    ├─ JwtUtils.generateRefreshToken → Refresh Token (7d)
+    │    ├─ 同端互斥处理（同类型端踢下线）
+    │    ├─ 写入 Redis 登录态会话
+    │    ├─ 缓存账号/租户状态
+    │    ├─ 记录登录日志
+    │    └─ 更新最后登录时间和 IP
+    │
+    │ ⑤ 返回 TokenPairDTO
+    ▼
+[客户端] ←─── JSON 响应 { code: 200, data: { accessToken, refreshToken, ... } }
+```
+
+### 4.1.2 验证码发送数据流（v0.1.6）
+
+```
+[客户端]
+    │
+    │ ① POST /api/v1/auth/verification-code/send
+    │ { target: "138****1234" | "user@example.com",
+    │   purpose: "REGISTER" | "LOGIN" | "RESET_PASSWORD" | "CHANGE_PHONE",
+    │   mode: "SMS" | "EMAIL" }
+    ▼
+[API 网关 (端口 9000)]
+    │ 白名单路径，直接放行
+    ▼
+[认证服务 - VerificationCodeManager]
+    │
+    │ ② isSendTooFrequent(target, purpose)
+    │    ├─ 60秒内已发送 → 返回 429 SMS_SEND_TOO_FREQUENT
+    │    └─ 未超过频率限制 →
+    │         ③ generateCode(target, mode, purpose)
+    │            ├─ 生成 6 位数字验证码
+    │            ├─ 写入 t_auth_verification_code（或 Redis key）
+    │            └─ 设置 TTL 5 分钟（或 expire_time）
+    │         ④ VerificationCodeService.sendSmsCode/sendEmailCode
+    │            ├─ SimulatedVerificationCodeService（模拟实现）：日志输出验证码
+    │            └─ 未来对接真实短信/邮件网关
+    │         ⑤ 返回发送成功
+    ▼
+[客户端] ←─── JSON 响应 { code: 200, message: "验证码已发送" }
+```
+
+### 4.1.3 密码找回数据流（v0.1.6）
+
+```
+[客户端]
+    │
+    │ ① POST /api/v1/auth/password/forgot/send-code
+    │ { target: "138****1234", mode: "SMS" }
+    ▼
+[认证服务 - PasswordService]
+    │ ② 校验 target 对应账号存在
+    │ ③ VerificationCodeManager.generateCode → 生成验证码并发送
+    │ ④ 返回发送成功
+    ▼
+[客户端] ←─── JSON 响应
+
+    │
+    │ ⑤ POST /api/v1/auth/password/forgot/reset
+    │ { target, mode: "SMS", code, newPassword, confirmPassword }
+    ▼
+[认证服务 - PasswordService]
+    │
+    │ ⑥ VerificationCodeManager.verifyCode(target, code, purpose="RESET_PASSWORD")
+    │    ├─ 验证码无效 → 返回 400 SMS_CODE_INVALID
+    │    ├─ 验证码过期 → 返回 400 SMS_CODE_EXPIRED
+    │    └─ 校验通过 → 标记验证码为已使用（used=1, used_time=now）
+    │
+    │ ⑦ BCrypt 加密新密码
+    │ ⑧ 更新 t_auth_user.password + last_password_change_time
+    │ ⑨ 清理该用户所有 Redis 登录态会话（强制重新登录）
+    │ ⑩ 返回操作成功
+    ▼
+[客户端] ←─── JSON 响应 { code: 200, message: "密码重置成功" }
+```
+
 ### 4.2 模块间数据流转
 
 | 数据流 | 发起方 | 接收方 | 通信方式 | 数据格式 | 说明 |
@@ -363,6 +574,9 @@
 | 登录日志写入 | auth-service | MariaDB | JDBC | Insert SQL | 记录登录日志审计 |
 | 健康检查 | 客户端 | 各服务 | HTTP GET | JSON (ApiResult) | 确认服务存活状态 |
 | API 文档 | 客户端 | 各服务 | HTTP GET | JSON/HTML | SpringDoc 自动生成 |
+| 验证码生成/校验（v0.1.6） | auth-service | Redis/MariaDB | JDBC/RESP | Insert/Select | VerificationCodeManager 管理验证码生命周期 |
+| 验证码发送（v0.1.6） | auth-service | 日志（模拟） | 日志输出 | String | SimulatedVerificationCodeService 输出验证码到日志 |
+| OAuth 账号绑定查询（v0.1.6） | auth-service | MariaDB | JDBC | Select | OAuthAccountMapper 按 openId 查询绑定关系 |
 
 ### 4.3 数据存储流转
 
@@ -375,6 +589,8 @@
 | 账号状态缓存 | 登录/状态变更 | Redis `auth:account:status:{userId}` | 每次请求校验 | 手动管理（变更时更新/清除） |
 | 租户状态缓存 | 登录/状态变更 | Redis `auth:tenant:status:{tenantId}` | 每次请求校验 | 手动管理（变更时更新/清除） |
 | 登录日志 | 登录成功/失败 | MariaDB `t_auth_login_log` | 安全审计 | 持久 |
+| 验证码（v0.1.6） | 验证码发送 | Redis `auth:verification:{purpose}:{target}` + MariaDB `t_auth_verification_code` | 注册/登录/密码找回/手机号变更 | 临时（TTL 5 分钟） |
+| OAuth 账号绑定（v0.1.6） | OAuth 注册/绑定 | MariaDB `t_auth_oauth_account` | OAuth 登录/解绑 | 持久 |
 | 业务数据 | 业务操作 | MariaDB | 业务查询 | 持久 |
 
 ---
@@ -383,7 +599,7 @@
 
 ### 5.1 数据模型概览
 
-v0.1.0 为骨架搭建阶段，v0.1.5 在 `cloudstroll_office_auth` 数据库中新增 7 张认证业务表，实现 RBAC 多租户权限模型和登录日志审计。
+v0.1.0 为骨架搭建阶段，v0.1.5 在 `cloudstroll_office_auth` 数据库中新增 7 张认证业务表，实现 RBAC 多租户权限模型和登录日志审计。v0.1.6 新增 2 张认证业务表（`t_auth_oauth_account`、`t_auth_verification_code`）并扩展 `t_auth_user` 表，支持多模式注册/登录、OAuth 账号绑定和验证码管理。
 
 **认证服务数据库（cloudstroll_office_auth）表结构关系：**
 
@@ -441,6 +657,33 @@ v0.1.0 为骨架搭建阶段，v0.1.5 在 `cloudstroll_office_auth` 数据库中
 │ fail_reason         │
 │ ...                 │
 └─────────────────────┘
+
+**v0.1.6 新增表：**
+
+```
+┌──────────────────────────┐       ┌──────────────────────────────┐
+│  t_auth_oauth_account     │       │  t_auth_verification_code     │
+│──────────────────────────│       │──────────────────────────────│
+│ id (PK)                  │       │ id (PK)                      │
+│ user_id (FK) ────────────►───    │ target (手机号/邮箱)          │
+│ oauth_provider           │   │   │ code (6位数字验证码)          │
+│ oauth_open_id (UK)       │   │   │ send_mode (SMS / EMAIL)      │
+│ oauth_union_id           │   │   │ purpose (REGISTER/LOGIN/     │
+│ oauth_nickname           │   │   │          RESET_PASSWORD/     │
+│ oauth_avatar             │   │   │          CHANGE_PHONE)       │
+│ bound_time               │   │   │ expire_time                  │
+│ ...                      │   │   │ used (0-未使用, 1-已使用)    │
+└──────────────────────────┘   │   │ used_time                    │
+                               │   │ send_count                   │
+                               │   │ ...                          │
+                               │   └──────────────────────────────┘
+                               │
+                               └─── t_auth_user 扩展字段：
+                                    register_mode (VARCHAR(32))
+                                    account_settled (TINYINT)
+                                    phone_verified (TINYINT)
+                                    email_verified (TINYINT)
+                                    last_password_change_time (DATETIME)
 ```
 
 ### 5.2 存储策略
@@ -456,6 +699,8 @@ v0.1.0 为骨架搭建阶段，v0.1.5 在 `cloudstroll_office_auth` 数据库中
 | 用户登录会话 | Redis | 高速读写，TTL 自动过期 | 最终一致性 |
 | Token 黑名单 | Redis | 高速读写，TTL 自动过期 | 最终一致性 |
 | 账号/租户状态缓存 | Redis | 高速读取，实时更新 | 最终一致性 |
+| OAuth 账号绑定（v0.1.6） | MariaDB（auth 库） | 关系型数据，支持按 openId 查询 | 强一致性 |
+| 验证码记录（v0.1.6） | Redis（优先）+ MariaDB（回退） | Redis 自动过期减少清理负担，DB 兜底保证可用性 | 最终一致性 |
 
 ### 5.3 数据一致性策略
 
@@ -465,7 +710,7 @@ v0.1.0 为骨架搭建阶段，v0.1.5 在 `cloudstroll_office_auth` 数据库中
 - **跨服务分布式事务：** 使用 Seata AT 模式保证最终一致性（本期预留，后续引入）
 - **消息队列异步通信：** RocketMQ 事务消息保证生产者本地事务与消息发送的原子性（后续集成）
 
-### 5.4 v0.1.5 新增数据库表
+### 5.4 v0.1.5 新增数据库表（v0.1.5 已创建）
 
 | 表名 | 用途 | 关联用户故事 | 索引 |
 |------|------|-------------|------|
@@ -477,6 +722,14 @@ v0.1.0 为骨架搭建阶段，v0.1.5 在 `cloudstroll_office_auth` 数据库中
 | `t_auth_role_permission` | 角色-权限多对多关联 | US-012 | `uk_role_permission`（role_id+permission_id）、`idx_role_id`、`idx_permission_id` |
 | `t_auth_login_log` | 登录日志审计 | US-022 | `idx_user_id`、`idx_tenant_id`、`idx_login_time` |
 
+### 5.4.1 v0.1.6 新增/变更数据库表
+
+| 表名 | 用途 | 关联用户故事 | 索引 |
+|------|------|-------------|------|
+| `t_auth_oauth_account` | OAuth 第三方账号关联表，记录用户与第三方平台的绑定关系 | US-011 | `uk_provider_openid`（oauth_provider+oauth_open_id）、`idx_user_id`（user_id） |
+| `t_auth_verification_code` | 验证码记录表，支持验证码生成/校验/过期处理 | US-012 | `idx_target_purpose`（target+purpose）、`idx_expire_time`（expire_time） |
+| `t_auth_user`（变更） | 用户表扩展字段：`register_mode`、`account_settled`、`phone_verified`、`email_verified`、`last_password_change_time` | US-013 | 保持 `idx_phone`、`idx_tenant_status`、`uk_tenant_login_name` 不变 |
+
 ### 5.5 Redis Key 设计
 
 | Key 格式 | 类型 | TTL | 用途 | 操作方 |
@@ -485,6 +738,8 @@ v0.1.0 为骨架搭建阶段，v0.1.5 在 `cloudstroll_office_auth` 数据库中
 | `auth:token:blacklist:{tokenSignature}` | String | Token 剩余有效期 | Token 黑名单（吊销的 Token） | auth-service写入，gateway读取 |
 | `auth:account:status:{userId}` | String | 手动管理 | 账号状态缓存（加速校验，减少 DB 查询） | auth-service写入/更新，gateway读取 |
 | `auth:tenant:status:{tenantId}` | String | 手动管理 | 租户状态缓存 | auth-service写入/更新，gateway读取 |
+| `auth:verification:{purpose}:{target}`（v0.1.6） | String | 5 分钟（与验证码有效期一致） | 验证码缓存（6 位数字验证码，利用 Redis TTL 自动过期） | auth-service写入/校验，支持 TTL 自动清理 |
+| `auth:verification:freq:{purpose}:{target}`（v0.1.6） | String | 60 秒 | 验证码发送频率控制 Key（用于频控校验 `isSendTooFrequent`） | auth-service写入/读取 |
 
 ### 5.6 数据库设计规范
 
@@ -506,11 +761,17 @@ v0.1.0 为骨架搭建阶段，v0.1.5 在 `cloudstroll_office_auth` 数据库中
 | 接口名称 | 协议 | 路径 | 认证方式 | 调用方 | 说明 |
 |---------|------|------|---------|--------|------|
 | 网关入口 | HTTP | `http://localhost:9000/api/v1/{module}/**` | JWT Bearer Token | Flutter 客户端/第三方 | 统一 API 入口，网关 AuthFilter 拦截校验 |
-| 用户登录 | HTTP POST | `/api/v1/auth/login` | 无（白名单） | 客户端 | 用户名密码登录，返回双 Token |
-| 用户注册 | HTTP POST | `/api/v1/auth/register` | 无（白名单） | 客户端 | 创建新用户账号 |
+| 多模式登录 | HTTP POST | `/api/v1/auth/login` | 无（白名单） | 客户端 | 支持 4 种登录模式（USERNAME_PASSWORD/PHONE_CODE/PHONE_PASSWORD/OAUTH），通过 loginMode 字段区分，返回双 Token |
+| 多模式注册 | HTTP POST | `/api/v1/auth/register` | 无（白名单） | 客户端 | 支持 5 种注册模式（USERNAME/PHONE_CODE/OAUTH/PHONE_SET_USERNAME/OAUTH_SET_INFO），通过 registerMode 字段区分 |
 | Token 刷新 | HTTP POST | `/api/v1/auth/refresh` | 无（白名单，需 Refresh Token） | 客户端 | 刷新 Access Token 和 Refresh Token |
 | 用户登出 | HTTP POST | `/api/v1/auth/logout` | JWT | 客户端 | 主动登出，Token 入黑名单 |
 | 强制踢人 | HTTP POST | `/api/v1/auth/kickout` | JWT（管理员） | 管理员 | 强制踢用户下线 |
+| 修改密码（v0.1.6） | HTTP PUT | `/api/v1/auth/password/change` | JWT | 客户端 | 校验原密码后修改密码，加密存储，可选清理登录态 |
+| 密码找回-发送验证码（v0.1.6） | HTTP POST | `/api/v1/auth/password/forgot/send-code` | 无（白名单） | 客户端 | 发送验证码至邮箱或手机 |
+| 密码找回-重置密码（v0.1.6） | HTTP POST | `/api/v1/auth/password/forgot/reset` | 无（白名单） | 客户端 | 校验验证码后重置密码，清理所有登录态 |
+| 修改手机号（v0.1.6） | HTTP PUT | `/api/v1/auth/phone/change` | JWT | 客户端 | 原手机号可用/已停用两种场景，双验证码校验 |
+| 完善账号信息（v0.1.6） | HTTP PUT | `/api/v1/auth/account/settlement` | JWT | 客户端 | 两步注册第二步，补充用户名/密码/手机号 |
+| 发送验证码（v0.1.6） | HTTP POST | `/api/v1/auth/verification-code/send` | 无（白名单） | 客户端 | 通用验证码发送，支持 REGISTER/LOGIN/RESET_PASSWORD/CHANGE_PHONE 用途 |
 | 用户列表 | HTTP GET | `/api/v1/auth/users` | JWT（管理员） | 管理员 | 租户内用户分页查询 |
 | 用户详情 | HTTP GET | `/api/v1/auth/users/{userId}` | JWT（管理员） | 管理员 | 用户基本信息+角色+权限 |
 | 修改用户 | HTTP PUT | `/api/v1/auth/users/{userId}` | JWT（管理员） | 管理员 | 修改用户信息 |
@@ -541,6 +802,8 @@ v0.1.0 为骨架搭建阶段，v0.1.5 在 `cloudstroll_office_auth` 数据库中
 | Redis 黑名单查询 | RESP 协议 | String | Gateway → Redis | 查询 Token 是否被吊销 |
 | Redis 登录态查询 | RESP 协议 | String (JSON) | Gateway → Redis | 查询用户登录会话 |
 | Redis 状态缓存 | RESP 协议 | String | Gateway/auth-service → Redis | 查询账号/租户状态 |
+| 验证码缓存/校验（v0.1.6） | RESP 协议 | String | auth-service → Redis | 验证码存储/校验（利用 TTL 自动过期） |
+| OAuth 账号查询（v0.1.6） | JDBC | SQL | auth-service → MariaDB | 按 openId 查询 OAuth 绑定关系 |
 
 ### 6.3 接口契约（统一响应体）
 
@@ -599,6 +862,12 @@ public class TokenPairDTO {
 | NFR-001 | 性能 - Token 校验响应时间 ≤ 10ms | 网关层 RS256 公钥本地验签（无状态）+ Redis 查询（响应式非阻塞） | Token 校验 ≤ 10ms |
 | NFR-001 | 性能 - 登录接口响应时间 ≤ 500ms | BCrypt 密码校验 + RS256 双 Token 签发 + Redis 写入 + 登录日志写入 | 登录接口 ≤ 500ms |
 | NFR-001 | 性能 - 单次登录 Redis 读写 ≤ 5 次 | 优化 Redis 操作顺序：1) 旧会话删除 2) 黑名单写入 3) 新会话写入 4) 账号状态缓存 5) 租户状态缓存 | Redis 读写次数 ≤ 5 次 |
+| NFR-001 | 性能 - 策略调度层零额外开销（v0.1.6） | 策略实例预先初始化（Spring 容器管理），运行时无反射/动态加载开销 | 策略获取 O(1) 时间复杂度 |
+| NFR-003 | 可扩展性 - 新增认证模式无需修改核心流程（v0.1.6） | 策略模式设计，新增登录/注册模式仅需创建策略实现类并注册到工厂 | 新增模式仅改动策略层 |
+| NFR-004 | 可维护性 - 策略实现职责单一（v0.1.6） | 每个策略类不超过 200 行，使用构造器注入，禁止 @Autowired 字段注入 | 策略类 ≤ 200 行 |
+| NFR-005 | 安全性 - 验证码一次性使用（v0.1.6） | 验证码校验后立即标记为已使用（used=1），防重放攻击 | 验证码不可重复使用 |
+| NFR-005 | 安全性 - 验证码发送频率控制（v0.1.6） | 同一 target 同一用途 60 秒内不可重复发送 | 发送间隔 ≥ 60 秒 |
+| NFR-005 | 安全性 - 密码管理安全（v0.1.6） | 新密码 BCrypt 加密（强度≥10），新旧密码不在日志明文输出，密码修改后清理登录态 | 安全合规 |
 | NFR-001 | 可用性 - Nacos 连接容错 | Nacos 连接失败时服务启动失败并给出明确错误提示，指导开发者检查 Nacos 地址和运行状态 | 错误信息明确提示 Nacos 连接失败原因 |
 | NFR-002 | 可靠性 - 全局异常兜底 | `@RestControllerAdvice` + `@ExceptionHandler(Exception.class)` 兜底所有未捕获异常，返回统一错误体，不泄露堆栈明细到客户端 | 100% 未捕获异常走通用兜底处理器 |
 | NFR-002 | 可靠性 - Redis 熔断降级 | Redis 不可用时网关给出明确降级提示，不泄漏 Redis 连接详情和堆栈信息 | 无 Redis 时可返回"服务暂不可用" |
@@ -814,9 +1083,12 @@ CloudStrollOffice/
 │       │   ├── BusinessException.java         # 业务异常
 │       │   ├── AuthException.java             # 认证异常（401）
 │       │   ├── GlobalExceptionHandler.java    # 全局异常处理器
-│       │   └── ErrorCode.java                 # 错误码枚举（含通用+认证授权 19+ 错误码）
+│       │   └── ErrorCode.java                 # 错误码枚举（含通用+认证授权 33+ 错误码，v0.1.6 扩展 AUTH-0020~AUTH-0033）
 │       ├── enums/
-│       │   └── ClientTypeEnum.java            # [新] 客户端类型枚举（6种，含设备分类）
+│       │   ├── ClientTypeEnum.java            # [新] 客户端类型枚举（6种，含设备分类）
+│       │   ├── RegisterModeEnum.java          # [v0.1.6] 注册模式枚举（5种注册模式）
+│       │   ├── LoginModeEnum.java             # [v0.1.6] 登录模式枚举（4种登录模式）
+│       │   └── OAuthProviderEnum.java         # [v0.1.6] OAuth 提供商枚举（微信/钉钉/企业微信/支付宝）
 │       ├── dto/
 │       │   ├── TokenPairDTO.java              # [新] 双 Token 数据传输对象
 │       │   └── LoginUserDTO.java              # [新] 登录用户信息传输对象
@@ -854,51 +1126,86 @@ CloudStrollOffice/
 │       │   │   └── MyBatisPlusConfig.java     # [新] MyBatis-Plus 配置（自动填充/分页）
 │       │   ├── controller/
 │       │   │   ├── HealthController.java      # 健康检查控制器
-│       │   │   ├── AuthController.java        # [新] 登录/注册/刷新/登出/踢人接口
+│       │   │   ├── AuthController.java        # [新] 登录/注册/刷新/登出/踢人/密码管理/手机号变更/完善账号/验证码发送接口（v0.1.6 扩展）
 │       │   │   ├── UserController.java        # [新] 用户管理接口（CRUD/状态/角色分配）
 │       │   │   ├── RoleController.java        # [新] 角色管理接口（CRUD/权限分配）
 │       │   │   └── PermissionController.java  # [新] 权限管理接口（CRUD/树形查询）
 │       │   ├── service/
+│       │   │   ├── AuthenticationService.java # [v0.1.6] 统一认证编排服务（策略校验→统一后处理）
 │       │   │   ├── LoginService.java          # [新] 登录/登出业务逻辑接口
 │       │   │   ├── TokenService.java          # [新] Token 刷新/校验业务逻辑接口
-│       │   │   ├── UserService.java           # [新] 用户管理业务逻辑接口
+│       │   │   ├── UserService.java           # [新] 用户管理业务逻辑接口（v0.1.6 扩展完善账号）
+│       │   │   ├── PasswordService.java       # [v0.1.6] 密码管理服务（修改/找回）
+│       │   │   ├── VerificationCodeService.java # [v0.1.6] 验证码发送服务接口
+│       │   │   ├── VerificationCodeManager.java # [v0.1.6] 验证码生成/校验/过期管理
 │       │   │   ├── RoleService.java           # [新] 角色管理业务逻辑接口
 │       │   │   ├── PermissionService.java     # [新] 权限管理业务逻辑接口
 │       │   │   ├── LoginSessionService.java   # [新] Redis 登录态管理服务接口
 │       │   │   ├── LoginLogService.java       # [新] 登录日志审计服务接口
+│       │   │   ├── strategy/                  # [v0.1.6] 策略模式包
+│       │   │   │   ├── LoginStrategy.java           # 登录策略接口
+│       │   │   │   ├── LoginStrategyFactory.java    # 登录策略工厂
+│       │   │   │   ├── UsernamePasswordStrategy.java # 用户名+密码登录策略
+│       │   │   │   ├── PhoneCodeLoginStrategy.java  # 手机+验证码登录策略
+│       │   │   │   ├── PhonePasswordLoginStrategy.java # 手机+密码登录策略
+│       │   │   │   ├── OAuthLoginStrategy.java      # OAuth 登录策略
+│       │   │   │   ├── RegisterStrategy.java        # 注册策略接口
+│       │   │   │   ├── RegisterStrategyFactory.java # 注册策略工厂
+│       │   │   │   ├── UsernamePwdStrategy.java     # 用户名密码注册策略
+│       │   │   │   ├── PhoneCodeStrategy.java       # 手机验证码注册策略
+│       │   │   │   ├── OAuthRegisterStrategy.java   # OAuth 注册策略
+│       │   │   │   ├── PhoneSetUsernameStrategy.java # 手机注册后设用户名策略
+│       │   │   │   └── OAuthSetInfoStrategy.java    # OAuth 注册后完善信息策略
 │       │   │   └── impl/                      # 实现类目录
 │       │   │       ├── LoginServiceImpl.java
 │       │   │       ├── TokenServiceImpl.java
-│       │   │       ├── UserServiceImpl.java
+│       │   │       ├── UserServiceImpl.java    # [v0.1.6] 扩展完善账号/手机号变更
+│       │   │       ├── PasswordServiceImpl.java # [v0.1.6] 密码管理实现
+│       │   │       ├── SimulatedVerificationCodeServiceImpl.java # [v0.1.6] 验证码模拟发送实现
 │       │   │       ├── RoleServiceImpl.java
 │       │   │       ├── PermissionServiceImpl.java
 │       │   │       ├── LoginSessionServiceImpl.java
 │       │   │       └── LoginLogServiceImpl.java
 │       │   ├── mapper/
-│       │   │   ├── UserMapper.java            # [新] 用户数据访问
+│       │   │   ├── UserMapper.java            # [新] 用户数据访问（v0.1.6 扩展查询方法）
 │       │   │   ├── TenantMapper.java          # [新] 租户数据访问
 │       │   │   ├── RoleMapper.java            # [新] 角色数据访问
 │       │   │   ├── PermissionMapper.java      # [新] 权限数据访问
 │       │   │   ├── UserRoleMapper.java        # [新] 用户-角色关联数据访问
 │       │   │   ├── RolePermissionMapper.java  # [新] 角色-权限关联数据访问
-│       │   │   └── LoginLogMapper.java        # [新] 登录日志数据访问
+│       │   │   ├── LoginLogMapper.java        # [新] 登录日志数据访问
+│       │   │   ├── OAuthAccountMapper.java    # [v0.1.6] OAuth 账号关联 Mapper
+│       │   │   └── VerificationCodeMapper.java # [v0.1.6] 验证码记录 Mapper
 │       │   ├── entity/
-│       │   │   ├── UserEntity.java            # [新] 用户实体（@TableName("t_auth_user")）
+│       │   │   ├── UserEntity.java            # [新] 用户实体（v0.1.6 扩展 register_mode/account_settled/phone_verified/email_verified/last_password_change_time）
 │       │   │   ├── TenantEntity.java          # [新] 租户实体
 │       │   │   ├── RoleEntity.java            # [新] 角色实体
 │       │   │   ├── PermissionEntity.java      # [新] 权限实体
 │       │   │   ├── UserRoleEntity.java        # [新] 用户-角色关联实体
 │       │   │   ├── RolePermissionEntity.java  # [新] 角色-权限关联实体
-│       │   │   └── LoginLogEntity.java        # [新] 登录日志实体
-│       │   ├── dto/                           # [新] 请求/响应 DTO
+│       │   │   ├── LoginLogEntity.java        # [新] 登录日志实体
+│       │   │   ├── OAuthAccountEntity.java    # [v0.1.6] OAuth 账号关联实体（t_auth_oauth_account）
+│       │   │   └── VerificationCodeEntity.java # [v0.1.6] 验证码记录实体（t_auth_verification_code）
+│       │   ├── dto/
+│       │   │   ├── LoginRequest.java          # [v0.1.6] 扩展支持多种登录模式
+│       │   │   ├── RegisterRequest.java       # [v0.1.6] 扩展支持多种注册模式
+│       │   │   ├── PasswordChangeRequest.java # [v0.1.6] 修改密码 DTO
+│       │   │   ├── PasswordForgotRequest.java # [v0.1.6] 密码找回 DTO
+│       │   │   ├── SendVerificationCodeRequest.java # [v0.1.6] 发送验证码 DTO
+│       │   │   ├── PhoneChangeRequest.java    # [v0.1.6] 修改手机号 DTO
+│       │   │   ├── AccountSettlementRequest.java # [v0.1.6] 完善账号信息 DTO
+│       │   │   ├── AuthResult.java            # [v0.1.6] 策略认证结果 DTO
+│       │   │   ├── RegisterResult.java        # [v0.1.6] 注册结果 DTO
+│       │   │   ├── ... (其他 v0.1.5 DTO)
+│       │   │   └── dto/result/               # 策略结果 DTO 目录
 │       │   ├── vo/                            # [新] 视图对象
-│       │   ├── enums/                         # [新] 业务枚举（如 UserStatusEnum）
+│       │   ├── enums/                         # [新] 业务枚举
 │       │   ├── exception/                     # [新] 认证服务异常
 │       │   └── util/
 │       │       └── JwtUtils.java              # [重构] JWT 工具类（HS256→RS256，双 Token）
 │       └── main/resources/
 │           ├── bootstrap.yml                  # Nacos 配置
-│           └── application.yml                # [更新] 新增数据源/Redis/RS256密钥配置
+│           └── application.yml                # [更新] 新增数据源/Redis/RS256密钥/验证码配置
 │
 ├── cloudoffice-biz-service/                   # 企业服务（端口 9200）
 │   └── src/main/java/org/cloudstrolling/cloudoffice/biz/...（同 v0.1.0，未变更）
@@ -915,7 +1222,8 @@ CloudStrollOffice/
 │   │   └── docker-compose.yml                 # Compose 编排（含 Nacos/MariaDB/Redis）
 │   └── sql/
 │       ├── init.sql                           # 数据库初始化脚本模板（v0.1.0）
-│       └── auth-init-v0.1.5.sql               # [新] 认证服务 7 张表建表 DDL
+│       ├── auth-init-v0.1.5.sql               # [新] 认证服务 7 张表建表 DDL
+│       └── auth-init-v0.1.6.sql               # [v0.1.6] 认证服务新增表 DDL + t_auth_user 扩展字段变更
 │
 └── .idea/                                     # IDEA 统一配置
     ├── codeStyles/
@@ -996,6 +1304,8 @@ public class TokenPairDTO {
 
 ### D. 参考文档
 
+- `docs/requires/CloudStrollOffice-requirement-v0.1.6.md` — 用户认证增强需求文档 v0.1.6
+- `docs/prds/CloudStrollOffice-prd-v0.1.6.md` — 用户认证增强 PRD 文档 v0.1.6
 - `docs/requires/CloudStrollOffice-requirement-v0.1.5.md` — 登录认证与权限管理需求文档 v0.1.5
 - `docs/prds/CloudStrollOffice-prd-v0.1.5.md` — 登录认证与权限管理 PRD 文档 v0.1.5
 - `docs/requires/CloudStrollOffice-requirement-v0.1.0.md` — 需求文档 v0.1.0
@@ -1011,6 +1321,6 @@ public class TokenPairDTO {
 
 | 变更日期 | 版本号 | 变更说明 |
 |---------|-------|---------|
-| 2026-06-22 | v0.1.5 | 基于 v0.1.5 PRD 更新架构文档：新增认证服务完整实现（RBAC 多租户权限模型、双 Token 续签机制、多端混合登录、Redis 登录态管理、登录日志审计）；更新网关模块（AuthFilter 全局认证过滤器、Redis 集成）；更新公共模块（新增认证错误码、ClientTypeEnum、TokenPairDTO/LoginUserDTO DTO）；新增 Redis Key 设计与 7 张数据库表设计；升级 JWT 签名算法为 RS256；新增 ADR-011~ADR-016 架构决策记录；Redis 从"本期预留"升级为"本期启用" |
+| 2026-06-23 | v0.1.6 | 基于 v0.1.6 PRD 更新架构文档：新增策略模式认证架构（LoginStrategy/RegisterStrategy 接口、4 种登录模式 + 5 种注册模式实现类、策略工厂）；新增统一认证服务层 AuthenticationService；新增密码管理（修改密码/密码找回）；新增验证码管理服务（VerificationCodeService + VerificationCodeManager）；新增手机号变更功能；扩展公共模块（RegisterModeEnum/LoginModeEnum/OAuthProviderEnum 枚举、AUTH-0020~AUTH-0033 错误码）；新增 2 张数据库表（t_auth_oauth_account、t_auth_verification_code）；扩展 t_auth_user 表（5 个新增字段）；新增 8 个 API 端点（含登录/注册扩展）；新增 ADR-017~ADR-020 架构决策记录；更新网关白名单；新增 spring-boot-starter-mail 依赖 |
 | 2026-06-19 | v0.1.4 | 基于PRD更新系统服务模块架构描述——启动入口、健康检查响应体version字段、骨架结构、测试架构；补充NFR指标（健康检查响应时间、编译时间、测试独立性） |
 | 2026-06-19 | v0.1.0 | 移除cloud-service微服务模块 |

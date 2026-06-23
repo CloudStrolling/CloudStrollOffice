@@ -4,7 +4,7 @@
 **项目名称：** CloudStrollOffice
 **编程语言：** Java 21 (OpenJDK 21 LTS)
 **项目类型：** 微服务应用程序（Spring Boot + Spring Cloud）
-**当前进度：** impm-task（登录认证与权限管理 v0.1.5）
+**当前进度：** impm-dbd（用户认证增强 v0.1.6）
 **本地化语言：** 简体中文
 **项目总体介绍：** 云漫智企（CloudStrollOffice）是一个基于 Java 21 + Spring Boot 3.2.x + Spring Cloud 2023.x 技术栈构建的微服务互联网应用程序。采用 Maven 多模块架构，由认证服务（auth-service）、企业服务（biz-service）、系统服务（system-service）、API 网关（gateway）及公共模块（common）组成，为企业提供企业信息管理、人事管理、工作流审批、薪酬管理、统一认证授权等综合服务能力。数据库采用 MariaDB 10.6 (LTS)，缓存使用 Redis 7.2.x，消息队列使用 RocketMQ 5.1.x，注册中心和配置中心使用 Nacos 2.3.x。
 
@@ -537,6 +537,7 @@ cloudoffice-system-service/src/test/resources/
 | 日期 | 版本 | 变更说明 |
 |------|------|----------|
 | 2026-06-23 | v0.1.5 | 项目地图更新 - 认证服务源码结构全面更新（DTO/Entity/Mapper/Service/Impl），新增 LoginRequest/LoginServiceImpl(login)/LoginLogServiceImpl(recordLoginSuccess/Failure)/JwtUtils(getter) |
+| 2026-06-23 | v0.1.6 | 项目文档更新 - 用户认证增强开发（多模式注册/登录/密码管理/手机号变更） |
 | 2026-06-22 | v0.1.5 | 项目文档更新 - 登录认证与权限管理开发 |
 | 2026-06-22 | v0.1.5 | 项目地图更新 - ErrorCode枚举新增AUTH-0001~AUTH-0019认证错误码（共29个），ErrorCodeTest同步新增19个认证错误码测试方法 |
 | 2026-06-22 | v0.1.5 | JwtUtils 重构完成 - HS256 → RS256 双 Token，新增 generateAccessToken/generateRefreshToken/parseAccessToken/parseRefreshToken/getTokenSignature 方法，JwtUtilsTest 新增 17 个测试用例 |
