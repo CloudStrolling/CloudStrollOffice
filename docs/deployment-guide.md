@@ -1,7 +1,7 @@
 # 云漫智企 (CloudStrollOffice) 部署指南
 
-**版本：** v0.1.5  
-**日期：** 2026-06-23  
+**版本：** v0.1.6  
+**日期：** 2026-06-24  
 **适用环境：** 开发环境 / 测试环境 / 生产环境
 
 ---
@@ -20,6 +20,7 @@
 10. [常见问题](#10-常见问题)
 
 ---
+
 
 ## 1. 环境要求
 
@@ -131,7 +132,13 @@ sudo mariadb-secure-installation
 #### 数据库初始化
 
 ```bash
-# 执行初始化脚本创建数据库和表
+# 1. 执行基础初始化脚本创建数据库和表（v0.1.5：7 张 RBAC 核心表 + 初始数据）
+mariadb -u root -p < scripts/sql/auth-init-v0.1.5.sql
+
+# 2. 执行 v0.1.6 增量脚本（OAuth 账号关联表 + 验证码记录表 + 用户表扩展字段）
+mariadb -u root -p < scripts/sql/auth-init-v0.1.6.sql
+
+# 3. 或使用通用初始化脚本（仅建库）
 mariadb -u root -p < scripts/sql/init.sql
 
 # 验证数据库已创建
@@ -142,7 +149,9 @@ mariadb -u root -p -e "SHOW DATABASES;"
 # cloudstroll_office_system
 ```
 
-### 2.3 Redis（缓存，v0.1.5 必须部署）
+> **注意：** v0.1.6 增量脚本基于 v0.1.5 基础结构执行，使用 `CREATE TABLE IF NOT EXISTS` 和 `ADD COLUMN IF NOT EXISTS` 保证幂等性，可重复执行不会破坏已有数据。首次部署时需先执行 `auth-init-v0.1.5.sql` 再执行 `auth-init-v0.1.6.sql`。
+
+### 2.3 Redis（缓存，v0.1.6 必须部署）
 
 认证服务需 Redis 存储登录态会话、Token 黑名单、账号/租户状态缓存。网关也需要 Redis 进行 Token 校验。
 
@@ -202,6 +211,12 @@ CloudStrollOffice 使用双层配置体系：
 | `REDIS_DATABASE` | `0` | auth/gateway | Redis 数据库编号 |
 | `RSA_PRIVATE_KEY` | (必填) | auth-service | RSA 私钥（Base64 编码），用于 JWT RS256 签名 |
 | `RSA_PUBLIC_KEY` | (必填) | auth/gateway | RSA 公钥（Base64 编码），用于 JWT RS256 验签 |
+| `VERIFICATION_CODE_MOCK` | `true` | auth-service | 验证码模拟模式（true=直接返回固定验证码，false=真实发送 v0.1.6） |
+| `VERIFICATION_CODE_EXPIRE_SECONDS` | `300` | auth-service | 验证码过期时间（秒），默认 5 分钟（v0.1.6） |
+| `VERIFICATION_CODE_SEND_INTERVAL` | `60` | auth-service | 验证码发送间隔（秒），默认 60 秒（v0.1.6） |
+| `VERIFICATION_CODE_LENGTH` | `6` | auth-service | 验证码长度（数字位数）（v0.1.6） |
+| `PASSWORD_MIN_LENGTH` | `8` | auth-service | 密码最小长度（v0.1.6） |
+| `PASSWORD_MAX_LENGTH` | `64` | auth-service | 密码最大长度（v0.1.6） |
 | `MARIADB_ROOT_PASSWORD` | `root123` | Docker 环境 | MariaDB root 密码（仅 docker-compose 使用） |
 | `TZ` | `Asia/Shanghai` | Docker 环境 | 容器时区设置 |
 
@@ -216,7 +231,7 @@ CloudStrollOffice 使用双层配置体系：
 
 ### 3.4 RSA 密钥对生成
 
-v0.1.5 使用 RS256 非对称签名算法，需提前生成 RSA 2048 位密钥对：
+v0.1.6 使用 RS256 非对称签名算法，需提前生成 RSA 2048 位密钥对：
 
 ```bash
 # 1. 生成 RSA 2048 位私钥（PKCS#8 格式）
@@ -240,7 +255,7 @@ base64 -w0 public_key.pem > public_key_base64.txt
 
 ### 3.5 Nacos 配置中心（预留）
 
-v0.1.5 阶段各服务的配置文件存储在本地 `src/main/resources/` 目录中。后续版本将迁移至 Nacos 配置中心集中管理。
+v0.1.6 阶段各服务的配置文件存储在本地 `src/main/resources/` 目录中。后续版本将迁移至 Nacos 配置中心集中管理。
 
 ---
 
@@ -383,7 +398,7 @@ docker compose up -d --build auth-service
 
 Docker Compose 中已通过 `depends_on` 配置了启动顺序。
 
-### 5.5 环境变量配置
+### 5.5 环境变量配置（含 v0.1.6 新增）
 
 创建 `.env` 文件（基于 `.env.example`）覆盖默认配置：
 
@@ -416,6 +431,16 @@ REDIS_DATABASE=0
 # 使用 OpenSSL 生成：openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048
 RSA_PRIVATE_KEY=your-base64-encoded-private-key
 RSA_PUBLIC_KEY=your-base64-encoded-public-key
+
+# 验证码配置（v0.1.6）
+VERIFICATION_CODE_MOCK=true
+VERIFICATION_CODE_EXPIRE_SECONDS=300
+VERIFICATION_CODE_SEND_INTERVAL=60
+VERIFICATION_CODE_LENGTH=6
+
+# 密码策略配置（v0.1.6）
+PASSWORD_MIN_LENGTH=8
+PASSWORD_MAX_LENGTH=64
 
 # 时区
 TZ=Asia/Shanghai
@@ -451,6 +476,7 @@ TZ=Asia/Shanghai
 
 # 2. 初始化数据库（首次部署）
 mariadb -u root -p < scripts/sql/auth-init-v0.1.5.sql
+mariadb -u root -p < scripts/sql/auth-init-v0.1.6.sql
 
 # 3. 编译打包
 mvn clean package -DskipTests
@@ -544,13 +570,17 @@ curl -s http://localhost:9400/api/v1/system/health  | jq .
 | 1 | Nacos 可访问 | 浏览器访问 `http://localhost:8848/nacos/` | 显示 Nacos 控制台登录页 |
 | 2 | MariaDB 可连接 | `mariadb -h 127.0.0.1 -u root -p -e "SELECT 1"` | 返回 1 |
 | 3 | Redis 可连接 | `redis-cli -h 127.0.0.1 ping` | 返回 PONG |
-| 4 | 数据库已初始化 | `mariadb -u root -p -e "USE cloudstroll_office_auth; SHOW TABLES;"` | 显示 7 张业务表 |
+| 4 | 数据库已初始化 | `mariadb -u root -p -e "USE cloudstroll_office_auth; SHOW TABLES;"` | 显示 9 张业务表 |
 | 5 | Gateway 路由正常 | `curl http://localhost:9000/api/v1/auth/health` | 返回 200 和健康数据 |
 | 6 | 各服务健康检查 | 分别验证 3 个健康检查接口 | 均返回 200 和 `status: "UP"` |
 | 7 | API 文档可访问 | 访问 `http://localhost:9100/swagger-ui.html` | 显示 Swagger UI 页面 |
 | 8 | Nacos 服务列表 | Nacos 控制台 → 服务管理 → 服务列表 | 显示 4 个已注册服务 |
 | 9 | 用户登录 | `curl -X POST http://localhost:9000/api/v1/auth/login -H "Content-Type: application/json" -d '{"loginName":"admin","password":"admin123","tenantCode":"DEFAULT","clientType":"H5"}'` | 返回 200，包含 accessToken 和 refreshToken |
 | 10 | 认证拦截 | 无 Token 访问 `http://localhost:9000/api/v1/auth/users` | 返回 401 未授权 |
+| 11 | 发送验证码（v0.1.6） | `curl -s -X POST http://localhost:9000/api/v1/auth/verification-code/send -H "Content-Type: application/json" -d '{"target":"13800138000","mode":"SMS","purpose":"LOGIN"}'` | 返回 200 |
+| 12 | 手机验证码登录（v0.1.6） | `curl -s -X POST http://localhost:9000/api/v1/auth/login -H "Content-Type: application/json" -d '{"phone":"13800138000","code":"123456","tenantCode":"DEFAULT","clientType":"H5","loginMode":"PHONE_CODE"}'` | 返回 200，包含 accessToken |
+| 13 | 修改密码（v0.1.6） | `curl -s -X PUT http://localhost:9000/api/v1/auth/password/change -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" -d '{"oldPassword":"admin123","newPassword":"NewPass123!"}'` | 返回 200 |
+| 14 | 完善账号信息（v0.1.6） | `curl -s -X PUT http://localhost:9000/api/v1/auth/account/settlement -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" -d '{"userId":1,"loginName":"newuser","password":"Password123!","phone":"13800138000"}'` | 返回 200 |
 
 ### 8.3 服务未就绪时的处理
 
@@ -648,7 +678,7 @@ curl http://127.0.0.1:8848/nacos/
 
 **Q：auth-service/gateway 启动失败，提示 RSA 密钥配置错误**
 
-A：v0.1.5 使用 RS256 非对称签名，需要配置 RSA 密钥对：
+A：v0.1.6 使用 RS256 非对称签名，需要配置 RSA 密钥对：
 
 ```bash
 # 1. 生成密钥对
@@ -699,6 +729,6 @@ A：确保所有容器处于同一 Docker 网络（`cloud-stroll-network`），D
 ---
 
 > **文档信息：**
-> - 本文档适用于 CloudStrollOffice v0.1.5 登录认证与权限管理阶段
+> - 本文档适用于 CloudStrollOffice v0.1.6 用户认证增强阶段
 > - 后续版本将补充 Kubernetes 部署、CI/CD 流程、生产环境安全加固等内容
 > - 如有问题请联系项目维护者或提交 GitHub Issue

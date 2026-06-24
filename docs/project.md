@@ -4,7 +4,7 @@
 **项目名称：** CloudStrollOffice
 **编程语言：** Java 21 (OpenJDK 21 LTS)
 **项目类型：** 微服务应用程序（Spring Boot + Spring Cloud）
-**当前进度：** impm-dbd（用户认证增强 v0.1.6）
+**当前进度：** impm-编码完成（用户认证增强 v0.1.6）— 全部 206 个测试通过，代码已提交至分支 cso-v0.1.6
 **本地化语言：** 简体中文
 **项目总体介绍：** 云漫智企（CloudStrollOffice）是一个基于 Java 21 + Spring Boot 3.2.x + Spring Cloud 2023.x 技术栈构建的微服务互联网应用程序。采用 Maven 多模块架构，由认证服务（auth-service）、企业服务（biz-service）、系统服务（system-service）、API 网关（gateway）及公共模块（common）组成，为企业提供企业信息管理、人事管理、工作流审批、薪酬管理、统一认证授权等综合服务能力。数据库采用 MariaDB 10.6 (LTS)，缓存使用 Redis 7.2.x，消息队列使用 RocketMQ 5.1.x，注册中心和配置中心使用 Nacos 2.3.x。
 
@@ -226,6 +226,12 @@ cloudoffice-common/src/main/java/org/cloudstrolling/cloudoffice/common/
 │   ├── BaseEntity.java             # 实体基类（雪花算法ID、创建时间、更新时间、逻辑删除）
 │   ├── ErrorCode.java              # 错误码接口（定义 getCode/getMessage 契约）
 │   └── PageResult.java             # 分页结果封装（含 empty/of 静态工厂方法）
+├── constant/                        # 常量定义
+│   └── RedisKeyConstants.java       # Redis Key 常量（v0.1.6 扩展：验证码相关Key — PREFIX_VERIFICATION_CODE/PREFIX_FREQUENCY_LIMIT 及频次限制常量）
+├── enums/                            # 枚举类
+│   ├── RegisterModeEnum.java        # 注册模式枚举（v0.1.6）：USERNAME_PASSWORD/PHONE_CODE/OAUTH/PHONE_SET_USERNAME/OAUTH_SET_INFO
+│   ├── LoginModeEnum.java           # 登录模式枚举（v0.1.6）：USERNAME_PASSWORD/PHONE_CODE/PHONE_PASSWORD/OAUTH
+│   └── OAuthProviderEnum.java       # OAuth 提供商枚举（v0.1.6）：WECHAT/ALIPAY/DINGTALK/OTHER
 └── util/                           # 工具类
     ├── .gitkeep                    # 占位文件
     └── JsonUtils.java              # JSON 工具类（基于 Jackson ObjectMapper 单例，支持 JavaTimeModule）
@@ -260,7 +266,7 @@ cloudoffice-common/src/test/java/org/cloudstrolling/cloudoffice/common/
 | `SpringDocConfig` | `org.cloudstrolling.cloudoffice.common.config` | SpringDoc OpenAPI 3 文档配置：包含认证/业务/云资源/系统管理 4 个 API 分组 |
 | `TokenPairDTO` | `org.cloudstrolling.cloudoffice.common.dto` | 双 Token 响应 DTO：Lombok 注解，实现 Serializable，含 accessToken/refreshToken/过期时间/tokenType |
 | `LoginUserDTO` | `org.cloudstrolling.cloudoffice.common.dto` | 登录用户信息 DTO：Lombok 注解，实现 Serializable，含 userId/tenantId/userName/clientType/roles/permissions |
-| `ErrorCode` | `org.cloudstrolling.cloudoffice.common.exception` | 通用错误码枚举：包含10个HTTP基础错误码（SUCCESS/BAD_REQUEST/UNAUTHORIZED/FORBIDDEN/NOT_FOUND等）和19个认证授权错误码（TOKEN_EXPIRED/ACCOUNT_DISABLED/LOGIN_FAILED等AUTH-0001~AUTH-0019），共29个枚举常量 |
+| `ErrorCode` | `org.cloudstrolling.cloudoffice.common.exception` | 通用错误码枚举：包含10个HTTP基础错误码 + 33个认证授权错误码（AUTH-0001~AUTH-0033），新增14个错误码（AUTH-0020~AUTH-0033）：REGISTER_MODE_UNSUPPORTED/LOGIN_MODE_UNSUPPORTED/VERIFICATION_CODE_INVALID/VERIFICATION_CODE_EXPIRED/FREQUENCY_LIMITED/SEND_VERIFICATION_CODE_FAILED/OAUTH_BIND_FAILED/ACCOUNT_NOT_SETTLED/PHONE_ALREADY_BOUND/PHONE_NOT_BOUND/PASSWORD_STRENGTH_INSUFFICIENT/PASSWORD_SAME_AS_OLD/PASSWORD_RESET_TOKEN_INVALID/ACCOUNT_ALREADY_SETTLED |
 | `BaseException` | `org.cloudstrolling.cloudoffice.common.exception` | 运行时异常基类（抽象类）：含 code 和 message 属性 |
 | `BusinessException` | `org.cloudstrolling.cloudoffice.common.exception` | 业务异常：继承 BaseException，增加 module 模块标识，构造时自动记录错误日志 |
 | `AuthException` | `org.cloudstrolling.cloudoffice.common.exception` | 认证异常：继承 BaseException，映射 HTTP 401 状态码 |
@@ -279,56 +285,90 @@ cloudoffice-common/src/test/java/org/cloudstrolling/cloudoffice/common/
 cloudoffice-auth-service/src/main/java/org/cloudstrolling/cloudoffice/auth/
 ├── AuthApplication.java            # 认证服务启动入口（@SpringBootApplication + @EnableDiscoveryClient）
 ├── config/                         # 配置类
-│   ├── SecurityConfig.java         # Spring Security 安全配置（BCrypt 编码器、无状态会话、CSRF 关闭、自定义 401/403 JSON 响应）
+│   ├── SecurityConfig.java         # Spring Security 安全配置（BCrypt 编码器、无状态会话、CSRF 关闭、自定义 401/403 JSON 响应；v0.1.6 白名单扩展：新增 /api/v1/auth/verification-code/**、/api/v1/auth/password/forgot/**、/api/v1/auth/phone/change、/api/v1/auth/account/settlement）
 │   ├── OAuth2Config.java           # OAuth2 授权服务器骨架配置（预留扩展点，v0.2.0 实现完整授权码流程）
-│   └── RsaKeyConfig.java           # RSA 密钥对配置（加载私钥/公钥用于 JWT RS256 签名/验签）
+│   ├── RsaKeyConfig.java           # RSA 密钥对配置（加载私钥/公钥用于 JWT RS256 签名/验签）
+│   ├── VerificationCodeProperties.java  # 验证码配置属性类（v0.1.6）：过期时间/长度/频率限制间隔
+│   └── PasswordProperties.java     # 密码配置属性类（v0.1.6）：最小长度/复杂度要求/历史密码次数
 ├── controller/                     # 控制器层
-│   ├── AuthController.java         # 认证控制器（POST login/register/refresh/logout/kickout 5 个端点）
+│   ├── AuthController.java         # 认证控制器（v0.1.6 重写+扩展：12 个端点 — login/register/refresh/logout/kickout/sendVerificationCode/changePassword/forgotPasswordSendCode/forgotPasswordReset/changePhone/accountSettlement + health）
 │   └── HealthController.java       # 健康检查控制器（GET /api/v1/auth/health 返回服务状态）
 ├── dto/                            # 数据传输对象
 │   ├── AssignRolesRequest.java     # 用户角色分配请求 DTO（全量替换角色 ID 列表）
 │   ├── KickoutRequest.java         # 强制踢人请求 DTO（目标用户 ID + 客户端类型）
-│   ├── LoginRequest.java           # 登录请求 DTO（loginName/password/tenantCode/clientType）
+│   ├── LoginRequest.java           # 登录请求 DTO（v0.1.6 扩展：新增 loginMode/loginCode 字段支持多模式登录）
 │   ├── RefreshTokenRequest.java    # Token 刷新请求 DTO（refreshToken 字符串，@NotBlank 校验）
-│   ├── RegisterRequest.java        # 用户注册请求 DTO
+│   ├── RegisterRequest.java        # 用户注册请求 DTO（v0.1.6 扩展：新增 registerMode 等字段）
 │   ├── UserStatusRequest.java      # 用户状态更新请求 DTO
-│   └── UserUpdateRequest.java      # 用户信息更新请求 DTO
+│   ├── UserUpdateRequest.java      # 用户信息更新请求 DTO
+│   ├── SendVerificationCodeRequest.java # 发送验证码请求 DTO（v0.1.6）：target/purpose
+│   ├── PasswordChangeRequest.java  # 修改密码请求 DTO（v0.1.6）：oldPassword/newPassword
+│   ├── PasswordForgotRequest.java  # 密码找回请求 DTO（v0.1.6）：phone/email/verificationCode/newPassword
+│   ├── PhoneChangeRequest.java     # 手机号变更请求 DTO（v0.1.6）：newPhone/verificationCode
+│   ├── AccountSettlementRequest.java    # 账号补全请求 DTO（v0.1.6）：username/password
+│   └── result/                     # 响应结果 DTO
+│       ├── AuthResult.java         # 认证结果 DTO（v0.1.6）：登录方式/是否有密码/账号状态
+│       └── RegisterResult.java     # 注册结果 DTO（v0.1.6）：用户ID/userEntity/TODO补全状态
 ├── entity/                         # 实体类
 │   ├── LoginLogEntity.java         # 登录日志实体（t_auth_login_log：登录名/用户ID/租户ID/IP/客户端类型/登录结果/失败原因）
+│   ├── OAuthAccountEntity.java     # OAuth 账号绑定实体（v0.1.6）：t_auth_oauth_account — provider/providerUserId/userId/unionId
 │   ├── PermissionEntity.java       # 权限实体（t_auth_permission）
 │   ├── RoleEntity.java             # 角色实体（t_auth_role）
 │   ├── RolePermissionEntity.java   # 角色权限关联实体（t_auth_role_permission）
 │   ├── TenantEntity.java           # 租户实体（t_auth_tenant：租户编码/名称/状态/过期时间）
-│   ├── UserEntity.java             # 用户实体（t_auth_user：登录名/密码/姓名/手机/状态/最后登录时间/IP）
-│   └── UserRoleEntity.java         # 用户角色关联实体（t_auth_user_role）
+│   ├── UserEntity.java             # 用户实体（t_auth_user：v0.1.6 扩展5字段 — phone/email/registerMode/accountSettled/oauthProvider）
+│   ├── UserRoleEntity.java         # 用户角色关联实体（t_auth_user_role）
+│   └── VerificationCodeEntity.java # 验证码实体（v0.1.6）：t_auth_verification_code — target/purpose/code/expireTime/used
 ├── enums/                          # 枚举类（预留，仅 .gitkeep）
 ├── exception/                      # 异常处理类（预留，仅 .gitkeep）
 ├── filter/                         # 过滤器（预留，仅 .gitkeep）
 ├── interceptor/                    # 拦截器（预留，仅 .gitkeep）
 ├── mapper/                         # 数据访问层
 │   ├── LoginLogMapper.java         # 登录日志 Mapper（t_auth_login_log CRUD）
+│   ├── OAuthAccountMapper.java     # OAuth 账号绑定 Mapper（v0.1.6）：t_auth_oauth_account CRUD + 按provider+providerUserId查询
 │   ├── PermissionMapper.java       # 权限 Mapper（t_auth_permission CRUD）
 │   ├── RoleMapper.java             # 角色 Mapper（t_auth_role CRUD + 联表查询）
 │   ├── RolePermissionMapper.java   # 角色权限关联 Mapper（t_auth_role_permission CRUD）
 │   ├── TenantMapper.java           # 租户 Mapper（t_auth_tenant CRUD）
 │   ├── UserMapper.java             # 用户 Mapper（t_auth_user CRUD + 联表查询角色编码/权限标识）
-│   └── UserRoleMapper.java         # 用户角色关联 Mapper（t_auth_user_role CRUD）
+│   ├── UserRoleMapper.java         # 用户角色关联 Mapper（t_auth_user_role CRUD）
+│   └── VerificationCodeMapper.java # 验证码 Mapper（v0.1.6）：t_auth_verification_code CRUD + 按target+purpose查询最新未使用验证码
 ├── service/                        # 业务逻辑层接口
+│   ├── AuthenticationService.java  # 统一认证编排服务（v0.1.6）：编排登录策略选择→策略认证→租户/用户状态校验→双Token签发→Redis会话→日志审计的13步流程
 │   ├── LoginLogService.java        # 登录日志审计服务接口（记录登录成功/失败/更新登出时间）
 │   ├── LoginService.java           # 登录认证服务接口（登录、登出、强制踢人）
 │   ├── LoginSessionService.java    # Redis 登录态管理服务接口（会话 CRUD/Token 黑名单/状态缓存）
+│   ├── PasswordService.java        # 密码管理服务（v0.1.6）：密码修改(需原密码)/密码找回(验证码重置)/手机号变更(原手机验证码或邮箱验证)
 │   ├── PermissionService.java      # 权限管理服务接口
 │   ├── RoleService.java            # 角色管理服务接口
 │   ├── TokenService.java           # Token 刷新服务接口（含轮换机制）
-│   └── UserService.java            # 用户管理服务接口（注册/状态管理/CRUD）
-│   └── impl/                       # 业务逻辑实现类
-│       ├── LoginLogServiceImpl.java    # 登录日志审计实现（try-catch 异常隔离，不抛异常）
-│       ├── LoginServiceImpl.java       # 登录认证实现（13 步登录流程：校验租户/用户/密码 → 签发双 Token → 同端互斥 → Redis 会话 → 日志记录）
-│       ├── LoginSessionServiceImpl.java # Redis 会话管理实现（基于 RedisTemplate 的登录态/黑名单/状态缓存）
-│       ├── PermissionServiceImpl.java   # 权限管理实现
-│       ├── RoleServiceImpl.java         # 角色管理实现（CRUD/权限分配/已用检查）
-│       ├── TokenServiceImpl.java        # Token 刷新实现（Refresh Token 轮换/租户+账号状态校验）
-│       └── UserServiceImpl.java         # 用户管理实现（注册/状态变更/角色分配/CRUD）
+│   ├── UserService.java            # 用户管理服务接口（注册/状态管理/CRUD）
+│   ├── VerificationCodeManager.java    # 验证码管理接口（v0.1.6）：生成/校验/标记已用/频率控制
+│   ├── VerificationCodeService.java    # 验证码发送服务接口（v0.1.6）：send(target, purpose)
+│   ├── impl/                       # 业务逻辑实现类
+│   │   ├── LoginLogServiceImpl.java    # 登录日志审计实现（try-catch 异常隔离，不抛异常）
+│   │   ├── LoginServiceImpl.java       # 登录认证实现（13 步登录流程：校验租户/用户/密码 → 签发双 Token → 同端互斥 → Redis 会话 → 日志记录）
+│   │   ├── LoginSessionServiceImpl.java # Redis 会话管理实现（基于 RedisTemplate 的登录态/黑名单/状态缓存）
+│   │   ├── PermissionServiceImpl.java   # 权限管理实现
+│   │   ├── RoleServiceImpl.java         # 角色管理实现（CRUD/权限分配/已用检查）
+│   │   ├── SimulatedVerificationCodeService.java  # 验证码发送实现（v0.1.6）：模拟发送，控制台打印验证码
+│   │   ├── TokenServiceImpl.java        # Token 刷新实现（Refresh Token 轮换/租户+账号状态校验）
+│   │   ├── UserServiceImpl.java         # 用户管理实现（注册/状态变更/角色分配/CRUD）
+│   │   └── VerificationCodeManagerImpl.java  # 验证码管理实现（v0.1.6）：6位随机码/Redis存储/频率限制/校验
+│   └── strategy/                    # 策略模式实现（v0.1.6）
+│       ├── LoginStrategy.java           # 登录策略接口：authenticate(LoginRequest)
+│       ├── LoginStrategyFactory.java    # 登录策略工厂：按 LoginMode 获取对应策略 Bean
+│       ├── UsernamePasswordStrategy.java    # 用户名密码登录策略
+│       ├── PhoneCodeLoginStrategy.java      # 手机验证码登录策略
+│       ├── PhonePasswordLoginStrategy.java  # 手机号+密码登录策略
+│       ├── OAuthLoginStrategy.java         # OAuth 登录策略
+│       ├── RegisterStrategy.java           # 注册策略接口：register(RegisterRequest)
+│       ├── RegisterStrategyFactory.java    # 注册策略工厂：按 RegisterMode 获取对应策略 Bean
+│       ├── UsernamePwdRegisterStrategy.java    # 用户名密码注册策略
+│       ├── PhoneCodeRegisterStrategy.java      # 手机验证码注册策略
+│       ├── OAuthRegisterStrategy.java         # OAuth 注册策略
+│       ├── PhoneSetUsernameStrategy.java       # 手机注册后补全用户名策略
+│       └── OAuthSetInfoStrategy.java           # OAuth 注册后补全信息策略
 ├── util/                           # 工具类
 │   └── JwtUtils.java               # JWT 令牌工具类（RS256 双 Token：签发/解析/签名指纹/getter）
 └── vo/                             # 视图对象（预留，仅 .gitkeep）
@@ -367,15 +407,15 @@ cloudoffice-auth-service/src/test/resources/
 | `OAuth2Config` | `org.cloudstrolling.cloudoffice.auth.config` | OAuth2 授权服务器骨架配置类，预留下期扩展点 |
 | `RsaKeyConfig` | `org.cloudstrolling.cloudoffice.auth.config` | RSA 密钥对配置类，加载 RSA 私钥/公钥用于 JWT RS256 签名和验签 |
 | `HealthController` | `org.cloudstrolling.cloudoffice.auth.controller` | 健康检查控制器：GET /api/v1/auth/health，返回服务名称/状态/版本/时间戳 |
-| `AuthController` | `org.cloudstrolling.cloudoffice.auth.controller` | 认证控制器：5 个端点（POST login/register/refresh/logout/kickout），@RequiredArgsConstructor 注入 |
-| `LoginRequest` | `org.cloudstrolling.cloudoffice.auth.dto` | 登录请求 DTO：loginName、password、tenantCode、clientType，带 @NotBlank 校验注解 |
+| `AuthController` | `org.cloudstrolling.cloudoffice.auth.controller` | 认证控制器：v0.1.6 重写+扩展 — 12 个端点（login/register/refresh/logout/kickout/sendVerificationCode/changePassword/forgotPasswordSendCode/forgotPasswordReset/changePhone/accountSettlement + health），@RequiredArgsConstructor 注入 |
+| `LoginRequest` | `org.cloudstrolling.cloudoffice.auth.dto` | 登录请求 DTO：v0.1.6 扩展新增 loginMode/loginCode 字段支持多模式登录 |
 | `RefreshTokenRequest` | `org.cloudstrolling.cloudoffice.auth.dto` | Token 刷新请求 DTO：refreshToken 字符串，@NotBlank 校验 |
 | `LoginLogEntity` | `org.cloudstrolling.cloudoffice.auth.entity` | 登录日志实体：t_auth_login_log，记录登录名、用户/租户 ID、IP、客户端类型、登录结果、失败原因等 |
 | `TenantEntity` | `org.cloudstrolling.cloudoffice.auth.entity` | 租户实体：t_auth_tenant，含租户编码/名称/状态/过期时间 |
-| `UserEntity` | `org.cloudstrolling.cloudoffice.auth.entity` | 用户实体：t_auth_user，含登录名/密码(BCrypt)/姓名/状态/最后登录时间/IP |
+| `UserEntity` | `org.cloudstrolling.cloudoffice.auth.entity` | 用户实体：t_auth_user，v0.1.6 扩展5字段 — phone(手机号)/email(邮箱)/registerMode(注册模式)/accountSettled(账号是否已补全)/oauthProvider(OAuth提供商) |
 | `TenantMapper` | `org.cloudstrolling.cloudoffice.auth.mapper` | 租户 Mapper：BaseMapper<TenantEntity>，提供租户表 CRUD 操作 |
 | `UserMapper` | `org.cloudstrolling.cloudoffice.auth.mapper` | 用户 Mapper：BaseMapper<UserEntity> + 联表查询方法（selectRoleCodesByUserId/selectPermissionCodesByUserId） |
-| `LoginService` | `org.cloudstrolling.cloudoffice.auth.service` | 登录认证服务接口：login(LoginRequest)/logout()/kickout() |
+| `LoginService` | `org.cloudstrolling.cloudoffice.auth.service` | 登录认证服务接口：login(LoginRequest)/logout()/kickout()（v0.1.6 保留向后兼容，新逻辑委托给 AuthenticationService） |
 | `LoginServiceImpl` | `org.cloudstrolling.cloudoffice.auth.service.impl` | 登录认证实现：13 步完整登录流程（参数校验→clientType校验→租户查询→用户查询→BCrypt校验→角色权限→双 Token 签发→同端互斥→Redis 会话→状态缓存→日志记录→用户表更新） |
 | `LoginLogService` | `org.cloudstrolling.cloudoffice.auth.service` | 登录日志审计服务接口：recordLoginSuccess/recordLoginFailure/updateLogoutTime |
 | `LoginLogServiceImpl` | `org.cloudstrolling.cloudoffice.auth.service.impl` | 登录日志审计实现：try-catch 异常隔离，数据库写入失败仅记录错误日志不影响主流程 |
@@ -383,9 +423,26 @@ cloudoffice-auth-service/src/test/resources/
 | `LoginSessionServiceImpl` | `org.cloudstrolling.cloudoffice.auth.service.impl` | Redis 会话管理实现：基于 RedisTemplate 的登录态存储/黑名单/状态缓存 |
 | `TokenService` | `org.cloudstrolling.cloudoffice.auth.service` | Token 刷新服务接口：含 Refresh Token 轮换机制 |
 | `TokenServiceImpl` | `org.cloudstrolling.cloudoffice.auth.service.impl` | Token 刷新实现：黑名单校验/轮换/租户+账号状态重新校验 |
-| `UserService` | `org.cloudstrolling.cloudoffice.auth.service` | 用户管理服务接口：注册/状态变更/角色分配/CRUD |
+| `UserService` | `org.cloudstrolling.cloudoffice.auth.service` | 用户管理服务接口：注册/状态变更/角色分配/CRUD（v0.1.6 新增 updatePassword/updatePhone/updateEmail/updateAccountSettled 方法） |
 | `UserServiceImpl` | `org.cloudstrolling.cloudoffice.auth.service.impl` | 用户管理实现：注册校验/状态管理/角色分配/CRUD |
 | `JwtUtils` | `org.cloudstrolling.cloudoffice.auth.util` | JWT 令牌工具类（RS256 双 Token）：构造器注入 RsaKeyConfig，提供 generateAccessToken/generateRefreshToken/parseAccessToken/parseRefreshToken/getTokenSignature/getAccessTokenExpiration/getRefreshTokenExpiration |
+| `VerificationCodeProperties` | `org.cloudstrolling.cloudoffice.auth.config` | 验证码配置属性类（v0.1.6）：codeExpireSeconds/codeLength/frequencyLimitInterval 配置绑定 |
+| `PasswordProperties` | `org.cloudstrolling.cloudoffice.auth.config` | 密码配置属性类（v0.1.6）：minLength/complexityRequired/historyPasswordCount 配置绑定 |
+| `RegisterModeEnum` | `org.cloudstrolling.cloudoffice.common.enums` | 注册模式枚举（v0.1.6）：USERNAME_PASSWORD/PHONE_CODE/OAUTH/PHONE_SET_USERNAME/OAUTH_SET_INFO |
+| `LoginModeEnum` | `org.cloudstrolling.cloudoffice.common.enums` | 登录模式枚举（v0.1.6）：USERNAME_PASSWORD/PHONE_CODE/PHONE_PASSWORD/OAUTH |
+| `OAuthProviderEnum` | `org.cloudstrolling.cloudoffice.common.enums` | OAuth 提供商枚举（v0.1.6）：WECHAT/ALIPAY/DINGTALK/OTHER |
+| `AuthenticationService` | `org.cloudstrolling.cloudoffice.auth.service` | 统一认证编排服务（v0.1.6）：authenticate(LoginRequest)/register(RegisterRequest) — 13步编排流程 |
+| `PasswordService` | `org.cloudstrolling.cloudoffice.auth.service` | 密码管理服务（v0.1.6）：changePassword/forgotPasswordSendCode/forgotPasswordReset/changePhone |
+| `VerificationCodeManager` | `org.cloudstrolling.cloudoffice.auth.service` | 验证码管理接口（v0.1.6）：生成6位随机码/Redis存储/频率限制/校验/标记已用 |
+| `VerificationCodeService` | `org.cloudstrolling.cloudoffice.auth.service` | 验证码发送服务接口（v0.1.6）：send(target, purpose) — 由 SimulatedVerificationCodeService 模拟实现 |
+| `LoginStrategy` | `org.cloudstrolling.cloudoffice.auth.service.strategy` | 登录策略接口（v0.1.6）：authenticate(LoginRequest) → AuthResult，4种实现 |
+| `RegisterStrategy` | `org.cloudstrolling.cloudoffice.auth.service.strategy` | 注册策略接口（v0.1.6）：register(RegisterRequest) → RegisterResult，5种实现 |
+| `OAuthLoginStrategy` | `org.cloudstrolling.cloudoffice.auth.service.strategy` | OAuth 登录策略（v0.1.6）：按OAuth提供商查询绑定关系→获取/创建用户→返回AuthResult |
+| `UsernamePasswordStrategy` | `org.cloudstrolling.cloudoffice.auth.service.strategy` | 用户名密码登录策略（v0.1.6）：按loginName查询用户→BCrypt校验密码→返回AuthResult |
+| `PhoneCodeLoginStrategy` | `org.cloudstrolling.cloudoffice.auth.service.strategy` | 手机验证码登录策略（v0.1.6）：校验手机号存在→校验验证码→返回AuthResult |
+| `PhonePasswordLoginStrategy` | `org.cloudstrolling.cloudoffice.auth.service.strategy` | 手机号+密码登录策略（v0.1.6）：按手机号查用户→BCrypt校验密码→返回AuthResult |
+| `OAuthAccountEntity` | `org.cloudstrolling.cloudoffice.auth.entity` | OAuth 账号绑定实体（v0.1.6）：t_auth_oauth_account — provider/providerUserId/userId/unionId |
+| `VerificationCodeEntity` | `org.cloudstrolling.cloudoffice.auth.entity` | 验证码实体（v0.1.6）：t_auth_verification_code — target/purpose/code/expireTime/used |
 
 ---
 
@@ -528,7 +585,7 @@ cloudoffice-system-service/src/test/resources/
 
 ---
 
-> **说明：** 项目地图持续更新中，反映当前 v0.1.5 阶段的代码实现状态。
+> **说明：** 项目地图持续更新中，反映当前 v0.1.6 阶段的代码实现状态。
 
 ---
 
@@ -537,7 +594,7 @@ cloudoffice-system-service/src/test/resources/
 | 日期 | 版本 | 变更说明 |
 |------|------|----------|
 | 2026-06-23 | v0.1.5 | 项目地图更新 - 认证服务源码结构全面更新（DTO/Entity/Mapper/Service/Impl），新增 LoginRequest/LoginServiceImpl(login)/LoginLogServiceImpl(recordLoginSuccess/Failure)/JwtUtils(getter) |
-| 2026-06-23 | v0.1.6 | 项目文档更新 - 用户认证增强开发（多模式注册/登录/密码管理/手机号变更） |
+| 2026-06-23 | v0.1.6 | 编码完成 - 用户认证增强开发（多模式注册/登录/密码管理/手机号变更/验证码管理），36个TASK全部实现，206个测试全部通过，52个文件变更 |
 | 2026-06-22 | v0.1.5 | 项目文档更新 - 登录认证与权限管理开发 |
 | 2026-06-22 | v0.1.5 | 项目地图更新 - ErrorCode枚举新增AUTH-0001~AUTH-0019认证错误码（共29个），ErrorCodeTest同步新增19个认证错误码测试方法 |
 | 2026-06-22 | v0.1.5 | JwtUtils 重构完成 - HS256 → RS256 双 Token，新增 generateAccessToken/generateRefreshToken/parseAccessToken/parseRefreshToken/getTokenSignature 方法，JwtUtilsTest 新增 17 个测试用例 |

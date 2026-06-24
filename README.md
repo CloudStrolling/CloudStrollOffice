@@ -14,7 +14,7 @@
 
 项目采用 Maven 多模块架构，由认证服务（auth-service）、企业服务（biz-service）、系统服务（system-service）、API 网关（gateway）及公共模块（common）组成，为企业提供企业信息管理、人事管理、工作流审批、薪酬管理、统一认证授权等综合服务能力。
 
-当前版本 **v0.1.5** 已完整实现**登录认证与权限管理系统**：基于 RBAC 多租户权限模型（7 张数据库表），支持 6 种客户端类型（Windows/Ubuntu/H5/Android/iOS/WeChatMini）混合登录，同端互斥 + 多端共存；采用 JWT RS256 双 Token（Access Token 2h + Refresh Token 7d）配合 Redis 登录态管理；网关层 AuthFilter 全局认证拦截统一鉴权；完整覆盖登录/注册/登出/Token 刷新/强制踢人/封禁解封/用户角色权限管理/登录日志审计能力，351 个单元测试全部通过。
+当前版本 **v0.1.6** 在 v0.1.5 RBAC 权限体系基础上新增**用户认证增强**能力：多模式登录（用户名密码/手机验证码/手机+密码/OAuth）与多模式注册（用户名密码/手机验证码/OAuth）；两步注册机制（先注册后补全信息）；密码管理（修改密码/密码找回）；手机号变更（原手机可用→短信验证，原手机停用→邮箱验证）；验证码管理（生成/发送/校验/频率控制）。新增 2 张数据库表（OAuth 账号关联表、验证码记录表），用户表扩展 5 个字段，206 个单元测试全部通过。
 
 ## 功能特性
 
@@ -32,6 +32,11 @@
 | 全局异常处理 | `@RestControllerAdvice` 统一捕获 10+ 类异常，兜底不泄露堆栈信息 |
 | Spring Security | BCrypt 密码编码器、无状态会话管理、自定义 401/403 JSON 响应 |
 | 登录日志审计 | 记录登录 IP、客户端类型、登录结果、失败原因，支持安全事件追溯 |
+| 多模式登录 | 4 种登录方式（用户名密码/手机验证码/手机+密码/OAuth），策略工厂模式编排 |
+| 多模式注册 | 3 种注册方式（用户名密码/手机验证码/OAuth），含两步注册（先注册后补全信息） |
+| 密码管理 | 修改密码（旧密码校验）和密码找回（验证码重置），重置后自动清除所有登录态 |
+| 手机号变更 | 原手机可用时短信验证变更，原手机停用时邮箱验证变更 |
+| 验证码管理 | 验证码生成、发送（模拟/真实）、校验、频率控制（60 秒间隔）和生命周期管理 |
 | API 文档 | SpringDoc (OpenAPI 3) 自动生成，按模块分组，在线调试 |
 | API 网关 | Spring Cloud Gateway，路由转发、CORS 跨域、Nacos 服务发现集成 |
 | 服务注册发现 | Nacos 2.3.0 统一管理，各服务启动后自动注册 |
@@ -58,15 +63,16 @@
            ┌────────────────────────┼────────────────────────┐
            ▼                        ▼                        ▼
 ┌────────────────────────┐ ┌────────────────┐ ┌────────────────────┐
-│   认证服务 (v0.1.5)     │ │   企业服务       │ │   系统服务          │
+│   认证服务 (v0.1.6)     │ │   企业服务       │ │   系统服务          │
 │  auth-service (9100)   │ │ biz-service     │ │ system-service     │
 │                        │ │  (9200)         │ │  (9400)            │
-│  ⭐ 登录/注册/登出       │ │   企业信息管理    │ │  系统配置 │ 日志     │
-│  ⭐ 双Token签发+轮换    │ │   人事管理       │ │  监控 │ 定时任务    │
-│  ⭐ RBAC权限管理        │ │  v0.1.0 骨架     │ │  v0.1.4 完成搭建    │
-│  ⭐ 角色/权限CRUD       │ │                 │ │                    │
-│  ⭐ 登录日志审计        │ │                 │ │                    │
-│  ⭐ 用户管理/封禁/踢人   │ │                 │ │                    │
+│  ⭐ 4种登录策略(SP工厂)   │ │  企业信息管理    │ │  系统配置 │ 日志     │
+│  ⭐ 5种注册策略(SP工厂)   │ │  人事管理       │ │  监控 │ 定时任务    │
+│  ⭐ 两步注册/账号补全     │ │  v0.1.0 骨架     │ │  v0.1.4 完成搭建    │
+│  ⭐ 密码管理/密码找回     │ │                 │ │                    │
+│  ⭐ 手机号变更           │ │                 │ │                    │
+│  ⭐ 验证码管理/频率控制   │ │                 │ │                    │
+│  ⭐ 认证编排(AuthenticationService)│ │                 │ │                    │
 └────────────────────────┘ └────────────────┘ └────────────────────┘
                                     │
            ┌────────────────────────┼────────────────────────┐
@@ -112,9 +118,9 @@
 
 | 模块 | 端口 | 依赖 | 功能描述 |
 |------|------|------|---------|
-| `cloudoffice-common` | - | 无 | 公共模块：统一响应体 `ApiResult<T>`、分页响应 `PageResult<T>`、异常体系（`BaseException`/`BusinessException`/`AuthException`）、全局异常处理器 `GlobalExceptionHandler`、实体基类 `BaseEntity`、SpringDoc 配置、MyBatis-Plus 自动填充配置、JSON 工具类、TokenPairDTO/LoginUserDTO、ClientTypeEnum、RedisKeyConstants、29 个错误码（含 19 个认证授权错误码） |
-| `cloudoffice-gateway` | 9000 | common, Nacos, Redis | API 网关：请求路由转发（3 条路由规则）、CORS 跨域配置、Nacos 服务发现集成、`AuthFilter` 全局认证过滤器（9 步校验流程：白名单放行 → Bearer 格式校验 → RS256 公钥验签 → tokenType 校验 → Redis 黑名单 → 登录态 → 账号状态 → 租户状态 → Header 透传） |
-| `cloudoffice-auth-service` | 9100 | common, Nacos, MyBatis-Plus, MariaDB, Redis | 认证服务：RBAC 多租户权限模型（7 张数据表）、6 种客户端类型混合登录（同端互斥 + 多端共存）、JWT RS256 双 Token（Access Token 2h + Refresh Token 7d + 轮换机制）、BCrypt 密码编码、Redis 登录态/黑名单/状态缓存管理、账号注册/登录/登出/Token 刷新/强制踢人/封禁解封、用户/角色/权限 CRUD 管理 API、登录日志审计 |
+| `cloudoffice-common` | - | 无 | 公共模块：统一响应体 `ApiResult<T>`、分页响应 `PageResult<T>`、异常体系（`BaseException`/`BusinessException`/`AuthException`）、全局异常处理器 `GlobalExceptionHandler`、实体基类 `BaseEntity`、SpringDoc 配置、MyBatis-Plus 自动填充配置、JSON 工具类、TokenPairDTO/LoginUserDTO、ClientTypeEnum/LoginModeEnum（4种登录模式）/RegisterModeEnum（5种注册模式）/OAuthProviderEnum（4种OAuth提供商）、RedisKeyConstants（含验证码前缀常量）、29 个错误码（含 19 个认证授权错误码 + 14 个 v0.1.6 新增 AUTH-0020~AUTH-0033） |
+| `cloudoffice-gateway` | 9000 | common, Nacos, Redis | API 网关：请求路由转发（3 条路由规则）、CORS 跨域配置、Nacos 服务发现集成、`AuthFilter` 全局认证过滤器（9 步校验流程：白名单放行 → Bearer 格式校验 → RS256 公钥验签 → tokenType 校验 → Redis 黑名单 → 登录态 → 账号状态 → 租户状态 → Header 透传；v0.1.6 新增验证码发送/密码找回白名单路径） |
+| `cloudoffice-auth-service` | 9100 | common, Nacos, MyBatis-Plus, MariaDB, Redis | 认证服务：RBAC 多租户权限模型（7 张数据表）+ OAuth 账号关联表 + 验证码记录表（共 9 表）；6 种客户端类型混合登录（同端互斥 + 多端共存）；JWT RS256 双 Token（Access Token 2h + Refresh Token 7d + 轮换机制）；BCrypt 密码编码；多模式登录（4 种：用户名密码/手机验证码/手机+密码/OAuth，LoginStrategy 策略工厂模式）；多模式注册（5 种：用户名密码/手机验证码/OAuth/手机号设用户名/OAuth补全信息，RegisterStrategy 策略工厂模式 + 两步注册机制）；认证编排服务 AuthenticationService（统一编排登录/注册流程）；密码管理（修改密码/密码找回重置，重置后自动清除所有登录态）；手机号变更（原手机可用→短信验证，原手机停用→邮箱验证）；验证码管理（VerificationCodeManager 生成/校验/频率控制 + VerificationCodeService 发送，模拟模式 mock）；Redis 登录态/黑名单/状态缓存管理；用户/角色/权限 CRUD 管理 API；登录日志审计 |
 | `cloudoffice-biz-service` | 9200 | common, Nacos, MyBatis-Plus, MariaDB | 企业服务（骨架）：企业信息/人事管理业务骨架、健康检查接口 |
 | `cloudoffice-system-service` | 9400 | common, Nacos, MyBatis-Plus, MariaDB | 系统服务（骨架）：系统配置/日志/监控/定时任务骨架、健康检查接口 |
 
@@ -142,14 +148,17 @@ cd CloudStrollOffice
 
 ```bash
 # 确保 MariaDB 已启动并运行
-# 执行 v0.1.5 认证服务数据库初始化脚本（7 张核心 RBAC 表 + 初始数据）
+# 执行 v0.1.5 基础初始化脚本（7 张核心 RBAC 表 + 初始数据）
 mariadb -u root -p < scripts/sql/auth-init-v0.1.5.sql
+
+# 执行 v0.1.6 增量初始化脚本（OAuth 账号关联表 + 验证码记录表 + 用户表扩展字段）
+mariadb -u root -p < scripts/sql/auth-init-v0.1.6.sql
 
 # 或使用通用初始化脚本（仅建库）
 mariadb -u root -p < scripts/sql/init.sql
 ```
 
-认证服务初始化脚本将创建 `cloudstroll_office_auth` 数据库及 7 张业务表：
+认证服务初始化脚本将创建 `cloudstroll_office_auth` 数据库及 9 张业务表：
 
 | 表名 | 说明 | 关联 UserStory |
 |------|------|---------------|
@@ -160,6 +169,10 @@ mariadb -u root -p < scripts/sql/init.sql
 | `t_auth_user_role` | 用户-角色关联表（多对多） | US-011 |
 | `t_auth_role_permission` | 角色-权限关联表（多对多） | US-012 |
 | `t_auth_login_log` | 登录日志审计表 | US-022 |
+| `t_auth_oauth_account` | OAuth 第三方账号关联表（v0.1.6） | US-011 |
+| `t_auth_verification_code` | 验证码记录表（v0.1.6） | US-012 |
+
+v0.1.6 增量脚本在 v0.1.5 基础上新增以上 2 张表，并通过 ALTER TABLE 为 `t_auth_user` 表扩展 5 个字段（`register_mode`、`account_settled`、`phone_verified`、`email_verified`、`last_password_change_time`）。
 
 脚本还包含初始数据：默认租户 `DEFAULT`、超级管理员角色 `SUPER_ADMIN`、管理员用户 `admin`（密码 `admin123`）及基础权限数据。
 
@@ -202,6 +215,12 @@ docker compose -f scripts/docker/docker-compose.yml up -d nacos mariadb
 | `REDIS_DATABASE` | `0` | auth/gateway | Redis 数据库编号 |
 | `RSA_PRIVATE_KEY` | (必填) | auth-service | RSA 私钥（Base64 编码），用于 JWT RS256 签名 |
 | `RSA_PUBLIC_KEY` | (必填) | auth/gateway | RSA 公钥（Base64 编码），用于 JWT RS256 验签 |
+| `VERIFICATION_CODE_MOCK` | `true` | auth-service | 验证码模拟模式（true=直接返回固定验证码，false=真实发送） |
+| `VERIFICATION_CODE_EXPIRE_SECONDS` | `300` | auth-service | 验证码过期时间（秒），默认 5 分钟 |
+| `VERIFICATION_CODE_SEND_INTERVAL` | `60` | auth-service | 验证码发送间隔（秒），默认 60 秒 |
+| `VERIFICATION_CODE_LENGTH` | `6` | auth-service | 验证码长度（数字位数） |
+| `PASSWORD_MIN_LENGTH` | `8` | auth-service | 密码最小长度 |
+| `PASSWORD_MAX_LENGTH` | `64` | auth-service | 密码最大长度 |
 
 > **RSA 密钥对生成：** 生产环境使用 OpenSSL 生成 RSA 2048 位密钥对：
 > ```bash
@@ -299,27 +318,59 @@ open http://localhost:9100/swagger-ui.html
 }
 ```
 
-### 8. 验证认证 API（v0.1.5）
+### 8. 验证认证 API（v0.1.6）
 
 ```bash
-# 注册新用户
+# 注册新用户（用户名密码模式）
 curl -X POST http://localhost:9000/api/v1/auth/register \
   -H "Content-Type: application/json" \
   -d '{
     "loginName": "newuser",
     "password": "Password123!",
     "userName": "新用户",
-    "tenantCode": "DEFAULT"
+    "tenantCode": "DEFAULT",
+    "registerMode": "USERNAME"
   }'
 
-# 登录获取 Token
+# 注册新用户（手机验证码模式）
+curl -X POST http://localhost:9000/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "phone": "13800138000",
+    "code": "123456",
+    "tenantCode": "DEFAULT",
+    "registerMode": "PHONE_CODE"
+  }'
+
+# 登录获取 Token（用户名密码）
 curl -s -X POST http://localhost:9000/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "loginName": "admin",
     "password": "admin123",
     "tenantCode": "DEFAULT",
-    "clientType": "H5"
+    "clientType": "H5",
+    "loginMode": "USERNAME_PASSWORD"
+  }' | jq .
+
+# 登录获取 Token（手机验证码）
+curl -s -X POST http://localhost:9000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "phone": "13800138000",
+    "code": "123456",
+    "tenantCode": "DEFAULT",
+    "clientType": "H5",
+    "loginMode": "PHONE_CODE"
+  }' | jq .
+
+# 发送验证码
+curl -s -X POST http://localhost:9000/api/v1/auth/verification-code/send \
+  -H "Content-Type: application/json" \
+  -d '{
+    "target": "13800138000",
+    "mode": "SMS",
+    "purpose": "LOGIN"
   }' | jq .
 
 # 使用 Access Token 访问需认证接口
@@ -333,22 +384,76 @@ curl -s -X POST http://localhost:9000/api/v1/auth/refresh \
   -H "Content-Type: application/json" \
   -d "{\"refreshToken\": \"$REFRESH_TOKEN\"}" | jq .
 
+# 修改密码
+curl -s -X PUT http://localhost:9000/api/v1/auth/password/change \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "oldPassword": "admin123",
+    "newPassword": "NewPass123!"
+  }' | jq .
+
+# 密码找回 - 发送验证码
+curl -s -X POST http://localhost:9000/api/v1/auth/password/forgot/send-code \
+  -H "Content-Type: application/json" \
+  -d '{
+    "target": "13800138000",
+    "mode": "SMS"
+  }' | jq .
+
+# 密码找回 - 重置密码
+curl -s -X POST http://localhost:9000/api/v1/auth/password/forgot/reset \
+  -H "Content-Type: application/json" \
+  -d '{
+    "target": "13800138000",
+    "mode": "SMS",
+    "code": "123456",
+    "newPassword": "NewPass123!"
+  }' | jq .
+
+# 修改手机号
+curl -s -X PUT http://localhost:9000/api/v1/auth/phone/change \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "oldPhone": "13800138000",
+    "newPhone": "13900139000",
+    "code": "123456"
+  }' | jq .
+
+# 完善账号信息（两步注册第二步）
+curl -s -X PUT http://localhost:9000/api/v1/auth/account/settlement \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "userId": 1,
+    "loginName": "newuser",
+    "password": "Password123!",
+    "phone": "13800138000"
+  }' | jq .
+
 # 登出
 curl -s -X POST http://localhost:9000/api/v1/auth/logout \
   -H "Authorization: Bearer $TOKEN" | jq .
 ```
 
-## API 接口列表（v0.1.5）
+## API 接口列表（v0.1.6）
 
 ### 认证接口
 
 | 方法 | 路径 | 说明 | 认证 |
 |------|------|------|------|
-| POST | `/api/v1/auth/register` | 用户注册 | 白名单 |
-| POST | `/api/v1/auth/login` | 用户登录 | 白名单 |
+| POST | `/api/v1/auth/register` | 用户注册（v0.1.6 新增 registerMode 字段，支持 5 种注册模式） | 白名单 |
+| POST | `/api/v1/auth/login` | 用户登录（v0.1.6 新增 loginMode/loginCode 字段，支持 4 种登录模式） | 白名单 |
 | POST | `/api/v1/auth/refresh` | 刷新 Token | 白名单 |
 | POST | `/api/v1/auth/logout` | 用户登出 | 需认证 |
 | POST | `/api/v1/auth/kickout` | 强制踢人（管理员） | 需认证 |
+| POST | `/api/v1/auth/verification-code/send` | 发送验证码（v0.1.6 新增，支持短信/邮箱） | 白名单 |
+| POST | `/api/v1/auth/password/forgot/send-code` | 密码找回-发送验证码（v0.1.6 新增） | 白名单 |
+| POST | `/api/v1/auth/password/forgot/reset` | 密码找回-重置密码（v0.1.6 新增） | 白名单 |
+| PUT | `/api/v1/auth/password/change` | 修改密码（v0.1.6 新增） | 需认证 |
+| PUT | `/api/v1/auth/phone/change` | 修改手机号（v0.1.6 新增） | 需认证 |
+| PUT | `/api/v1/auth/account/settlement` | 完善账号信息（v0.1.6 新增，两步注册第二步） | 需认证 |
 
 ### 用户管理接口
 
@@ -483,30 +588,56 @@ CloudStrollOffice/
 │       └── filter/
 │           └── AuthFilter.java     # 全局认证过滤器（9 步校验 + Header 透传）
 │
-├── cloudoffice-auth-service/       # 认证服务（端口 9100，v0.1.5 完整认证）
+├── cloudoffice-auth-service/       # 认证服务（端口 9100，v0.1.6 用户认证增强）
 │   └── src/main/java/org/cloudstrolling/cloudoffice/auth/
 │       ├── AuthApplication.java    # 启动类
-│       ├── config/                 # SecurityConfig, RsaKeyConfig, RedisConfig, MyBatisPlusConfig
+│       ├── config/
+│       │   ├── SecurityConfig.java            # Spring Security（v0.1.6 白名单扩展）
+│       │   ├── RsaKeyConfig.java              # RSA 密钥配置
+│       │   ├── RedisConfig.java               # Redis 配置
+│       │   ├── MyBatisPlusConfig.java         # MyBatis-Plus 配置
+│       │   ├── VerificationCodeProperties.java # 验证码配置（v0.1.6 新增）
+│       │   └── PasswordProperties.java        # 密码策略配置（v0.1.6 新增）
 │       ├── controller/
-│       │   ├── AuthController.java    # 登录/注册/登出/刷新/踢人 5 个端点
+│       │   ├── AuthController.java    # 12 个端点（登录/注册/刷新/登出/踢人/发送验证码/密码修改/密码找回/手机变更/账号补全）
 │       │   ├── UserController.java    # 用户 CRUD + 状态管理 + 角色分配
 │       │   ├── RoleController.java    # 角色 CRUD + 权限分配
 │       │   ├── PermissionController.java  # 权限树 CRUD
 │       │   └── HealthController.java
-│       ├── entity/                 # 7 个实体类（User/Tenant/Role/Permission/UserRole/RolePermission/LoginLog）
-│       ├── dto/                    # 7 个请求 DTO
-│       ├── mapper/                 # 7 个 Mapper 接口
+│       ├── entity/                 # 9 个实体类（User/Tenant/Role/Permission/UserRole/RolePermission/LoginLog/OAuthAccount/VerificationCode）
+│       ├── dto/                    # 12 个请求 DTO
+│       ├── mapper/                 # 9 个 Mapper 接口（含 OAuthAccountMapper、VerificationCodeMapper v0.1.6）
 │       ├── service/
-│       │   ├── LoginService.java / impl      # 登录认证（13 步完整流程）
-│       │   ├── LoginSessionService.java/impl # Redis 会话管理
-│       │   ├── LoginLogService.java/impl     # 登录日志审计
-│       │   ├── TokenService.java/impl        # 双 Token 签发 + 轮换
-│       │   ├── UserService.java/impl         # 用户管理
-│       │   ├── RoleService.java/impl         # 角色管理
-│       │   └── PermissionService.java/impl   # 权限管理
+│       │   ├── AuthenticationService.java/impl # 认证编排服务（v0.1.6 新增，统一编排登录/注册）
+│       │   ├── LoginService.java / impl        # 登录认证（13 步完整流程）
+│       │   ├── LoginSessionService.java/impl   # Redis 会话管理
+│       │   ├── LoginLogService.java/impl       # 登录日志审计
+│       │   ├── TokenService.java/impl          # 双 Token 签发 + 轮换
+│       │   ├── PasswordService.java/impl       # 密码管理（v0.1.6 新增）
+│       │   ├── VerificationCodeManager.java/impl # 验证码管理器（v0.1.6 新增，生成/校验/频率控制）
+│       │   ├── VerificationCodeService.java/impl # 验证码发送服务（v0.1.6 新增）
+│       │   ├── SimulatedVerificationCodeService.java # 模拟验证码服务（v0.1.6 新增，开发环境使用）
+│       │   ├── UserService.java/impl           # 用户管理
+│       │   ├── RoleService.java/impl           # 角色管理
+│       │   └── PermissionService.java/impl     # 权限管理
+│       ├── strategy/                # 策略模式（v0.1.6 新增）
+│       │   ├── login/               # 登录策略
+│       │   │   ├── LoginStrategy.java              # 登录策略接口
+│       │   │   ├── LoginStrategyFactory.java       # 登录策略工厂
+│       │   │   ├── UsernamePasswordLoginStrategy.java   # 用户名密码登录
+│       │   │   ├── PhoneCodeLoginStrategy.java         # 手机验证码登录
+│       │   │   ├── PhonePasswordLoginStrategy.java     # 手机+密码登录
+│       │   │   └── OAuthLoginStrategy.java             # OAuth 登录
+│       │   └── register/            # 注册策略
+│       │       ├── RegisterStrategy.java               # 注册策略接口
+│       │       ├── RegisterStrategyFactory.java        # 注册策略工厂
+│       │       ├── UsernameRegisterStrategy.java       # 用户名密码注册
+│       │       ├── PhoneCodeRegisterStrategy.java      # 手机验证码注册
+│       │       ├── OAuthRegisterStrategy.java          # OAuth 注册
+│       │       ├── PhoneSetUsernameRegisterStrategy.java # 手机号设用户名注册
+│       │       └── OAuthSetInfoRegisterStrategy.java    # OAuth 补全信息注册
 │       └── util/
-│           ├── JwtUtils.java         # JWT RS256 双 Token 工具类
-│           └── ...
+│           └── JwtUtils.java         # JWT RS256 双 Token 工具类
 │
 ├── cloudoffice-biz-service/        # 企业服务（端口 9200）
 │   └── src/main/java/org/cloudstrolling/cloudoffice/biz/
@@ -575,6 +706,7 @@ CloudStrollOffice/
 
 | 版本 | 阶段 | 计划内容 |
 |------|------|---------|
+| v0.1.6 | 用户认证增强 ✅ | 多模式登录（4种登录策略）+ 多模式注册（5种注册策略）+ 两步注册/账号补全 + 密码管理（修改/找回）+ 手机号变更 + 验证码管理（模拟/真实发送）+ 认证编排服务 AuthenticationService + 9 张数据表 + 234 个单元测试 |
 | v0.1.5 | 登录认证与权限管理 ✅ | RBAC 多租户权限模型（7 表）、6 种客户端混合登录、JWT RS256 双 Token、Redis 登录态管理、网关 AuthFilter 全局认证、登录日志审计、用户/角色/权限管理 API、351 个单元测试 |
 | v0.1.4 | 系统服务搭建 ✅ | 系统服务模块（cloudoffice-system-service）完整骨架、健康检查端点、单元测试、Docker 部署配置 |
 | v0.1.0 | 基础骨架搭建 ✅ | Maven 多模块架构、公共组件、API 网关、认证服务骨架、业务服务骨架、Docker 部署模板 |
