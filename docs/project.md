@@ -4,7 +4,7 @@
 **项目名称：** CloudStrollOffice
 **编程语言：** Java 21 (OpenJDK 21 LTS)
 **项目类型：** 微服务应用程序（Spring Boot + Spring Cloud）
-**当前进度：** impm-编码完成（用户认证增强 v0.1.6）— 全部 206 个测试通过，代码已提交至分支 cso-v0.1.6
+**当前进度：** ✅ 全部完成（用户认证增强 v0.1.6）— 全部 234 个测试通过，分支 cso-v0.1.6 已合并至 master（3 个提交：611010a → 9a89217 → f0426e3）
 **本地化语言：** 简体中文
 **项目总体介绍：** 云漫智企（CloudStrollOffice）是一个基于 Java 21 + Spring Boot 3.2.x + Spring Cloud 2023.x 技术栈构建的微服务互联网应用程序。采用 Maven 多模块架构，由认证服务（auth-service）、企业服务（biz-service）、系统服务（system-service）、API 网关（gateway）及公共模块（common）组成，为企业提供企业信息管理、人事管理、工作流审批、薪酬管理、统一认证授权等综合服务能力。数据库采用 MariaDB 10.6 (LTS)，缓存使用 Redis 7.2.x，消息队列使用 RocketMQ 5.1.x，注册中心和配置中心使用 Nacos 2.3.x。
 
@@ -585,7 +585,7 @@ cloudoffice-system-service/src/test/resources/
 
 ---
 
-> **说明：** 项目地图持续更新中，反映当前 v0.1.6 阶段的代码实现状态。
+> **说明：** 项目地图持续更新中，反映当前 v0.1.6 阶段的代码实现状态。v0.1.6 已全部完成并合并至 master。
 
 ---
 
@@ -594,6 +594,7 @@ cloudoffice-system-service/src/test/resources/
 | 日期 | 版本 | 变更说明 |
 |------|------|----------|
 | 2026-06-23 | v0.1.5 | 项目地图更新 - 认证服务源码结构全面更新（DTO/Entity/Mapper/Service/Impl），新增 LoginRequest/LoginServiceImpl(login)/LoginLogServiceImpl(recordLoginSuccess/Failure)/JwtUtils(getter) |
+| 2026-06-24 | v0.1.6 | 全部完成 - README/部署指南/项目地图文档更新，分支cso-v0.1.6合并至master，回归测试234个全部通过 |
 | 2026-06-23 | v0.1.6 | 编码完成 - 用户认证增强开发（多模式注册/登录/密码管理/手机号变更/验证码管理），36个TASK全部实现，206个测试全部通过，52个文件变更 |
 | 2026-06-22 | v0.1.5 | 项目文档更新 - 登录认证与权限管理开发 |
 | 2026-06-22 | v0.1.5 | 项目地图更新 - ErrorCode枚举新增AUTH-0001~AUTH-0019认证错误码（共29个），ErrorCodeTest同步新增19个认证错误码测试方法 |
