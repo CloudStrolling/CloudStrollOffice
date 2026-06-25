@@ -1,4 +1,5 @@
 docs/prompts/
+scripts/deploy-env.ps1
 
 # ====================== 操作系统文件 ======================
 # Mac
