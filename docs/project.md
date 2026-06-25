@@ -4,7 +4,11 @@
 **项目名称：** CloudStrollOffice
 **编程语言：** Java 21 (OpenJDK 21 LTS)、Dart 3.x (Flutter)
 **项目类型：** 微服务应用程序（Spring Boot + Spring Cloud）
+<<<<<<< HEAD
 **当前进度：** 🚧 开发中（v0.2.0 Flutter前端子项目——任务清单已生成）
+=======
+**当前进度：** 🚧 开发中（管理中台 v0.1.7）— [impm-task] 任务清单已完成，共23个任务，涵盖admin-service模块搭建（TASK-001~002）、网关路由配置（TASK-003）、auth-service内部管理API扩展（TASK-004~005）、OpenFeign客户端与配置（TASK-006~007）、管理员认证与权限校验（TASK-008~010）、异常体系（TASK-011）、用户管理DTO/VO/Service/Controller（TASK-012~015）、AOP审计日志体系（TASK-016~020）、DDL与初始化SQL脚本（TASK-021~022）、全量单元测试（TASK-023）
+>>>>>>> cso-v0.1.7
 **本地化语言：** 简体中文
 **项目总体介绍：** 云漫智企（CloudStrollOffice）是一个基于 Java 21 + Spring Boot 3.2.x + Spring Cloud 2023.x 技术栈构建的微服务互联网应用程序。采用 Maven 多模块架构，由认证服务（auth-service）、企业服务（biz-service）、系统服务（system-service）、API 网关（gateway）及公共模块（common）组成，为企业提供企业信息管理、人事管理、工作流审批、薪酬管理、统一认证授权等综合服务能力。数据库采用 MariaDB 10.6 (LTS)，缓存使用 Redis 7.2.x，消息队列使用 RocketMQ 5.1.x，注册中心和配置中心使用 Nacos 2.3.x。
 
