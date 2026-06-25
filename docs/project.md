@@ -2,9 +2,9 @@
 
 **项目中文名称：** 云漫智企
 **项目名称：** CloudStrollOffice
-**编程语言：** Java 21 (OpenJDK 21 LTS)
+**编程语言：** Java 21 (OpenJDK 21 LTS)、Dart 3.x (Flutter)
 **项目类型：** 微服务应用程序（Spring Boot + Spring Cloud）
-**当前进度：** ✅ 全部完成（用户认证增强 v0.1.6）— 全部 234 个测试通过，分支 cso-v0.1.6 已合并至 master（3 个提交：611010a → 9a89217 → f0426e3）
+**当前进度：** 🚧 开发中（v0.2.0 Flutter前端子项目——任务清单已生成）
 **本地化语言：** 简体中文
 **项目总体介绍：** 云漫智企（CloudStrollOffice）是一个基于 Java 21 + Spring Boot 3.2.x + Spring Cloud 2023.x 技术栈构建的微服务互联网应用程序。采用 Maven 多模块架构，由认证服务（auth-service）、企业服务（biz-service）、系统服务（system-service）、API 网关（gateway）及公共模块（common）组成，为企业提供企业信息管理、人事管理、工作流审批、薪酬管理、统一认证授权等综合服务能力。数据库采用 MariaDB 10.6 (LTS)，缓存使用 Redis 7.2.x，消息队列使用 RocketMQ 5.1.x，注册中心和配置中心使用 Nacos 2.3.x。
 
@@ -585,7 +585,133 @@ cloudoffice-system-service/src/test/resources/
 
 ---
 
-> **说明：** 项目地图持续更新中，反映当前 v0.1.6 阶段的代码实现状态。v0.1.6 已全部完成并合并至 master。
+> **说明：** 项目地图持续更新中，反映当前 v0.2.0 阶段的代码实现状态。Java 微服务后端已迭代至 v0.1.7，Flutter 前端子项目 v0.2.0 已全部实现。
+
+---
+
+## cloudoffice-flutter-app/ Flutter 前端子项目（v0.2.0）
+
+### 项目信息
+
+| 属性 | 值 |
+|------|-----|
+| 项目名称 | `cloudoffice-flutter-app` |
+| 编程语言 | Dart 3.x |
+| Flutter SDK | D:\jenemy\develop\flutter |
+| 目标平台 | Web + Windows |
+| 功能范围 | 注册、登录、找回密码（v0.2.0） |
+
+### 实际目录结构
+
+```
+cloudoffice-flutter-app/
+├── lib/
+│   ├── main.dart                    # 应用入口（runApp → CloudStrollOfficeApp）
+│   ├── app.dart                     # MaterialApp 配置（MultiProvider + GoRouter）
+│   ├── config/                      # 配置（API 地址、主题等）
+│   │   ├── api_config.dart          # API 配置类（baseUrl/timeout/clientType）
+│   │   └── theme_config.dart        # 主题配置（Material 3 主题）
+│   ├── core/                        # 核心层
+│   │   ├── http/                    # HTTP 客户端封装
+│   │   │   ├── api_client.dart      # Dio 单例封装
+│   │   │   ├── api_interceptor.dart # 拦截器（Token 注入 + 401 自动刷新）
+│   │   │   └── api_result.dart      # 通用 ApiResult<T> 响应模型
+│   │   ├── router/                  # 路由配置
+│   │   │   └── app_router.dart      # GoRouter 路由表 + 登录守卫
+│   │   ├── storage/                 # 本地存储
+│   │   │   └── secure_storage.dart  # 安全存储封装（flutter_secure_storage）
+│   │   └── utils/                   # 工具类
+│   │       └── validators.dart      # 表单校验（9 个函数 + 密码强度）
+│   ├── features/                    # 功能模块
+│   │   ├── auth/                    # 认证功能
+│   │   │   ├── models/             # 7 个数据模型
+│   │   │   │   ├── login_request.dart
+│   │   │   │   ├── register_request.dart
+│   │   │   │   ├── token_pair.dart
+│   │   │   │   ├── user_info.dart
+│   │   │   │   ├── send_verification_code_request.dart
+│   │   │   │   ├── password_forgot_request.dart
+│   │   │   │   └── register_result.dart
+│   │   │   ├── providers/          # 状态管理
+│   │   │   │   ├── auth_provider.dart          # 登录/注册/登出状态 + Token持久化
+│   │   │   │   └── forgot_password_provider.dart # 两步找回密码流程
+│   │   │   ├── repositories/       # 数据仓库
+│   │   │   │   └── auth_repository.dart       # 6 个认证 API 调用
+│   │   │   └── screens/            # 页面
+│   │   │       ├── login_screen.dart           # 登录页面
+│   │   │       ├── register_screen.dart        # 注册页面
+│   │   │       └── forgot_password_screen.dart # 找回密码页面
+│   │   └── home/                    # 首页
+│   │       ├── providers/
+│   │       │   └── home_provider.dart         # 用户信息 + 退出登录
+│   │       └── screens/
+│   │           └── home_screen.dart
+│   └── shared/                      # 共享组件
+│       ├── widgets/                 # 5 个公共组件
+│       │   ├── custom_text_field.dart
+│       │   ├── password_field.dart
+│       │   ├── loading_button.dart
+│       │   ├── password_strength_indicator.dart
+│       │   └── verification_code_field.dart
+│       └── constants/               # 常量
+│           └── app_constants.dart
+├── test/                            # 测试（182 个用例）
+│   ├── test_helpers.dart            # 测试辅助类（StubAuthRepository）
+│   ├── widget_test.dart             # 应用冒烟测试
+│   ├── core/
+│   │   ├── http/
+│   │   │   ├── api_client_test.dart
+│   │   │   └── api_result_test.dart
+│   │   ├── storage/
+│   │   │   └── secure_storage_test.dart
+│   │   └── utils/
+│   │       └── validators_test.dart
+│   └── features/
+│       ├── auth/
+│       │   ├── models/             # 7 个模型测试
+│       │   ├── repositories/
+│       │   │   └── auth_repository_test.dart
+│       │   └── providers/
+│       │       ├── auth_provider_test.dart
+│       │       └── forgot_password_provider_test.dart
+│       └── home/
+│           └── providers/
+│               └── home_provider_test.dart
+├── web/                             # Web 平台配置（title: 云漫智企）
+├── windows/                         # Windows 平台配置（窗口标题: 云漫智企）
+├── pubspec.yaml                     # 依赖配置（dio/provider/go_router/flutter_secure_storage/shared_preferences）
+├── analysis_options.yaml            # 代码分析配置
+└── README.md                        # 项目说明
+```
+
+### 关键说明
+
+| 类/文件 | 路径 | 功能描述 |
+|---------|------|----------|
+| `main.dart` | `lib/main.dart` | Flutter 应用入口，runApp(CloudStrollOfficeApp()) |
+| `app.dart` | `lib/app.dart` | MaterialApp.router 配置：MultiProvider（AuthProvider/ForgotPasswordProvider/HomeProvider）+ GoRouter + Material 3 主题 |
+| `api_config.dart` | `lib/config/api_config.dart` | API 基础配置：baseUrl/gateway:9000、connectTimeout 15s、receiveTimeout 30s、clientType 平台自适应 |
+| `theme_config.dart` | `lib/config/theme_config.dart` | Material Design 3 主题：ColorScheme.fromSeed(primary: 0xFF1976D2)、InputDecoration/Button/Card/Text 全局样式 |
+| `api_client.dart` | `lib/core/http/api_client.dart` | Dio 单例封装：baseUrl/超时/默认请求头、get/post/put/delete 方法、注册 ApiInterceptor |
+| `api_interceptor.dart` | `lib/core/http/api_interceptor.dart` | Token 注入（白名单路径跳过）、401 自动刷新（并发锁+等待队列）、刷新失败清除 Token |
+| `api_result.dart` | `lib/core/http/api_result.dart` | 泛型 ApiResult<T>：fromJson/fromJsonList/toJson、isSuccess()、success()/error() 工厂 |
+| `app_router.dart` | `lib/core/router/app_router.dart` | GoRouter 4 路由（/login /register /forgot-password /）+ 登录守卫：未登录→/login，已登录→/ |
+| `secure_storage.dart` | `lib/core/storage/secure_storage.dart` | flutter_secure_storage 单例封装：saveTokenPair/getAccessToken/getRefreshToken/hasTokens/clearTokens |
+| `validators.dart` | `lib/core/utils/validators.dart` | 9 个校验函数：validateLoginName(4-64)/Password(8-64)/ConfirmPassword/Phone(11位)/Code(6位)/UserName(2-50)/Email + calculatePasswordStrength |
+| `auth_repository.dart` | `lib/features/auth/repositories/auth_repository.dart` | 6 个 API 调用：login/register/refreshToken/logout/sendVerificationCode/forgotPasswordReset，统一 DioException→ApiResult.error 转换 |
+| `auth_provider.dart` | `lib/features/auth/providers/auth_provider.dart` | 认证状态管理：login/loginWithSmsCode/register/registerWithPhone/logout/checkLoginStatus，Token 自动持久化 |
+| `forgot_password_provider.dart` | `lib/features/auth/providers/forgot_password_provider.dart` | 两步找回密码：sendVerificationCode + verifyIdentity + resetPassword，验证码倒计时 60s，成功倒计时 3s，Timer 自动释放 |
+| `home_provider.dart` | `lib/features/home/providers/home_provider.dart` | 首页状态：loadUserInfo/logout，API 失败仍清除本地 Token（离线退出） |
+| `login_screen.dart` | `lib/features/auth/screens/login_screen.dart` | 登录页：登录名+密码输入、"记住我"（SharedPreferences 持久化）、注册/忘记密码链接、LoadingButton 防重复提交 |
+| `register_screen.dart` | `lib/features/auth/screens/register_screen.dart` | 注册页：用户名+真实姓名+密码+确认密码+密码强度指示器、实时 onUserInteraction 校验 |
+| `forgot_password_screen.dart` | `lib/features/auth/screens/forgot_password_screen.dart` | 两步找回密码：Step1 身份验证（VerificationCodeField）、Step2 重置密码（PasswordField+PasswordStrengthIndicator）、步骤指示器 |
+| `home_screen.dart` | `lib/features/home/screens/home_screen.dart` | 首页：用户信息卡片（脱敏手机号/邮箱）、退出登录确认对话框、加载中状态 |
+| `custom_text_field.dart` | `lib/shared/widgets/custom_text_field.dart` | 统一封装的 TextFormField：prefixIcon/suffixIcon/validator/onChanged 等 Material 3 风格 |
+| `password_field.dart` | `lib/shared/widgets/password_field.dart` | 密码输入框：显示/隐藏密码切换（visibility/visibility_off 图标） |
+| `loading_button.dart` | `lib/shared/widgets/loading_button.dart` | 加载按钮：isLoading 显示 CircularProgressIndicator 并禁用、full width 48px height |
+| `password_strength_indicator.dart` | `lib/shared/widgets/password_strength_indicator.dart` | 密码强度实时指示：弱(红)/中(橙)/强(绿) 三级 + LinearProgressIndicator |
+| `verification_code_field.dart` | `lib/shared/widgets/verification_code_field.dart` | 验证码输入组件：手机号输入 + 获取验证码按钮 + 6位验证码输入、倒计时状态外部控制 |
+| `app_constants.dart` | `lib/shared/constants/app_constants.dart` | 应用常量：kPasswordMinLength=8、kPasswordMaxLength=64、kCountdownSeconds=60、kSuccessCountdownSeconds=3、kCodeLength=6 |
 
 ---
 
@@ -593,6 +719,9 @@ cloudoffice-system-service/src/test/resources/
 
 | 日期 | 版本 | 变更说明 |
 |------|------|----------|
+| 2026-06-24 | v0.2.0 | 架构设计更新 - 基于 v0.2.0 PRD 更新 architecture.md，新增 Flutter 前端架构（2.7 模块设计、技术选型、ADR-026、部署架构、目录结构） |
+| 2026-06-24 | v0.2.0 | 项目地图更新 - 新增 Flutter 前端子项目 (cloudoffice-flutter-app) 目录规划，支持 Web + Windows 双平台 |
+| 2026-06-24 | v0.2.0 | Flutter 前端 v0.2.0 全部编码完成 - 26 个 TASK 全部实现（core层/7个数据模型/AuthRepository/3个Provider/4个页面/5个共享组件/AppRouter/app入口），182 个单元测试全部通过，flutter analyze 零错误零警告 |
 | 2026-06-23 | v0.1.5 | 项目地图更新 - 认证服务源码结构全面更新（DTO/Entity/Mapper/Service/Impl），新增 LoginRequest/LoginServiceImpl(login)/LoginLogServiceImpl(recordLoginSuccess/Failure)/JwtUtils(getter) |
 | 2026-06-24 | v0.1.6 | 全部完成 - README/部署指南/项目地图文档更新，分支cso-v0.1.6合并至master，回归测试234个全部通过 |
 | 2026-06-23 | v0.1.6 | 编码完成 - 用户认证增强开发（多模式注册/登录/密码管理/手机号变更/验证码管理），36个TASK全部实现，206个测试全部通过，52个文件变更 |

@@ -203,6 +203,7 @@ bootstrap-*.yaml
 # Windows
 *.lib
 *.exp
+*.lnk
 # Linux
 *.so
 # Mac

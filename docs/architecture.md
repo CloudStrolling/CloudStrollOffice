@@ -2,8 +2,8 @@
 
 **项目中文名称：** 云漫智企
 **项目名称：** CloudStrollOffice
-**版本号：** v0.1.6
-**日期：** 2026-06-23
+**版本号：** v0.2.0
+**日期：** 2026-06-24
 
 ---
 
@@ -11,19 +11,21 @@
 
 ### 1.1 系统定位
 
-云漫智企（CloudStrollOffice）是一个基于 Java 21 + Spring Boot 3.2.x + Spring Cloud 2023.x 技术栈构建的微服务企业管理平台，旨在为企业提供企业信息管理、人事管理、工作流审批、薪酬管理、统一认证授权等综合服务能力。v0.1.0 阶段完成基础骨架搭建，v0.1.4 阶段完成系统服务模块搭建，v0.1.5 阶段构建了完整的登录认证与权限管理系统，包括 RBAC 多租户权限模型、多端混合登录、JWT + Redis 双重会话管理、双 Token 续签机制和登录日志审计等核心能力。v0.1.6 阶段完成用户认证能力全面增强，引入策略模式实现多模式注册/登录（用户名密码/手机验证码/手机密码/OAuth）、统一认证服务层（AuthenticationService）、密码管理、手机号变更、验证码管理等核心能力，使平台认证体系覆盖主流互联网应用的用户接入场景。
+云漫智企（CloudStrollOffice）是一个基于 Java 21 + Spring Boot 3.2.x + Spring Cloud 2023.x 技术栈构建的微服务企业管理平台，旨在为企业提供企业信息管理、人事管理、工作流审批、薪酬管理、统一认证授权等综合服务能力。v0.1.0 阶段完成基础骨架搭建，v0.1.4 阶段完成系统服务模块搭建，v0.1.5 阶段构建了完整的登录认证与权限管理系统，包括 RBAC 多租户权限模型、多端混合登录、JWT + Redis 双重会话管理、双 Token 续签机制和登录日志审计等核心能力。v0.1.6 阶段完成用户认证能力全面增强，引入策略模式实现多模式注册/登录（用户名密码/手机验证码/手机密码/OAuth）、统一认证服务层（AuthenticationService）、密码管理、手机号变更、验证码管理等核心能力，使平台认证体系覆盖主流互联网应用的用户接入场景。v0.1.7 阶段新增管理中台服务（`cloudoffice-admin-service`），提供管理员身份认证与角色权限校验、用户管理 CRUD（创建/查询/编辑/启用禁用/重置密码/角色分配）、管理员操作审计日志等核心能力，通过 OpenFeign 声明式 HTTP 客户端与 auth-service 进行服务间通信，并建立独立数据库 `cloudstroll_office_admin` 存储审计日志等管理后台数据。v0.2.0 阶段新增 Flutter 跨平台前端子项目（`cloudoffice-flutter-app`），面向最终用户提供 Web（Chrome）和 Windows（VS2022）双平台前端应用，实现用户注册、登录、找回密码等基础认证交互能力，与后端认证微服务通过 API 网关对接，形成完整的用户认证闭环。
 
 ### 1.2 架构风格
 
 - **选用风格：** 微服务架构（Microservices Architecture）
 - **选型理由：** 传统企业管理软件多为单体架构，存在扩展困难、技术栈陈旧、模块间耦合严重等问题。微服务架构通过服务解耦与独立部署，支持各业务域独立开发、测试、部署和扩展，符合 PRD 中 "微服务优先" 的核心设计理念，满足 NFR-003（服务间解耦）的要求。
+- **前端架构风格：** Screen-Provider-Repository 三层架构（Flutter 前端），UI 层（Screen）↔ 状态管理层（Provider）↔ 数据仓库层（Repository）↔ HTTP 客户端层（ApiClient）严格分层，各层职责单一、可独立测试
+- **跨平台策略：** Flutter 跨平台 UI 框架，一套 Dart 代码同时支持 Web（Chrome）和 Windows（VS2022）双平台，不引入平台特定代码（除非绝对必要），保持跨平台代码统一
 
 ### 1.3 架构层次图
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────┐
 │                              客户端层 (Client)                            │
-│       Flutter Desktop / Mobile / Web / 微信小程序 / 第三方 API              │
+│   Flutter Web (Chrome)  │  Flutter Windows (VS2022)  │  第三方 API       │
 └──────────────────────────────────────────────────────────────────────────┘
                                   │
                                   ▼
@@ -35,44 +37,51 @@
 │           │  AuthFilter：白名单放行 → RS256公钥验签 → Redis黑名单校验  │   │
 │           │  → 登录态校验 → 账号/租户状态校验 → 用户信息Header透传     │   │
 │           └──────────────────────────────────────────────────────────┘   │
+│           路由规则扩展(v0.1.7)：/api/v1/admin/** → admin-service          │
 └──────────────────────────────────────────────────────────────────────────┘
                                   │
-        ┌─────────────────────────┼─────────────────────┐
-        ▼                         ▼
-┌──────────────────────────────┐   ┌──────────────────────────┐
-│  认证服务                      │   │   企业服务                 │
-│  auth-service                │   │   biz-service             │
-│  (端口 9100)                  │   │   (端口 9200)             │
-│  RBAC + 双Token              │   │   企业信息/人事管理          │
-│  多端混合登录                  │   │   v0.1.0 骨架阶段          │
-│  登录日志审计                  │   │                           │
-│  v0.1.5 完整实现              │   │                           │
-│  策略模式认证架构(v0.1.6)：     │   │                           │
-│  ┌─ 统一认证服务层(AuthSvc)    │   │                           │
-│  │  LoginStrategy x4          │   │                           │
-│  │  RegisterStrategy x5      │   │                           │
-│  │  密码管理/手机号变更         │   │                           │
-│  │  验证码管理                 │   │                           │
-│  └───────────────────────────┘   │                           │
-└──────────────────────────────┘   └──────────────────────────┘
-        │                       │
-        ▼                       ▼
-┌──────────────────────────────────────────────────────────────────────────┐
-│                          系统服务 (system-service)                         │
-│                          (端口 9400)                                       │
-│                     系统配置 │ 日志 │ 监控 │ 定时任务                        │
-│                    v0.1.4 完成搭建（含健康检查 + 单元测试）                    │
-└──────────────────────────────────────────────────────────────────────────┘
+        ┌─────────────────────────┼──────────────────┬──────────────────┐
+        ▼                         ▼                  ▼
+┌──────────────────────────────┐   ┌──────────────────────────┐   ┌──────────────────────────┐
+│  认证服务                      │   │   企业服务                 │   │  管理中台服务              │
+│  auth-service                │   │   biz-service             │   │  admin-service            │
+│  (端口 9100)                  │   │   (端口 9200)             │   │  (端口 9500)              │
+│  RBAC + 双Token              │   │   企业信息/人事管理          │   │  管理员认证与权限校验       │
+│  多端混合登录                  │   │   v0.1.0 骨架阶段          │   │  用户管理CRUD             │
+│  登录日志审计                  │   │                           │   │  操作审计日志              │
+│  v0.1.5 完整实现              │   │                           │   │  v0.1.7 新增              │
+│  策略模式认证架构(v0.1.6)：     │   │                           │   │                          │
+│  ┌─ 统一认证服务层(AuthSvc)    │   │                           │   │  ┌─ AdminAuthFilter       │
+│  │  LoginStrategy x4          │   │                           │   │  │  AdminContext           │
+│  │  RegisterStrategy x5      │   │                           │   │  │  AuthServiceClient      │
+│  │  密码管理/手机号变更         │   │                           │   │  │  @AdminAuditLog AOP    │
+│  │  验证码管理                 │   │                           │   │  └─────────────────────  │
+│  └───────────────────────────┘   │                           │   │                          │
+│                                  │◄──── OpenFeign ──────────│                          │
+│  auth-service 扩展(v0.1.7)：     │                           │                          │
+│  ┌─ AdminUserController         │                           │                          │
+│  │  (供admin-service内调API)    │                           │                          │
+│  └───────────────────────────┘   │                           │                          │
+└──────────────────────────────┘   └──────────────────────────┘   └──────────────────────────┘
+        │                       │                                  │
+        ▼                       ▼                                  ▼
+┌──────────────────────────────────────────────────────────────────────────────────────────┐
+│                          系统服务 (system-service)                                         │
+│                          (端口 9400)                                                       │
+│                     系统配置 │ 日志 │ 监控 │ 定时任务                                        │
+│                    v0.1.4 完成搭建（含健康检查 + 单元测试）                                    │
+└──────────────────────────────────────────────────────────────────────────────────────────┘
                                   │
-        ┌─────────────────────────┼─────────────────────────────┐
-        ▼                         ▼                             ▼
-┌─────────────────┐   ┌──────────────────────┐   ┌──────────────────────────┐
-│   MariaDB 10.6  │   │   Redis 7.2.x         │   │   RocketMQ 5.1.x         │
-│  数据库层         │   │  缓存层（本期启用）      │   │  消息队列层（本期预留）     │
-│  每服务独立数据库  │   │  Token黑名单/登录态    │   │                          │
-│  7张新表(v0.1.5) │   │  账号/租户状态缓存     │   │                          │
-│  3张新表(v0.1.6) │   │  验证码缓存(v0.1.6)   │   │                          │
-└─────────────────┘   └──────────────────────┘   └──────────────────────────┘
+        ┌─────────────────────────┼─────────────────────────────┬────────────────┐
+        ▼                         ▼                             ▼                ▼
+┌─────────────────┐   ┌──────────────────────┐   ┌──────────────────────────┐   ┌──────────────────────┐
+│   MariaDB 10.6  │   │   Redis 7.2.x         │   │   RocketMQ 5.1.x         │   │   MariaDB 10.6       │
+│ cloudstroll_    │   │  缓存层（本期启用）      │   │  消息队列层（本期预留）     │   │ cloudstroll_office_  │
+│ office_auth     │   │  Token黑名单/登录态    │   │                          │   │ admin (v0.1.7 新增)  │
+│ 7张表(v0.1.5)   │   │  账号/租户状态缓存     │   │                          │   │ 审计日志等管理数据     │
+│ 3张新表(v0.1.6) │   │  验证码缓存(v0.1.6)   │   │                          │   │                    │
+│ auth-service DB │   │                      │   │                          │   │ admin-service DB    │
+└─────────────────┘   └──────────────────────┘   └──────────────────────────┘   └──────────────────────┘
                                   │
 ┌──────────────────────────────────────────────────────────────────────────┐
 │                         基础设施层                                          │
@@ -90,9 +99,16 @@
 | 无状态+有状态混合校验 | 网关层通过 RS256 公钥本地验签（无状态）快速校验 Token，同时通过 Redis 查询登录态和黑名单（有状态），兼顾性能与安全 |
 | 多租户隔离 | 所有认证数据（用户、角色、权限）均按租户 ID 隔离，用户名在租户内唯一，租户间数据互不可见 |
 | 多端会话管理 | 以「用户 ID + 客户端类型」为维度管理登录会话，同类型端互斥（PC/WEB/MOBILE/MINI_PROGRAM），不同类型端可共存 |
-| 渐进演进 | v0.1.0 搭建骨架，v0.1.4 新增系统服务，v0.1.5 完成完整认证体系，v0.1.6 增强认证能力（策略模式多模式注册/登录、密码管理、手机号变更、验证码管理） |
+| 渐进演进 | v0.1.0 搭建骨架，v0.1.4 新增系统服务，v0.1.5 完成完整认证体系，v0.1.6 增强认证能力（策略模式多模式注册/登录、密码管理、手机号变更、验证码管理），v0.1.7 新增管理中台服务（管理员认证、用户管理 CRUD、审计日志） |
 | 策略模式解耦 | 登录和注册的多种方式通过策略模式实现，新增认证方式只需新增策略实现类并注册到工厂，不修改现有核心逻辑（v0.1.6 新增） |
 | 统一认证编排 | `AuthenticationService` 统一编排凭证校验与 Token 签发/会话管理，所有登录方式共享同一套后处理流程（v0.1.6 新增） |
+| 权限南向校验 | admin-service 负责管理员身份认证与角色权限校验，auth-service 负责用户数据持久化，服务间通过 OpenFeign 解耦调用，禁止跨服务直接访问数据库（v0.1.7 新增） |
+| 管理后台 API 隔离 | 所有管理后台 API 统一使用 `/api/v1/admin/` 前缀，通过网关路由隔离，与普通用户 API 严格分离，新增管理资源仅需新增 Controller 和 Service（v0.1.7 新增） |
+| AOP 审计日志 | 管理员关键操作（创建用户、禁用用户、重置密码、角色分配）通过 `@AdminAuditLog` 注解 + AOP 切面自动记录审计日志，不侵入业务逻辑代码（v0.1.7 新增） |
+| 分层解耦前端 | Flutter 前端采用 Screen-Provider-Repository 三层架构，UI 层与业务逻辑严格分离，各层职责单一、可独立测试（v0.2.0 新增） |
+| 跨平台一致性 | 基于 Flutter 跨平台框架，同一套 Dart 代码在 Web（Chrome）和 Windows（VS2022）双平台上运行表现一致，UI 布局和行为无明显差异（v0.2.0 新增） |
+| Token 自动刷新 | Flutter 前端基于 Dio 拦截器实现 Access Token 过期自动刷新（Refresh Token Rotation），后台静默完成 Token 轮换，不中断用户操作（v0.2.0 新增） |
+| 前端安全存储 | Token 等敏感数据使用 flutter_secure_storage 安全存储，Web 平台回退加密存储方案，不存储在普通 SharedPreferences 中（v0.2.0 新增） |
 
 ---
 
@@ -128,12 +144,14 @@
     - 校验流程：RS256 公钥验签 → Redis 黑名单查询 → Redis 登录态查询 → 账号状态校验 → 租户状态校验
     - 校验通过后向请求头透传用户信息：`X-User-Id`、`X-Tenant-Id`、`X-User-Name`、`X-Client-Type`、`X-Roles`、`X-Permissions`
     - 白名单默认路径：`POST /api/v1/auth/login`、`POST /api/v1/auth/register`、`POST /api/v1/auth/refresh`、`GET /api/v1/auth/health`、`POST /api/v1/auth/verification-code/send`、`POST /api/v1/auth/password/forgot/send-code`、`POST /api/v1/auth/password/forgot/reset`、`/swagger-ui/**`、`/v3/api-docs/**`、`/favicon.ico`
+    - **v0.1.7 更新：** 白名单路径扩展新增 `GET /api/v1/admin/health`，health 检查路径无需管理员认证
   - **Redis 集成**：配置 `ReactiveRedisTemplate<String, Object>` Bean，使用非阻塞响应式 Redis 客户端
   - **RSA 公钥加载**：从配置/环境变量加载 RS256 公钥用于 Token 验签
 - **路由规则：**
   - `/api/v1/auth/**` → `cloudoffice-auth-service`
   - `/api/v1/biz/**` → `cloudoffice-biz-service`
   - `/api/v1/system/**` → `cloudoffice-system-service`
+  - `/api/v1/admin/**` → `cloudoffice-admin-service`（v0.1.7 新增）
 
 ### 2.3 认证服务（cloudoffice-auth-service）
 
@@ -278,38 +296,114 @@
 - **已实现内容（v0.1.4）**（不变）
 - **说明：** v0.1.4 完成基础框架搭建，定时任务框架选型后续决策，本期不做绑定
 
+### 2.6 管理中台服务（cloudoffice-admin-service）
+
+- **职责：** 统一的管理后台后端服务，提供管理员身份认证与角色权限校验、用户管理 CRUD（分页查询/详情/创建/编辑/启用禁用/重置密码/角色分配）、管理员操作审计日志等功能。所有管理 API 统一使用 `/api/v1/admin/` 路径前缀，通过网关路由严格隔离。
+- **依赖：** Spring Boot Starter Web、Nacos Discovery/Config、MyBatis-Plus、MariaDB Driver、Spring Cloud OpenFeign、Spring Cloud LoadBalancer、Spring Boot Starter AOP、common 模块
+- **端口：** 9500
+- **数据源：** `cloudstroll_office_admin`（独立数据库），仅存储审计日志等管理后台数据，不存用户数据
+- **已实现内容（v0.1.7）：**
+  - **AdminAuthFilter 管理员认证过滤器**：实现 `OncePerRequestFilter`，对所有 `/api/v1/admin/**`（白名单路径除外）进行 JWT 解析和角色校验
+    - 白名单路径放行（健康检查 `/api/v1/admin/health` 等）
+    - 校验 `Authorization: Bearer <token>` 头，解析 JWT Claims
+    - 校验用户角色是否包含 `SUPER_ADMIN` 或 `SYSTEM_ADMIN`
+    - 校验通过后设置 `AdminContext` 上下文
+  - **AdminContext 管理员请求上下文**：基于 ThreadLocal 实现，贯穿请求生命周期，在 `finally` 块中自动清理
+    - 包含 `adminId`、`adminName`、`realName`、`roles` 等管理员身份信息
+  - **AdminUserController 管理员用户管理接口**：9 个 RESTful API 端点
+    - `GET /api/v1/admin/users` — 分页查询用户列表（关键词、状态、角色、时间范围筛选）
+    - `GET /api/v1/admin/users/{userId}` — 查询用户详情
+    - `POST /api/v1/admin/users` — 创建用户
+    - `PUT /api/v1/admin/users/{userId}` — 编辑用户信息
+    - `PUT /api/v1/admin/users/{userId}/status` — 启用/禁用用户
+    - `PUT /api/v1/admin/users/{userId}/password/reset` — 重置用户密码
+    - `PUT /api/v1/admin/users/{userId}/roles` — 分配用户角色
+    - `GET /api/v1/admin/audit-logs` — 查询操作审计日志
+    - `GET /api/v1/admin/health` — 健康检查
+  - **AuthServiceClient（Feign 客户端）**：声明式 HTTP 客户端，调用 auth-service 的内部管理 API
+    - 所有用户数据操作通过 Feign 调用 auth-service 实现，不直接访问 auth-service 的数据库
+    - Feign 请求拦截器自动传递管理员身份 Token
+  - **审计日志体系（`@AdminAuditLog` AOP）**：基于 Spring AOP 注解实现，不侵入业务逻辑代码
+    - `AdminAuditLog` 注解：标记需要记录审计日志的方法
+    - `AdminAuditLogAspect` 切面：环绕通知，记录操作详情、操作人、操作时间、操作结果
+    - 审计日志持久化到 `cloudstroll_office_admin.t_admin_audit_log` 表
+    - 支持操作类型枚举：`CREATE_USER`、`UPDATE_USER`、`DISABLE_USER`、`ENABLE_USER`、`RESET_PASSWORD`、`ASSIGN_ROLES` 等
+    - 插入失败时异常隔离，不影响主业务操作
+  - **管理员角色预置**：初始化脚本预置 `SUPER_ADMIN`（超级管理员）和 `SYSTEM_ADMIN`（系统管理员）角色，创建初始超级管理员账号（admin/Admin@123456）
+- **服务间通信：** admin-service → auth-service（OpenFeign 同步调用）
+  - 调用关系：admin-service 通过 `AuthServiceClient` Feign 接口调用 auth-service 的 `AdminUserController` API
+  - 通信协议：HTTP/JSON，连接超时 5s，读取超时 10s
+  - 鉴权方式：Feign 请求拦截器自动携带管理员 JWT Token 或内部服务 Token
+  - 降级策略：Feign 调用失败时，admin-service 捕获异常并返回友好错误信息
+- **说明：** v0.1.7 为首次实现，遵循项目标准包结构。用户数据不在 admin-service 数据库维护，通过 Feign 调用 auth-service 操作。当前版本权限校验为角色级别粗粒度控制，后续版本可扩展为细粒度权限校验。
+
+### 2.7 Flutter 前端应用（cloudoffice-flutter-app）
+
+- **职责：** 云漫智企面向最终用户的跨平台前端应用，提供用户认证（注册、登录、找回密码）等基础交互能力，与后端微服务通过 API 网关通信。支持 Web（Chrome）和 Windows（VS2022）双平台运行。
+- **技术栈：** Flutter 3.x + Dart 3.x
+- **构建平台：** Web（Chrome）、Windows（VS2022）
+- **架构模式：** Screen-Provider-Repository 三层架构
+  - Screen（页面层）：纯 UI 组件，通过 Provider 获取状态
+  - Provider（状态管理层）：继承 ChangeNotifier，管理页面状态（loading/error/success）
+  - Repository（数据仓库层）：封装 API 调用逻辑，调用 ApiClient 发送 HTTP 请求
+- **核心层（core）：**
+  - **ApiClient**：基于 Dio 的单例 HTTP 客户端，封装基础 URL（`http://localhost:9000`）、超时（连接 15s / 读取 30s）、拦截器
+  - **ApiInterceptor**：请求拦截器自动注入 `Authorization: Bearer {token}`，响应拦截器处理 401 自动刷新 Token（并发锁防重复刷新）
+  - **ApiResult**：对应后端统一响应体的 Dart 模型（泛型 `ApiResult<T>`，含 code/message/data/timestamp）
+  - **SecureStorage**：基于 flutter_secure_storage 的安全存储封装，存储 Token 等敏感数据
+  - **AppRouter**：基于 GoRouter 的声明式路由配置，含登录态路由守卫（已登录跳首页，未登录跳登录页）
+- **功能模块（features）：**
+  - **auth/**：认证模块
+    - 页面：登录页（密码登录/验证码登录双模式 Tab 切换）、注册页（用户名注册/手机号注册双模式 Tab 切换）、找回密码页（两步流程：身份验证 → 重置密码）
+    - 数据模型：LoginRequest、RegisterRequest、TokenPairDTO、RegisterResult 等
+    - Provider：AuthProvider（登录/注册状态管理）、ForgotPasswordProvider（找回密码状态管理）
+    - Repository：AuthRepository（封装 6 个 API 调用方法）
+  - **home/**：首页模块（用户信息展示、退出登录）
+- **共享组件（shared）：**
+  - 公共 UI 组件：CustomTextField、PasswordField（含显示/隐藏切换）、VerificationCodeField（含验证码倒计时）、LoadingButton（加载状态按钮）、PasswordStrengthIndicator（密码强度指示器）
+  - 常量定义：AppConstants（kApiBaseUrl、kPasswordMinLength 等）
+- **依赖：**
+  - 运行时依赖：dio（^5.x）、provider（^6.x）、flutter_secure_storage（^9.x）、go_router（^14.x）
+  - 开发依赖：flutter_test、flutter_lints（^5.x）、mockito（^5.x）、build_runner
+- **数据流：** Screen → Provider → Repository → ApiClient（Dio）→ HTTP → Gateway（:9000）→ auth-service → 数据库/Redis
+- **客户端类型标识：** Web（Chrome）使用 `H5`、Windows（VS2022）使用 `WINDOWS`
+- **说明：** Flutter 子项目独立位于 `cloudoffice-flutter-app/` 目录，不修改现有后端代码。v0.2.0 仅实现认证相关页面，业务功能页面在后续版本扩展。
+
 ### 模块关系图
 
 ```
-┌────────────────────────────────────────────────────────────────┐
-│                    cloudoffice-common                           │
-│      (无业务依赖，所有服务模块的公共依赖，含新增枚举/DTO/错误码)     │
-└────────────────────────────────────────────────────────────────┘
-                    ▲           ▲           ▲
-                    │依赖       │依赖       │依赖
-                    │           │           │
-┌───────────┐ ┌───────────┐ ┌──────────┐ ┌──────────────┐
-│  gateway  │ │auth-service│ │biz-service││system-service│
-│ (端口9000) │ │(端口9100) │ │(端口9200) ││ (端口9400)   │
-│ AuthFilter│ │ RBAC+JWT  │ │ 骨架阶段   ││ 骨架阶段      │
-│ Redis集成  │ │ Redis会话  │ │           ││              │
-│ 白名单扩展  │ │ 策略模式   │ │           ││              │
-│ (v0.1.6)   │ │ 密码管理   │ │           ││              │
-│            │ │ 验证码     │ │           ││              │
-└─────┬─────┘ └─────┬─────┘ └──────────┘ └──────────────┘
-      │             │
+┌─────────────────────────────────────────────────────────────────────┐
+│                         cloudoffice-common                           │
+│       (无业务依赖，所有服务模块的公共依赖，含新增枚举/DTO/错误码)         │
+└─────────────────────────────────────────────────────────────────────┘
+                    ▲           ▲           ▲           ▲
+                    │依赖       │依赖       │依赖       │依赖
+                    │           │           │           │
+┌───────────┐ ┌───────────┐ ┌──────────┐ ┌──────────────┐ ┌────────────────┐
+│  gateway  │ │auth-service│ │biz-service││system-service││ admin-service   │
+│ (端口9000)│ │(端口9100) │ │(端口9200) ││ (端口9400)   ││ (端口9500)      │
+│ AuthFilter│ │ RBAC+JWT  │ │ 骨架阶段   ││ 骨架阶段      ││ AdminAuthFilter │
+│ Redis集成  │ │ Redis会话  │ │           ││              ││ OpenFeign客户端  │
+│ 白名单扩展  │ │ 策略模式   │ │           ││              ││ AOP审计日志      │
+│ admin路由  │ │ 密码管理   │ │           ││              ││ 独立数据库       │
+│ (v0.1.7)   │ │ 验证码     │ │           ││              ││ 管理员CRUD      │
+│            │ │ 管理API扩展 │ │           ││              ││ (v0.1.7)       │
+└───────────┘ └──────┬─────┘ └──────────┘ └──────────────┘ └───────┬────────┘
+      │              │  ▲                                          │
+      │              │  │ OpenFeign                                │
+      │              │  └──────────────────────────────────────────┘
       │  Redis查询   │  Redis写入
-      ▼             ▼
-┌─────────────────────────────────────┐
-│          Redis 7.2.x                │
-│   ┌─────────────────────────────┐  │
-│   │ auth:session:{userId}:{type}│  │  ← 登录态会话
-│   │ auth:token:blacklist:{sig} │  │  ← Token 黑名单
-│   │ auth:account:status:{id}  │  │  ← 账号状态缓存
-│   │ auth:tenant:status:{id}   │  │  ← 租户状态缓存
+      ▼              ▼
+┌──────────────────────────────────────┐
+│           Redis 7.2.x                │
+│   ┌──────────────────────────────┐  │
+│   │ auth:session:{userId}:{type} │  │  ← 登录态会话
+│   │ auth:token:blacklist:{sig}   │  │  ← Token 黑名单
+│   │ auth:account:status:{id}     │  │  ← 账号状态缓存
+│   │ auth:tenant:status:{id}      │  │  ← 租户状态缓存
 │   │ auth:verification:{pur}:{tgt}│  │  ← 验证码缓存(v0.1.6)
-│   └─────────────────────────────┘  │
-└─────────────────────────────────────┘
+│   └──────────────────────────────┘  │
+└──────────────────────────────────────┘
                     │
                     └───────────┐
                                 │
@@ -319,7 +413,7 @@
                     └───────────────────────┘
 ```
 
-- **注意：** 各业务服务之间无直接代码依赖，服务间通信通过 OpenFeign（同步）或 RocketMQ（异步）在后续版本实现
+- **注意：** 各业务服务之间无直接代码依赖，服务间通信通过 OpenFeign（同步）或 RocketMQ（异步）在后续版本实现。v0.1.7 已实现 admin-service 与 auth-service 之间的 OpenFeign 同步通信。
 
 ---
 
@@ -350,6 +444,14 @@
 | 邮件发送（v0.1.6） | Spring Boot Starter Mail | 3.2.5 (继承 Boot Parent) | 邮箱验证码发送支持，本期提供模拟实现，后续对接 SMTP 服务 |
 | 可观测性 | Prometheus + Grafana + SkyWalking | 最新 | 业界标准监控方案（本期规划，后续版本集成） |
 | 容器化 | Docker + Docker Compose | 最新 | 标准化部署，开发/测试/生产环境一致性 |
+| 前端框架 | Flutter | 3.x | 跨平台 UI 框架，一套代码支持 Web 和 Windows 双平台，Dart 语言高效开发 |
+| 前端语言 | Dart | 3.x | Flutter 官方编程语言，支持 AOT/JIT 编译，类型安全，性能优异 |
+| HTTP 客户端 | Dio | ^5.x | Dart 生态最流行的 HTTP 库，支持拦截器、请求重试、超时配置 |
+| 状态管理 | Provider | ^6.x | Flutter 官方推荐的状态管理方案，简单易用，适合中小型应用 |
+| 安全存储 | flutter_secure_storage | ^9.x | 跨平台安全存储，Windows 使用 DPAPI/Credential Manager，Web 回退加密存储 |
+| 路由管理 | GoRouter | ^14.x | Flutter 官方推荐的声明式路由，支持路由守卫、深层链接、浏览器 URL |
+| 前端构建 | Flutter Web | - | Chrome 浏览器运行，构建为静态 HTML/CSS/JS |
+| 前端构建 | Flutter Windows | - | VS2022 + MSVC 构建为 Windows 原生桌面应用 |
 
 ### 3.2 架构决策记录（ADR）
 
@@ -375,6 +477,12 @@
 | **ADR-018** | **验证码存储方案（v0.1.6）** | **Redis 存储 vs 数据库存储** | **Redis 优先 + 数据库回退** | ① Redis 利用 TTL 自动过期，无需定时清理任务；② Redis 读写性能远优于数据库，适合高频验证码校验场景；③ Redis 不可用时回退到数据库存储，保证可用性 | 验证码数据在 Redis 和数据库之间可能存在短暂不一致（Redis 故障切换时）；需确保验证码使用后立即标记，防重放 |
 | **ADR-019** | **密码找回实现方案（v0.1.6）** | **独立密码重置令牌表 vs 验证码记录表覆盖** | **验证码记录表覆盖（不新增密码重置令牌表）** | ① 验证码本身已满足安全需求（一次性、5 分钟过期、target + purpose 匹配）；② 不额外增加数据库表，减少维护成本；③ 密码找回业务流程与验证码生成/校验逻辑完全复用现有 VerificationCodeManager | 验证码存储在数据库中（或 Redis），无独立的密码重置令牌抗重放能力，但验证码的一次性使用已满足安全要求 |
 | **ADR-020** | **验证码发送渠道设计（v0.1.6）** | **直接引入短信/邮件 SDK vs 接口抽象 + 模拟实现** | **接口抽象 + 模拟实现** | ① VerificationCodeService 接口定义发送契约，与具体发送渠道解耦；② 模拟实现日志输出验证码，不依赖真实短信/邮件网关；③ 后续对接真实网关只需新增实现类并替换注入，不改动业务代码 | 模拟实现仅适用于开发/测试环境，生产环境需对接真实短信/邮件服务；接口抽象增加了间接层，但扩展性显著提升 |
+| **ADR-021** | **管理中台服务独立（v0.1.7）** | **admin-service 独立微服务 vs auth-service 内嵌管理接口** | **独立微服务（admin-service）** | ① 管理中台与用户认证职责分离，遵循单一职责原则；② 独立微服务可独立扩缩容，不影响认证服务性能；③ 管理 API 与普通 API 物理隔离，安全边界清晰；④ 新增管理功能不影响 auth-service 的稳定性 | 引入服务间通信（OpenFeign）延迟，增加运维成本；管理功能需通过 Feign 调用 auth-service，增加网络依赖 |
+| **ADR-022** | **admin-service 数据库策略（v0.1.7）** | **使用 auth-service 数据库 vs 独立数据库** | **独立数据库（cloudstroll_office_admin）** | ① 遵循微服务数据库独立原则，各服务独享数据存储；② auth-service 数据库变更不影响 admin-service；③ 审计日志等管理数据与用户认证数据物理隔离 | admin-service 需维护独立数据源配置；审计日志查询不能直接关联用户表，需通过 Feign 调用获取用户信息 |
+| **ADR-023** | **admin-service 权限校验位置（v0.1.7）** | **网关层校验管理员角色 vs admin-service 内置过滤器校验** | **admin-service 内置 AdminAuthFilter 校验** | ① 管理员角色校验属于业务逻辑，放在网关层会污染网关的关注点；② admin-service 内置过滤器可获取完整的 JWT Claims 进行角色判断；③ 管理员角色校验与用户数据操作在同一个服务内，减少网关透传的 Header 数量 | 每个管理请求需额外在 admin-service 中校验角色，增加一次 JWT 解析开销；网关仍需做基础 Token 校验 |
+| **ADR-024** | **管理员认证 Token 方案（v0.1.7）** | **网关透传用户 Token vs admin-service 独立 Token** | **复用 auth-service JWT + 网关透传** | ① 管理员使用与普通用户相同的登录接口获取 JWT Token，减少认证入口；② JWT 中已包含 roles 信息，admin-service 解析即可完成角色校验；③ 无需额外签发管理员专用 Token，降低复杂度 | 管理员 Token 与普通用户 Token 格式相同，需在 admin-service 中通过角色字段区分 |
+| **ADR-025** | **审计日志实现方案（v0.1.7）** | **AOP 注解 vs 业务代码手动记录 vs 中间件拦截** | **AOP 注解（@AdminAuditLog）** | ① 注解声明式标记，不侵入业务逻辑代码；② AOP 环绕通知可捕获方法执行前后状态，自动记录成功/失败和异常信息；③ 注解可配置操作类型，扩展性强；④ 相比中间件拦截，实现简单，学习成本低 | AOP 仅对 Spring Bean 方法有效，需确保切面正确配置；相比中间件方案，无法拦截数据库级别的操作 |
+| **ADR-026** | **Flutter 前端技术栈选型（v0.2.0）** | **Flutter vs React Web + Electron vs Vue + Tauri** | **Flutter** | ① 一套代码同时覆盖 Web 和 Windows，开发效率高；② Dart 语言在跨平台场景下表现优于 JavaScript/TypeScript；③ Flutter Web 基于 CanvasKit 渲染，UI 一致性高；④ 团队技术栈统一，降低维护成本 | Flutter Web 的 SEO 能力弱于传统 Web 框架；Flutter Windows 构建产物较大（约 50MB+）；Dart 生态第三方库丰富度低于 JS 生态 |
 
 ---
 
@@ -558,6 +666,107 @@
 [客户端] ←─── JSON 响应 { code: 200, message: "密码重置成功" }
 ```
 
+### 4.1.4 管理员请求认证数据流（v0.1.7）
+
+```
+[管理员客户端]
+    │
+    │ ① GET /api/v1/admin/users (携带 Authorization: Bearer <token>)
+    ▼
+[API 网关 (端口 9000)]
+    │ 检查路由匹配：/api/v1/admin/** → cloudoffice-admin-service
+    │ AuthFilter 基础 Token 校验（RS256 验签 + Redis 黑名单/登录态校验）
+    ▼
+[管理中台服务 (端口 9500)]
+    │
+    │ ② AdminAuthFilter 拦截（OncePerRequestFilter）：
+    │    ├─ 校验白名单路径 → /api/v1/admin/health 放行
+    │    ├─ 校验 Authorization 头格式 → Bearer <token>
+    │    ├─ 解析 JWT Claims（认证服务 RS256 公钥验签）
+    │    ├─ 校验 roles 字段是否包含 SUPRE_ADMIN 或 SYSTEM_ADMIN
+    │    │    ├─ 不包含管理员角色 → 返回 403 ADMIN-0001
+    │    │    └─ 包含管理员角色 →
+    │    │         ③ 设置 AdminContext（adminId/adminName/realName/roles）
+    │    │         ④ 放行请求到 Controller
+    │    ▼
+    │ ⑤ 业务方法执行（如列表查询/创建用户等）
+    │    ├─ @AdminAuditLog 切面记录审计日志
+    │    └─ AuthServiceClient Feign 调用 auth-service（如用户查询）
+    │
+    │ ⑥ 请求完成 → finally 块执行 AdminContext.clear()
+    ▼
+[管理员客户端] ←─── JSON 响应 { code: 200, data: { ... } }
+```
+
+### 4.1.5 OpenFeign 服务间调用数据流（v0.1.7）
+
+```
+[admin-service - AdminUserService]
+    │
+    │ ① 调用 AuthServiceClient.listUsers(queryParams)
+    ▼
+[admin-service - Feign 拦截器]
+    │ ② FeignRequestInterceptor.apply():
+    │    ├─ 从 AdminContext 获取当前管理员 JWT Token
+    │    └─ 设置请求头 Authorization: Bearer <token>
+    ▼
+[HTTP 请求 → Nacos 负载均衡]
+    │ ③ Spring Cloud LoadBalancer 从 Nacos 获取 auth-service 可用实例
+    │ ④ 轮询策略选择目标实例
+    ▼
+[auth-service - AdminUserController]
+    │
+    │ ⑤ 接收请求，校验管理员身份和权限
+    │ ⑥ 执行用户数据操作（查询用户表/角色表等）
+    │ ⑦ 返回 ApiResult<PageResult<AdminUserVO>>
+    ▼
+[admin-service - AuthServiceClient]
+    │
+    │ ⑧ Feign 响应反序列化
+    │ ⑨ 业务层处理返回数据（如手机号/邮箱脱敏）
+    ▼
+[admin-service - Controller]
+    │ ⑩ 返回统一响应体给客户端
+    │
+    │ 超时/异常处理：
+    │ ├─ 连接超时 5s → 抛出 RetryableException → 服务层捕获
+    │ ├─ 读取超时 10s → 抛出 RetryableException → 服务层捕获
+    │ └─ auth-service 不可用 → 负载均衡无可用实例 → 抛出异常 → 返回 ADMIN-0006
+    ▼
+[返回统一错误响应]
+```
+
+### 4.1.6 审计日志记录数据流（v0.1.7）
+
+```
+[管理员操作触发]
+    │
+    │ ① 业务方法执行（如 POST /api/v1/admin/users 创建用户）
+    ▼
+[AdminAuditLogAspect (环绕通知)]
+    │
+    │ ② 获取 AdminContext.getCurrentAdmin() → 当前操作人信息
+    │ ③ 记录操作开始时间
+    │ ④ 执行目标方法（proceed()）
+    │    ├─ 执行成功 → 记录 result=SUCCESS, 返回结果
+    │    └─ 抛出异常 → 记录 result=FAILURE, 异常信息
+    │
+    │ ⑤ 构建 AdminAuditLogEntity：
+    │    ├─ admin_id / admin_name（操作人）
+    │    ├─ action_type（操作类型：CREATE_USER/DISABLE_USER/RESET_PASSWORD 等）
+    │    ├─ target_id / target_name（操作目标）
+    │    ├─ detail（操作详情 JSON，截断至 1024 字符）
+    │    ├─ result（SUCCESS / FAILURE）
+    │    ├─ error_message（失败时的错误信息）
+    │    ├─ request_ip / user_agent
+    │    └─ create_time
+    │
+    │ ⑥ 异步写入 cloudstroll_office_admin.t_admin_audit_log
+    │    └─ try-catch 隔离，写入失败仅记录 warn 日志，不影响主业务流程
+    ▼
+[继续执行原有业务逻辑]
+```
+
 ### 4.2 模块间数据流转
 
 | 数据流 | 发起方 | 接收方 | 通信方式 | 数据格式 | 说明 |
@@ -573,6 +782,15 @@
 | 黑名单写入 | auth-service | Redis | RESP | String | 登出/踢人时加入黑名单 |
 | 登录日志写入 | auth-service | MariaDB | JDBC | Insert SQL | 记录登录日志审计 |
 | 健康检查 | 客户端 | 各服务 | HTTP GET | JSON (ApiResult) | 确认服务存活状态 |
+| 管理员请求路由转发（v0.1.7） | Gateway | admin-service | HTTP | JSON | 根据 `/api/v1/admin/**` 路由规则转发到 admin-service |
+| 管理员用户查询（v0.1.7） | admin-service | auth-service | OpenFeign HTTP | JSON (ApiResult<PageResult>) | AdminUserService 通过 AuthServiceClient 调用 auth-service 获取用户数据 |
+| 管理员创建用户（v0.1.7） | admin-service | auth-service | OpenFeign HTTP | JSON (CreateUserRequest) | admin-service 通过 Feign 调用 auth-service 创建用户 |
+| 管理员编辑用户（v0.1.7） | admin-service | auth-service | OpenFeign HTTP | JSON (UpdateUserRequest) | admin-service 通过 Feign 调用 auth-service 编辑用户信息 |
+| 启用/禁用用户（v0.1.7） | admin-service | auth-service | OpenFeign HTTP | JSON (UserStatusRequest) | admin-service 通过 Feign 调用 auth-service 修改用户状态 + 清除 Redis 会话 |
+| 重置密码（v0.1.7） | admin-service | auth-service | OpenFeign HTTP | JSON (ResetPasswordRequest) | admin-service 通过 Feign 调用 auth-service 重置用户密码 + 清除 Redis 会话 |
+| 角色分配（v0.1.7） | admin-service | auth-service | OpenFeign HTTP | JSON (AssignRolesRequest) | admin-service 通过 Feign 调用 auth-service 全量替换用户角色 + 清除 Redis 会话 |
+| 审计日志写入（v0.1.7） | admin-service | MariaDB | JDBC | Insert SQL | @AdminAuditLog AOP 切面自动记录操作审计日志（try-catch 隔离） |
+| 审计日志查询（v0.1.7） | admin-service | MariaDB | JDBC | Select SQL | 管理员查询审计日志列表 |
 | API 文档 | 客户端 | 各服务 | HTTP GET | JSON/HTML | SpringDoc 自动生成 |
 | 验证码生成/校验（v0.1.6） | auth-service | Redis/MariaDB | JDBC/RESP | Insert/Select | VerificationCodeManager 管理验证码生命周期 |
 | 验证码发送（v0.1.6） | auth-service | 日志（模拟） | 日志输出 | String | SimulatedVerificationCodeService 输出验证码到日志 |
@@ -592,6 +810,8 @@
 | 验证码（v0.1.6） | 验证码发送 | Redis `auth:verification:{purpose}:{target}` + MariaDB `t_auth_verification_code` | 注册/登录/密码找回/手机号变更 | 临时（TTL 5 分钟） |
 | OAuth 账号绑定（v0.1.6） | OAuth 注册/绑定 | MariaDB `t_auth_oauth_account` | OAuth 登录/解绑 | 持久 |
 | 业务数据 | 业务操作 | MariaDB | 业务查询 | 持久 |
+| 管理员审计日志（v0.1.7） | 管理员操作 | MariaDB `cloudstroll_office_admin.t_admin_audit_log` | 审计日志查询 | 持久（不可修改/删除）|
+| 管理员请求上下文（v0.1.7） | AdminAuthFilter 认证通过 | ThreadLocal (AdminContext) | 请求处理期间 | 临时（请求结束时 finally 清理）|
 
 ---
 
@@ -599,7 +819,7 @@
 
 ### 5.1 数据模型概览
 
-v0.1.0 为骨架搭建阶段，v0.1.5 在 `cloudstroll_office_auth` 数据库中新增 7 张认证业务表，实现 RBAC 多租户权限模型和登录日志审计。v0.1.6 新增 2 张认证业务表（`t_auth_oauth_account`、`t_auth_verification_code`）并扩展 `t_auth_user` 表，支持多模式注册/登录、OAuth 账号绑定和验证码管理。
+v0.1.0 为骨架搭建阶段，v0.1.5 在 `cloudstroll_office_auth` 数据库中新增 7 张认证业务表，实现 RBAC 多租户权限模型和登录日志审计。v0.1.6 新增 2 张认证业务表（`t_auth_oauth_account`、`t_auth_verification_code`）并扩展 `t_auth_user` 表，支持多模式注册/登录、OAuth 账号绑定和验证码管理。v0.1.7 新增 `cloudstroll_office_admin` 数据库（用于存储管理中台审计日志等管理数据），并预置管理员角色和初始超级管理员账号数据到 `t_auth_role` 和 `t_auth_user` 表。
 
 **认证服务数据库（cloudstroll_office_auth）表结构关系：**
 
@@ -678,12 +898,46 @@ v0.1.0 为骨架搭建阶段，v0.1.5 在 `cloudstroll_office_auth` 数据库中
                                │   │ ...                          │
                                │   └──────────────────────────────┘
                                │
-                               └─── t_auth_user 扩展字段：
-                                    register_mode (VARCHAR(32))
-                                    account_settled (TINYINT)
-                                    phone_verified (TINYINT)
-                                    email_verified (TINYINT)
-                                    last_password_change_time (DATETIME)
+                                └─── t_auth_user 扩展字段：
+                                     register_mode (VARCHAR(32))
+                                     account_settled (TINYINT)
+                                     phone_verified (TINYINT)
+                                     email_verified (TINYINT)
+                                     last_password_change_time (DATETIME)
+```
+
+**v0.1.7 新增数据库（cloudstroll_office_admin）：**
+
+```
+┌─────────────────────────────────────────┐
+│  cloudstroll_office_admin 数据库          │
+│─────────────────────────────────────────│
+│                                         │
+│  ┌──────────────────────────────────┐   │
+│  │  t_admin_audit_log               │   │
+│  │──────────────────────────────────│   │
+│  │ id (PK, 雪花算法)                │   │
+│  │ admin_id (BIGINT, 操作人ID)      │   │
+│  │ admin_name (VARCHAR, 操作人名称)  │   │
+│  │ action_type (VARCHAR, 操作类型)   │   │
+│  │ target_id (BIGINT, 目标ID)       │   │
+│  │ target_name (VARCHAR, 目标名称)   │   │
+│  │ detail (JSON/VARCHAR, 操作详情)   │   │
+│  │ result (TINYINT, 操作结果)        │   │
+│  │ error_message (VARCHAR, 错误信息) │   │
+│  │ request_ip (VARCHAR, 请求IP)     │   │
+│  │ user_agent (VARCHAR, 用户代理)   │   │
+│  │ create_time (DATETIME)           │   │
+│  │ update_time (DATETIME)           │   │
+│  │ deleted (TINYINT, 逻辑删除)      │   │
+│  └──────────────────────────────────┘   │
+│                                         │
+│  索引：                                  │
+│  idx_audit_admin_id (admin_id)          │
+│  idx_audit_action_type (action_type)    │
+│  idx_audit_target_id (target_id)        │
+│  idx_audit_create_time (create_time)    │
+└─────────────────────────────────────────┘
 ```
 
 ### 5.2 存储策略
@@ -701,6 +955,7 @@ v0.1.0 为骨架搭建阶段，v0.1.5 在 `cloudstroll_office_auth` 数据库中
 | 账号/租户状态缓存 | Redis | 高速读取，实时更新 | 最终一致性 |
 | OAuth 账号绑定（v0.1.6） | MariaDB（auth 库） | 关系型数据，支持按 openId 查询 | 强一致性 |
 | 验证码记录（v0.1.6） | Redis（优先）+ MariaDB（回退） | Redis 自动过期减少清理负担，DB 兜底保证可用性 | 最终一致性 |
+| 管理员审计日志（v0.1.7） | MariaDB（admin 库） | 管理操作审计，持久化存储，支持查询分析 | 最终一致性（插入失败不影响主业务）|
 
 ### 5.3 数据一致性策略
 
@@ -729,6 +984,20 @@ v0.1.0 为骨架搭建阶段，v0.1.5 在 `cloudstroll_office_auth` 数据库中
 | `t_auth_oauth_account` | OAuth 第三方账号关联表，记录用户与第三方平台的绑定关系 | US-011 | `uk_provider_openid`（oauth_provider+oauth_open_id）、`idx_user_id`（user_id） |
 | `t_auth_verification_code` | 验证码记录表，支持验证码生成/校验/过期处理 | US-012 | `idx_target_purpose`（target+purpose）、`idx_expire_time`（expire_time） |
 | `t_auth_user`（变更） | 用户表扩展字段：`register_mode`、`account_settled`、`phone_verified`、`email_verified`、`last_password_change_time` | US-013 | 保持 `idx_phone`、`idx_tenant_status`、`uk_tenant_login_name` 不变 |
+
+### 5.4.2 v0.1.7 新增数据库表（cloudstroll_office_admin 数据库）
+
+| 表名 | 用途 | 关联用户故事 | 索引 |
+|------|------|-------------|------|
+| `t_admin_audit_log` | 管理员关键操作审计日志记录（如创建/禁用/重置密码/角色分配等），不可修改或删除 | US-014 | `idx_audit_admin_id`（admin_id）、`idx_audit_action_type`（action_type）、`idx_audit_target_id`（target_id）、`idx_audit_create_time`（create_time） |
+
+### 5.4.3 v0.1.7 管理员角色预置数据（auth 数据库）
+
+| 表名 | 预置数据 | 说明 |
+|------|---------|------|
+| `t_auth_role` | `SUPER_ADMIN`(超级管理员)、`SYSTEM_ADMIN`(系统管理员) | 初始化脚本插入，使用 `INSERT IGNORE` 防重复 |
+| `t_auth_user` | 初始超级管理员账号：loginName=admin, password=Admin@123456(BCrypt) | 初始化脚本插入 |
+| `t_auth_user_role` | admin 用户关联 `SUPER_ADMIN` 角色 | 初始化脚本关联 |
 
 ### 5.5 Redis Key 设计
 
@@ -790,6 +1059,15 @@ v0.1.0 为骨架搭建阶段，v0.1.5 在 `cloudstroll_office_auth` 数据库中
 | 认证-健康检查 | HTTP GET | `/api/v1/auth/health` | 无 | 客户端/监控 | 认证服务存活检测 |
 | 企业-健康检查 | HTTP GET | `/api/v1/biz/health` | 无 | 客户端/监控 | 企业服务存活检测 |
 | 系统-健康检查 | HTTP GET | `/api/v1/system/health` | 无 | 客户端/监控 | 系统服务存活检测 |
+| 管理中台-健康检查（v0.1.7） | HTTP GET | `/api/v1/admin/health` | 无（白名单） | 管理员/监控 | 管理中台服务存活检测 |
+| 用户列表查询（v0.1.7） | HTTP GET | `/api/v1/admin/users` | JWT（管理员角色） | 管理员 | 分页查询用户列表，支持关键词/状态/角色/时间范围筛选 |
+| 用户详情查询（v0.1.7） | HTTP GET | `/api/v1/admin/users/{userId}` | JWT（管理员角色） | 管理员 | 查看用户完整信息（含角色/注册时间/最后登录等） |
+| 创建用户（v0.1.7） | HTTP POST | `/api/v1/admin/users` | JWT（管理员角色） | 管理员 | 创建新用户（登录名/密码/姓名/手机号/邮箱/角色），注册模式 ADMIN_CREATE |
+| 编辑用户（v0.1.7） | HTTP PUT | `/api/v1/admin/users/{userId}` | JWT（管理员角色） | 管理员 | 编辑用户基本信息（真实姓名/手机号/邮箱）|
+| 启用/禁用用户（v0.1.7） | HTTP PUT | `/api/v1/admin/users/{userId}/status` | JWT（管理员角色） | 管理员 | 启用（status=0）或禁用（status=1）用户，禁用时清除 Redis 会话 |
+| 重置用户密码（v0.1.7） | HTTP PUT | `/api/v1/admin/users/{userId}/password/reset` | JWT（管理员角色） | 管理员 | 重置指定用户密码，清除 Redis 会话 |
+| 用户角色分配（v0.1.7） | HTTP PUT | `/api/v1/admin/users/{userId}/roles` | JWT（管理员角色） | 管理员 | 全量替换用户角色，清除 Redis 会话 |
+| 审计日志查询（v0.1.7） | HTTP GET | `/api/v1/admin/audit-logs` | JWT（管理员角色） | 管理员 | 分页查询审计日志，支持时间范围/操作类型/管理员 ID 筛选 |
 | API 文档 | HTTP GET | `/swagger-ui.html` 或 `/v3/api-docs` | 无（开发环境） | 开发者 | SpringDoc 在线文档 |
 
 ### 6.2 内部接口
@@ -849,6 +1127,7 @@ public class TokenPairDTO {
 | `/api/v1/auth/**` | `cloudoffice-auth-service` | 轮询 | 认证相关请求（含登录/注册/刷新/登出/踢人/用户管理/角色管理/权限管理） |
 | `/api/v1/biz/**` | `cloudoffice-biz-service` | 轮询 | 企业业务请求 |
 | `/api/v1/system/**` | `cloudoffice-system-service` | 轮询 | 系统管理请求 |
+| `/api/v1/admin/**` | `cloudoffice-admin-service` | 轮询 | 管理中台请求（管理员认证、用户管理、审计日志等）（v0.1.7 新增） |
 
 ---
 
@@ -890,29 +1169,44 @@ public class TokenPairDTO {
 ### 8.1 部署架构
 
 ```
+[用户终端]
+    │
+    ├─ Flutter Web (Chrome)         ←─── `flutter build web` → build/web/ 静态资源
+    │                                    (部署至 Nginx / 静态服务器)
+    │
+    └─ Flutter Windows (VS2022)     ←─── `flutter build windows` → build/windows/runner/Release/
+                                         (分发为 Windows 可执行文件)
+
 [开发者本地环境 / CI/CD]
     │
-    ├─ Docker Compose 编排
+    ├─ Docker Compose 编排（后端微服务）
     │
     ▼
-┌──────────────────────────────────────────────────────────────────┐
-│                        Docker 宿主机                              │
-│                                                                    │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐               │
-│  │  Nacos 2.3.x │  │  MariaDB 10.6│  │  Redis 7.2.x│  (本期启用)   │
-│  │  端口: 8848  │  │  端口: 3306  │  │  端口: 6379 │               │
-│  └─────────────┘  └─────────────┘  └─────────────┘               │
-│                                                                    │
-│  ┌─────────────┐  ┌─────────────┐  ┌──────────────────┐          │
-│  │   Gateway   │  │ Auth Service│  │  Biz Service      │          │
-│  │   :9000     │  │   :9100     │  │   :9200           │          │
-│  └─────────────┘  └─────────────┘  └──────────────────┘          │
-│                                                                    │
-│  ┌──────────────────────────────────────────────────────┐         │
-│  │                   System Service                      │         │
-│  │                       :9400                           │         │
-│  └──────────────────────────────────────────────────────┘         │
-└──────────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────────────┐
+│                           Docker 宿主机                                     │
+│                                                                            │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐       │
+│  │  Nacos 2.3.x │  │  MariaDB    │  │  MariaDB    │  │  Redis 7.2.x│       │
+│  │  端口: 8848  │  │  10.6 (auth)│  │  10.6 (admin)│  │  端口: 6379 │       │
+│  └─────────────┘  │  端口: 3306  │  │  (v0.1.7)    │  └─────────────┘       │
+│                   └─────────────┘  └─────────────┘                        │
+│                                                                            │
+│  ┌─────────────┐  ┌─────────────┐  ┌──────────────────┐  ┌──────────────┐│
+│  │   Gateway   │  │ Auth Service│  │  Biz Service      │  │ Admin Service││
+│  │   :9000     │  │   :9100     │  │   :9200           │  │   :9500     ││
+│  └─────────────┘  └─────────────┘  └──────────────────┘  │  (v0.1.7)   ││
+│                                                           └──────────────┘│
+│  ┌──────────────────────────────────────────────────────────────┐         │
+│  │                      System Service                           │         │
+│  │                          :9400                                │         │
+│  └──────────────────────────────────────────────────────────────┘         │
+└────────────────────────────────────────────────────────────────────────────┘
+
+Flutter 前端运行时与后端通信方式：
+- Web 平台：Flutter Web 应用 → HTTP API → localhost:9000（网关）
+  - 浏览器直接访问网关地址，需网关配置 CORS 允许 localhost 来源
+- Windows 平台：Flutter Windows 桌面应用 → HTTP API → localhost:9000（网关）
+  - 桌面应用无 CORS 限制，HTTP 直连网关
 ```
 
 ### 8.2 环境划分
@@ -1207,11 +1501,107 @@ CloudStrollOffice/
 │           ├── bootstrap.yml                  # Nacos 配置
 │           └── application.yml                # [更新] 新增数据源/Redis/RS256密钥/验证码配置
 │
+├── cloudoffice-admin-service/                 # 管理中台服务（端口 9500）v0.1.7
+│   ├── pom.xml                                # [新] 父模块 POM（含 OpenFeign/AOP/MyBatis-Plus 依赖）
+│   └── src/
+│       ├── main/java/org/cloudstrolling/cloudoffice/admin/
+│       │   ├── AdminApplication.java          # [新] 管理中台服务启动入口
+│       │   ├── config/
+│       │   │   ├── AdminWebConfig.java        # [新] Web 配置（过滤器注册/白名单/CORS）
+│       │   │   └── FeignConfig.java           # [新] Feign 配置（请求拦截器/超时/重试）
+│       │   ├── controller/
+│       │   │   ├── AdminUserController.java   # [新] 管理员用户管理控制器（7+ 个端点）
+│       │   │   ├── AdminAuditLogController.java  # [新] 审计日志查询控制器
+│       │   │   └── HealthController.java      # [新] 健康检查控制器
+│       │   ├── service/
+│       │   │   ├── AdminUserService.java      # [新] 用户管理服务接口
+│       │   │   └── AdminAuditLogService.java  # [新] 审计日志服务接口
+│       │   │   └── impl/
+│       │   │       ├── AdminUserServiceImpl.java    # [新] 用户管理服务实现（Feign 调用编排）
+│       │   │       └── AdminAuditLogServiceImpl.java # [新] 审计日志服务实现
+│       │   ├── feign/
+│       │   │   └── AuthServiceClient.java     # [新] Feign 客户端接口（调用 auth-service 管理 API）
+│       │   ├── filter/
+│       │   │   └── AdminAuthFilter.java       # [新] 管理员认证过滤器（JWT 解析 + 角色校验）
+│       │   ├── interceptor/
+│       │   │   └── FeignAuthInterceptor.java  # [新] Feign 请求拦截器（传递管理员 Token）
+│       │   ├── annotation/
+│       │   │   └── AdminAuditLog.java         # [新] 审计日志注解
+│       │   ├── aspect/
+│       │   │   └── AdminAuditLogAspect.java   # [新] 审计日志 AOP 切面
+│       │   ├── entity/
+│       │   │   └── AdminAuditLogEntity.java   # [新] 审计日志实体（t_admin_audit_log）
+│       │   ├── dto/
+│       │   │   ├── UserQueryRequest.java      # [新] 用户查询参数 DTO
+│       │   │   ├── CreateUserRequest.java     # [新] 创建用户请求 DTO
+│       │   │   ├── UpdateUserRequest.java     # [新] 编辑用户请求 DTO
+│       │   │   ├── UpdateUserStatusRequest.java   # [新] 状态更新请求 DTO
+│       │   │   ├── ResetPasswordRequest.java  # [新] 重置密码请求 DTO
+│       │   │   └── AssignRolesRequest.java    # [新] 角色分配请求 DTO
+│       │   ├── vo/
+│       │   │   ├── UserVO.java               # [新] 用户列表 VO（含脱敏处理）
+│       │   │   └── UserDetailVO.java         # [新] 用户详情 VO
+│       │   ├── enums/
+│       │   │   └── AdminActionTypeEnum.java   # [新] 管理操作类型枚举
+│       │   ├── exception/
+│       │   │   ├── AdminException.java        # [新] 管理中台业务异常
+│       │   │   └── AdminErrorCode.java        # [新] 管理中台错误码枚举（ADMIN-0001~ADMIN-0007）
+│       │   ├── mapper/
+│       │   │   └── AdminAuditLogMapper.java   # [新] 审计日志 Mapper
+│       │   └── util/
+│       │       └── AdminContext.java          # [新] 管理员请求上下文（ThreadLocal）
+│       └── main/resources/
+│           ├── bootstrap.yml                  # [新] Nacos 注册/配置中心配置
+│           └── application.yml                # [新] 应用配置（端口 9500、数据源、Feign、日志等）
+│       └── test/
+│           └── java/org/cloudstrolling/cloudoffice/admin/
+│               └── AdminApplicationTest.java  # [新] 应用启动测试
+│
 ├── cloudoffice-biz-service/                   # 企业服务（端口 9200）
 │   └── src/main/java/org/cloudstrolling/cloudoffice/biz/...（同 v0.1.0，未变更）
 │
 ├── cloudoffice-system-service/                # 系统服务（端口 9400）v0.1.4
 │   └── src/...（同 v0.1.4，未变更）
+│
+├── cloudoffice-flutter-app/                   # Flutter 前端子项目（v0.2.0）
+│   ├── pubspec.yaml                           # 依赖配置（dio/provider/flutter_secure_storage/go_router）
+│   ├── analysis_options.yaml                  # Dart 静态分析规则
+│   ├── lib/
+│   │   ├── main.dart                          # 应用入口
+│   │   ├── app.dart                           # MaterialApp 配置（主题、路由）
+│   │   ├── config/
+│   │   │   ├── api_config.dart                # API 基础配置（网关地址、超时时间）
+│   │   │   └── theme_config.dart              # 主题配置（颜色、字体、组件样式）
+│   │   ├── core/
+│   │   │   ├── http/
+│   │   │   │   ├── api_client.dart            # Dio 实例封装（单例模式）
+│   │   │   │   ├── api_interceptor.dart       # 请求/响应拦截器（Token 注入/401 自动刷新）
+│   │   │   │   └── api_result.dart            # 统一响应模型（ApiResult<T>）
+│   │   │   ├── router/
+│   │   │   │   └── app_router.dart            # GoRouter 路由表（含登录态路由守卫）
+│   │   │   ├── storage/
+│   │   │   │   └── secure_storage.dart        # 安全存储封装（flutter_secure_storage）
+│   │   │   └── utils/
+│   │   ├── features/
+│   │   │   ├── auth/
+│   │   │   │   ├── models/                    # 数据模型（LoginRequest/RegisterRequest/TokenPairDTO 等）
+│   │   │   │   ├── providers/                 # 状态管理（AuthProvider/ForgotPasswordProvider）
+│   │   │   │   ├── repositories/              # 数据仓库（AuthRepository）
+│   │   │   │   └── screens/                   # 页面（LoginScreen/RegisterScreen/ForgotPasswordScreen）
+│   │   │   └── home/
+│   │   │       ├── providers/                 # 首页状态管理（HomeProvider）
+│   │   │       └── screens/                   # 首页页面（HomeScreen）
+│   │   └── shared/
+│   │       ├── widgets/                       # 公共 UI 组件（CustomTextField/PasswordField/VerificationCodeField/LoadingButton/PasswordStrengthIndicator）
+│   │       └── constants/                     # 常量定义
+│   ├── test/                                  # 测试目录
+│   │   ├── core/http/
+│   │   ├── features/auth/
+│   │   │   ├── repositories/
+│   │   │   └── providers/
+│   │   └── shared/widgets/
+│   ├── web/                                   # Web 平台配置（index.html、manifest.json）
+│   └── windows/                               # Windows 平台配置（CMakeLists.txt、runner/）
 │
 ├── scripts/                                   # 脚本与模板
 │   ├── docker/                                # Docker 部署模板
@@ -1219,11 +1609,14 @@ CloudStrollOffice/
 │   │   ├── auth-service/Dockerfile
 │   │   ├── biz-service/Dockerfile
 │   │   ├── system-service/Dockerfile
+│   │   ├── admin-service/Dockerfile           # [v0.1.7] 管理中台服务 Dockerfile
 │   │   └── docker-compose.yml                 # Compose 编排（含 Nacos/MariaDB/Redis）
 │   └── sql/
 │       ├── init.sql                           # 数据库初始化脚本模板（v0.1.0）
 │       ├── auth-init-v0.1.5.sql               # [新] 认证服务 7 张表建表 DDL
-│       └── auth-init-v0.1.6.sql               # [v0.1.6] 认证服务新增表 DDL + t_auth_user 扩展字段变更
+│       ├── auth-init-v0.1.6.sql               # [v0.1.6] 认证服务新增表 DDL + t_auth_user 扩展字段变更
+│       ├── schema_admin.sql                   # [v0.1.7] admin-service DDL（cloudstroll_office_admin 数据库建库 + t_admin_audit_log 建表）
+│       └── init_admin_data.sql                # [v0.1.7] 管理员角色预置和初始超级管理员账号初始化脚本
 │
 └── .idea/                                     # IDEA 统一配置
     ├── codeStyles/
@@ -1304,6 +1697,10 @@ public class TokenPairDTO {
 
 ### D. 参考文档
 
+- `docs/requires/CloudStrollOffice-requirement-v0.2.0.md` — Flutter 前端需求文档 v0.2.0
+- `docs/prds/CloudStrollOffice-prd-v0.2.0.md` — Flutter 前端 PRD 文档 v0.2.0
+- `docs/requires/CloudStrollOffice-requirement-v0.1.7.md` — 管理中台需求文档 v0.1.7
+- `docs/prds/CloudStrollOffice-prd-v0.1.7.md` — 管理中台 PRD 文档 v0.1.7
 - `docs/requires/CloudStrollOffice-requirement-v0.1.6.md` — 用户认证增强需求文档 v0.1.6
 - `docs/prds/CloudStrollOffice-prd-v0.1.6.md` — 用户认证增强 PRD 文档 v0.1.6
 - `docs/requires/CloudStrollOffice-requirement-v0.1.5.md` — 登录认证与权限管理需求文档 v0.1.5
@@ -1321,6 +1718,8 @@ public class TokenPairDTO {
 
 | 变更日期 | 版本号 | 变更说明 |
 |---------|-------|---------|
+| 2026-06-24 | v0.2.0 | 新增 Flutter 前端架构：新增 2.7 节 cloudoffice-flutter-app 模块设计（Screen-Provider-Repository 三层架构、核心层/功能模块/共享组件）；更新 1.1 节系统定位（追加 Flutter 前端描述）；更新 1.2 节架构风格（新增前端架构风格和跨平台策略）；更新 1.3 节架构层次图（客户端层标注 Flutter Web + Flutter Windows）；更新 1.4 节核心架构特点（新增 4 条 Flutter 前端特点）；更新 3.1 节技术栈全景（新增 Flutter/Dart/Dio/Provider/GoRouter 等 9 项前端技术栈）；新增 ADR-026 Flutter 前端技术栈选型；更新 8.1 节部署架构（新增 Flutter 前端终端层）；更新 10 节目录结构（新增 cloudoffice-flutter-app/ 子项目完整目录） |
+| 2026-06-24 | v0.1.7 | 基于 v0.1.7 PRD 更新架构文档：新增 2.6 节 cloudoffice-admin-service 模块设计（管理员认证与权限校验、用户管理 CRUD、审计日志、Feign 通信）；更新系统架构层次图（新增 admin-service 和 admin 数据库层）；更新模块关系图（新增 admin-service + OpenFeign 调用关系）；新增 ADR-021~ADR-025 架构决策记录（admin-service 独立策略、独立数据库、权限校验位置、Token 方案、AOP 审计日志）；新增 4.1.4~4.1.6 数据流图（管理员请求认证、OpenFeign 服务间调用、审计日志记录）；新增 4.2 节 admin-service 相关模块间数据流转表；新增 5.1 节 cloudstroll_office_admin 数据库设计（t_admin_audit_log 表）；新增 5.4.2~5.4.3 节 v0.1.7 数据库表和角色预置数据；新增 6.1 节 admin-service API 端点（9 个端点）；更新 6.4 节 API 路由表（新增 `/api/v1/admin/**` 路由）；更新 2.2 节网关白名单和白名单路径扩展；更新部署架构图（新增 admin-service 和 admin 数据库）；更新 10 节目录结构（新增 admin-service 模块和 SQL 脚本）；更新参考文档列表 |
 | 2026-06-23 | v0.1.6 | 基于 v0.1.6 PRD 更新架构文档：新增策略模式认证架构（LoginStrategy/RegisterStrategy 接口、4 种登录模式 + 5 种注册模式实现类、策略工厂）；新增统一认证服务层 AuthenticationService；新增密码管理（修改密码/密码找回）；新增验证码管理服务（VerificationCodeService + VerificationCodeManager）；新增手机号变更功能；扩展公共模块（RegisterModeEnum/LoginModeEnum/OAuthProviderEnum 枚举、AUTH-0020~AUTH-0033 错误码）；新增 2 张数据库表（t_auth_oauth_account、t_auth_verification_code）；扩展 t_auth_user 表（5 个新增字段）；新增 8 个 API 端点（含登录/注册扩展）；新增 ADR-017~ADR-020 架构决策记录；更新网关白名单；新增 spring-boot-starter-mail 依赖 |
 | 2026-06-19 | v0.1.4 | 基于PRD更新系统服务模块架构描述——启动入口、健康检查响应体version字段、骨架结构、测试架构；补充NFR指标（健康检查响应时间、编译时间、测试独立性） |
 | 2026-06-19 | v0.1.0 | 移除cloud-service微服务模块 |
