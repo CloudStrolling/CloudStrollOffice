@@ -13,15 +13,17 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 JAR_PATH="$PROJECT_DIR/cloudoffice-gateway/target/cloudoffice-gateway-0.0.1-SNAPSHOT.jar"
 
+# ========== 从 env.json 加载环境变量 ==========
+source "$SCRIPT_DIR/load-env.sh"
+
 # ========== 检查必要变量 ==========
 if [ -z "${NACOS_ADDR:-}" ]; then
-  echo "❌ 错误: NACOS_ADDR 未设置。请先执行:"
-  echo "   source scripts/deploy-env-local.sh"
+  echo "❌ 错误: NACOS_ADDR 未设置。请先配置项目根目录下的 env.json 文件"
   exit 1
 fi
 
 if [ -z "${RSA_PUBLIC_KEY:-}" ]; then
-  echo "❌ 错误: RSA_PUBLIC_KEY 未设置。请先生成 RSA 密钥对："
+  echo "❌ 错误: RSA_PUBLIC_KEY 未设置。请先生成 RSA 密钥对并配置到 env.json："
   echo "   ./scripts/deploy-rsa-keygen.sh"
   exit 1
 fi

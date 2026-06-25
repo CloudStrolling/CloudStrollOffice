@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   云漫智企 (CloudStrollOffice) 数据库初始化脚本 (Windows)
 .DESCRIPTION
@@ -24,6 +24,13 @@ param(
 )
 
 $ProjectDir = Split-Path -Parent $PSScriptRoot
+
+# ========== 从 env.json 加载环境变量 ==========
+. $PSScriptRoot\load-env.ps1
+if (-not $DbPassword -or $DbPassword -eq "<DB_PASSWORD>") { $DbPassword = $env:DB_PASSWORD }
+if (-not $DbHost -or $DbHost -eq "192.168.1.101") { $DbHost = $env:DB_HOST }
+if ($DbPort -eq 3306) { $DbPort = [int]($env:DB_PORT -replace '\D','') }
+if (-not $DbUser -or $DbUser -eq "root") { $DbUser = $env:DB_USERNAME }
 $SqlDir5 = Join-Path $ProjectDir "scripts\sql\auth-init-v0.1.5.sql"
 $SqlDir6 = Join-Path $ProjectDir "scripts\sql\auth-init-v0.1.6.sql"
 

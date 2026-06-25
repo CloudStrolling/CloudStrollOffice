@@ -13,6 +13,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 SQL_DIR="$PROJECT_DIR/scripts/sql"
 
+# ========== 从 env.json 加载环境变量 ==========
+source "$SCRIPT_DIR/load-env.sh"
+
 # ------ 数据库连接参数（使用环境变量或默认值）------
 DB_HOST="${DB_HOST:-192.168.1.101}"
 DB_PORT="${DB_PORT:-3306}"

@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   云漫智企 (CloudStrollOffice) Gateway 服务启动脚本 (Windows)
 .DESCRIPTION
@@ -11,15 +11,18 @@
 $ProjectDir = Split-Path -Parent $PSScriptRoot
 $JarPath = Join-Path $ProjectDir "cloudoffice-gateway\target\cloudoffice-gateway-0.0.1-SNAPSHOT.jar"
 
+# ========== 从 env.json 加载环境变量 ==========
+. $PSScriptRoot\load-env.ps1
+
 # ========== 检查必要变量 ==========
 if (-not $env:NACOS_ADDR) {
-  Write-Host "❌ 错误: NACOS_ADDR 未设置。请先执行:" -ForegroundColor Red
-  Write-Host "   .\scripts\deploy-env-local.ps1"
+  Write-Host "❌ 错误: NACOS_ADDR 未设置。请先配置:" -ForegroundColor Red
+  Write-Host "   根目录下的 env.json 文件"
   exit 1
 }
 
 if (-not $env:RSA_PUBLIC_KEY) {
-  Write-Host "❌ 错误: RSA_PUBLIC_KEY 未设置。请先生成 RSA 密钥对：" -ForegroundColor Red
+  Write-Host "❌ 错误: RSA_PUBLIC_KEY 未设置。请先生成 RSA 密钥对并配置到 env.json：" -ForegroundColor Red
   Write-Host "   .\scripts\deploy-rsa-keygen.ps1"
   exit 1
 }

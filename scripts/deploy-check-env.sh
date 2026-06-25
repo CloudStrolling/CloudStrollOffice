@@ -15,7 +15,11 @@ RED='\033[0;31m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-# ------ 配置区（请根据实际环境修改）------
+# ========== 从 env.json 加载环境变量 ==========
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/load-env.sh"
+
+# ------ 配置区（从 env.json 加载或默认值）------
 NACOS_ADDR="${NACOS_ADDR:-192.168.1.100:8848}"
 DB_HOST="${DB_HOST:-192.168.1.101}"
 DB_PORT="${DB_PORT:-3306}"

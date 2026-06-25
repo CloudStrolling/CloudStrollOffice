@@ -14,6 +14,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 JAR_PATH="$PROJECT_DIR/cloudoffice-auth-service/target/cloudoffice-auth-service-0.0.1-SNAPSHOT.jar"
 
+# ========== 从 env.json 加载环境变量 ==========
+source "$SCRIPT_DIR/load-env.sh"
+
 # ========== 检查必要变量 ==========
 REQUIRED_VARS=("NACOS_ADDR" "DB_HOST" "DB_PORT" "DB_USERNAME" "DB_PASSWORD"
                "REDIS_HOST" "REDIS_PORT" "RSA_PRIVATE_KEY" "RSA_PUBLIC_KEY")
@@ -31,7 +34,7 @@ if [ ${#MISSING_VARS[@]} -gt 0 ]; then
     echo "   - $var"
   done
   echo ""
-  echo "   请先执行: source scripts/deploy-env-local.sh"
+  echo "   请先配置项目根目录下的 env.json 文件"
   exit 1
 fi
 

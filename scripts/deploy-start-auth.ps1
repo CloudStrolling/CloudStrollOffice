@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   云漫智企 (CloudStrollOffice) Auth Service 启动脚本 (Windows)
 .DESCRIPTION
@@ -10,6 +10,9 @@
 
 $ProjectDir = Split-Path -Parent $PSScriptRoot
 $JarPath = Join-Path $ProjectDir "cloudoffice-auth-service\target\cloudoffice-auth-service-0.0.1-SNAPSHOT.jar"
+
+# ========== 从 env.json 加载环境变量 ==========
+. $PSScriptRoot\load-env.ps1
 
 # ========== 检查必要变量 ==========
 $requiredVars = @("NACOS_ADDR", "DB_HOST", "DB_PORT", "DB_USERNAME", "DB_PASSWORD",
@@ -27,7 +30,7 @@ if ($missingVars.Count -gt 0) {
   foreach ($var in $missingVars) {
     Write-Host "   - $var"
   }
-  Write-Host "`n   请先执行: .\scripts\deploy-env-local.ps1"
+  Write-Host "`n   请先配置根目录下的 env.json 文件"
   exit 1
 }
 

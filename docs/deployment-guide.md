@@ -203,40 +203,39 @@ ls scripts/sql/
 | `PASSWORD_MIN_LENGTH` | `8` | auth-service | 密码最小长度 |
 | `PASSWORD_MAX_LENGTH` | `64` | auth-service | 密码最大长度 |
 
-### 2.2 环境变量文件模板
+### 2.2 环境变量配置文件（推荐）
 
-创建 `.env` 文件（或直接 export），将所有 `<PLACEHOLDER>` 替换为实际值：
+> **推荐使用 JSON 格式配置文件**，跨平台兼容，脚本自动加载。
 
-```bash
-# ============================================================
-# CloudStrollOffice 环境变量配置
-# 说明：将所有 <PLACEHOLDER> 替换为实际值
-# 使用方法：source .env （Linux）或在 PowerShell 中逐条设置
-# ============================================================
+**步骤：**
+1. 复制模板：`cp env.example.json env.json`（Windows: `copy env.example.json env.json`）
+2. 编辑 `env.json`，将 `<PLACEHOLDER>` 替换为实际值
+3. 运行启动脚本，自动从 `env.json` 加载环境变量
 
-# ===================== 第一组：必填敏感变量 =====================
-export DB_PASSWORD='<DB_PASSWORD>'            # 数据库密码（必须修改！）
-export RSA_PRIVATE_KEY='<RSA_PRIVATE_KEY>'     # RSA 私钥 Base64（必须生成！）
-export RSA_PUBLIC_KEY='<RSA_PUBLIC_KEY>'       # RSA 公钥 Base64（必须生成！）
-export REDIS_PASSWORD='<REDIS_PASSWORD>'       # Redis 密码（无密码则为空）
-
-# ===================== 第二组：必填连接变量 =====================
-export NACOS_ADDR='192.168.1.100:8848'         # Nacos 服务地址
-export DB_HOST='192.168.1.101'                  # 数据库主机
-export DB_PORT='3306'                           # 数据库端口
-export DB_USERNAME='root'                       # 数据库用户名（auth-service）
-export DB_USER='root'                           # 数据库用户名（biz/system-service）
-export REDIS_HOST='192.168.1.102'               # Redis 主机
-export REDIS_PORT='6379'                        # Redis 端口
-
-# ===================== 第三组：可选业务变量 =====================
-export VERIFICATION_CODE_MOCK='true'            # true=模拟模式（开发用）
-export VERIFICATION_CODE_EXPIRE_SECONDS='300'
-export VERIFICATION_CODE_SEND_INTERVAL='60'
-export VERIFICATION_CODE_LENGTH='6'
-export PASSWORD_MIN_LENGTH='8'
-export PASSWORD_MAX_LENGTH='64'
+```json
+{
+  "NACOS_ADDR": "192.168.1.100:8848",
+  "DB_HOST": "192.168.1.101",
+  "DB_PORT": "3306",
+  "DB_USERNAME": "root",
+  "DB_PASSWORD": "<DB_PASSWORD>",
+  "DB_USER": "root",
+  "REDIS_HOST": "192.168.1.102",
+  "REDIS_PORT": "6379",
+  "REDIS_PASSWORD": "",
+  "RSA_PRIVATE_KEY": "<RSA_PRIVATE_KEY>",
+  "RSA_PUBLIC_KEY": "<RSA_PUBLIC_KEY>",
+  "VERIFICATION_CODE_MOCK": "true",
+  "VERIFICATION_CODE_EXPIRE_SECONDS": "300",
+  "VERIFICATION_CODE_SEND_INTERVAL": "60",
+  "VERIFICATION_CODE_LENGTH": "6",
+  "PASSWORD_MIN_LENGTH": "8",
+  "PASSWORD_MAX_LENGTH": "64"
+}
 ```
+
+> `env.json` 已加入 `.gitignore`，不会提交到版本控制系统。
+> 如需使用传统 `.env` 格式，参考 `.env.example` 文件。
 
 ### 2.3 RSA 密钥生成
 
@@ -296,52 +295,48 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...
 
 提供三种注入方式，根据部署环境选择。
 
-#### 方式一：Linux/macOS export（临时，当前 Shell 生效）
+#### 方式一：Linux/macOS（推荐，使用 env.json）
 
 ```bash
-# 使用环境变量模板文件（推荐）
-cp scripts/deploy-env-template.sh scripts/deploy-env-local.sh
-# 编辑 scripts/deploy-env-local.sh，替换所有 <PLACEHOLDER>
-vim scripts/deploy-env-local.sh
+# 配置 env.json（详见 2.2 节）
 
-# 加载环境变量
-source scripts/deploy-env-local.sh
+# 启动服务脚本会自动加载 env.json
+./scripts/deploy-start-gateway.sh
 
-# 验证环境变量已加载
+# 如需在当前 Shell 手动加载环境变量
+source scripts/load-env.sh
+
+# 验证
 echo $NACOS_ADDR
-echo $DB_HOST
 ```
 
-#### 方式二：Windows PowerShell（临时，当前会话生效）
+> 自动加载依赖 jq 或 python3。详见 `scripts/load-env.sh`。
+
+#### 方式二：Windows PowerShell（推荐，使用 env.json）
 
 ```powershell
-# 使用环境变量模板文件（推荐）
-Copy-Item scripts/deploy-env-template.ps1 scripts/deploy-env-local.ps1
-# 编辑 scripts/deploy-env-local.ps1，替换所有 <PLACEHOLDER>
+# 配置 env.json（详见 2.2 节）
 
-# 执行加载环境变量
-.\scripts\deploy-env-local.ps1
+# 启动服务脚本会自动加载 env.json
+.\scripts\deploy-start-gateway.ps1
+
+# 如需在当前会话手动加载环境变量
+. .\scripts\load-env.ps1
 
 # 验证
 $env:NACOS_ADDR
-$env:DB_HOST
 ```
 
-#### 方式三：Windows CMD setx（永久，系统级）
+#### 方式三：传统 .env 格式（备选）
 
-```batch
-:: 注意：setx 仅对新打开的 CMD 窗口生效，需管理员权限
-setx NACOS_ADDR "192.168.1.100:8848" /M
-setx DB_HOST "192.168.1.101" /M
-setx DB_PORT "3306" /M
-setx DB_USERNAME "root" /M
-setx DB_PASSWORD "YourP@ss" /M
-
-:: 说明：setx /M 设置系统级环境变量，需要管理员权限
-:: RSA 密钥值太长生僻，不适合用 setx 设置，建议从文件读取
+```bash
+# 参考 .env.example 创建 .env 文件
+# 然后 source .env 或手动 export
+export DB_PASSWORD='<DB_PASSWORD>'
+export RSA_PRIVATE_KEY='<RSA_PRIVATE_KEY>'
 ```
 
-> **推荐做法：** 开发环境使用方式一（Linux export）或方式二（PowerShell）；生产环境使用 systemd `EnvironmentFile`（详见第 9 章）。
+> **推荐做法：** 开发环境使用 `env.json` + 启动脚本自动加载；启动脚本会先调用 `load-env.ps1/sh` 加载配置，再检查必要变量后启动 Java 服务。生产环境使用 systemd `EnvironmentFile`（详见第 9 章）。
 
 ---
 
@@ -622,44 +617,40 @@ mvn clean test surefire-report:report
 
 **Gateway 的作用：** API 网关，所有外部请求的统一入口，负责路由转发、Token 校验、跨域处理等。依赖 Nacos（服务发现）和 Redis（Token 黑名单缓存）。
 
-**第一步：注入环境变量**
+> 启动脚本会自动从项目根目录的 `env.json` 加载环境变量，无需手动 export。
+
+**启动服务：**
 
 ```bash
-# Linux/macOS（替换 <PLACEHOLDER> 为实际值）
-export NACOS_ADDR=192.168.1.100:8848
-export REDIS_HOST=192.168.1.102
-export REDIS_PORT=6379
-export REDIS_PASSWORD='<REDIS_PASSWORD>'  # 无密码则为空
-export RSA_PUBLIC_KEY="MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA..."
+# Linux/macOS（会自动加载 env.json）
+./scripts/deploy-start-gateway.sh
 ```
 
 ```powershell
-# Windows PowerShell
+# Windows PowerShell（会自动加载 env.json）
+.\scripts\deploy-start-gateway.ps1
+```
+
+**手动启动（不依赖 env.json）：**
+
+```bash
+# Linux/macOS（需先手动设置环境变量）
+export NACOS_ADDR=192.168.1.100:8848
+export REDIS_HOST=192.168.1.102
+export REDIS_PORT=6379
+export REDIS_PASSWORD='<REDIS_PASSWORD>'
+export RSA_PUBLIC_KEY="MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA..."
+java -Xms256m -Xmx512m -jar cloudoffice-gateway/target/cloudoffice-gateway-0.0.1-SNAPSHOT.jar
+```
+
+```powershell
+# Windows PowerShell（需先手动设置环境变量）
 $env:NACOS_ADDR = "192.168.1.100:8848"
 $env:REDIS_HOST = "192.168.1.102"
 $env:REDIS_PORT = "6379"
 $env:REDIS_PASSWORD = "<REDIS_PASSWORD>"
 $env:RSA_PUBLIC_KEY = "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA..."
-```
-
-**第二步：启动服务**
-
-```bash
-# Linux/macOS
-java -Xms256m -Xmx512m \
-  -jar cloudoffice-gateway/target/cloudoffice-gateway-0.0.1-SNAPSHOT.jar
-
-# 或使用启动脚本（需先加载环境变量）
-./scripts/deploy-start-gateway.sh
-```
-
-```powershell
-# Windows PowerShell
-java -Xms256m -Xmx512m `
-  -jar cloudoffice-gateway/target/cloudoffice-gateway-0.0.1-SNAPSHOT.jar
-
-# 或使用启动脚本
-.\scripts\deploy-start-gateway.ps1
+java -Xms256m -Xmx512m -jar cloudoffice-gateway/target/cloudoffice-gateway-0.0.1-SNAPSHOT.jar
 ```
 
 **第三步：验证启动成功**
@@ -692,10 +683,24 @@ curl -s http://localhost:9000/actuator/health
 
 **auth-service 的作用：** 统一认证与授权服务，负责用户登录/注册、Token 签发/刷新/校验、OAuth 第三方登录、验证码、密码管理等。**所需环境变量最多**（Nacos + MariaDB + Redis + RSA 密钥对）。
 
-**第一步：注入环境变量**
+> 启动脚本会自动从项目根目录的 `env.json` 加载所有环境变量，无需手动 export。
+
+**启动服务：**
 
 ```bash
-# Linux/macOS - auth-service 需要最完整的变量集
+# Linux/macOS（会自动加载 env.json）
+./scripts/deploy-start-auth.sh
+```
+
+```powershell
+# Windows PowerShell（会自动加载 env.json）
+.\scripts\deploy-start-auth.ps1
+```
+
+**手动启动（不依赖 env.json）：**
+
+```bash
+# Linux/macOS（需先手动设置环境变量）
 export NACOS_ADDR=192.168.1.100:8848
 export DB_HOST=192.168.1.101
 export DB_PORT=3306
@@ -703,14 +708,15 @@ export DB_USERNAME=root
 export DB_PASSWORD='YourP@ss'
 export REDIS_HOST=192.168.1.102
 export REDIS_PORT=6379
-export REDIS_PASSWORD='<REDIS_PASSWORD>'  # 无密码则为空
+export REDIS_PASSWORD='<REDIS_PASSWORD>'
 export RSA_PRIVATE_KEY="MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC..."
 export RSA_PUBLIC_KEY="MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA..."
-export VERIFICATION_CODE_MOCK=true         # 开发环境建议设为 true
+export VERIFICATION_CODE_MOCK=true
+java -Xms256m -Xmx512m -jar cloudoffice-auth-service/target/cloudoffice-auth-service-0.0.1-SNAPSHOT.jar
 ```
 
 ```powershell
-# Windows PowerShell
+# Windows PowerShell（需先手动设置环境变量）
 $env:NACOS_ADDR = "192.168.1.100:8848"
 $env:DB_HOST = "192.168.1.101"
 $env:DB_PORT = "3306"
@@ -722,26 +728,7 @@ $env:REDIS_PASSWORD = "<REDIS_PASSWORD>"
 $env:RSA_PRIVATE_KEY = "MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC..."
 $env:RSA_PUBLIC_KEY = "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA..."
 $env:VERIFICATION_CODE_MOCK = "true"
-```
-
-**第二步：启动服务**
-
-```bash
-# Linux/macOS
-java -Xms256m -Xmx512m \
-  -jar cloudoffice-auth-service/target/cloudoffice-auth-service-0.0.1-SNAPSHOT.jar
-
-# 使用启动脚本
-./scripts/deploy-start-auth.sh
-```
-
-```powershell
-# Windows PowerShell
-java -Xms256m -Xmx512m `
-  -jar cloudoffice-auth-service/target/cloudoffice-auth-service-0.0.1-SNAPSHOT.jar
-
-# 使用启动脚本
-.\scripts\deploy-start-auth.ps1
+java -Xms256m -Xmx512m -jar cloudoffice-auth-service/target/cloudoffice-auth-service-0.0.1-SNAPSHOT.jar
 ```
 
 **第三步：验证启动成功**
@@ -779,16 +766,28 @@ curl -s http://localhost:9100/api/v1/auth/health
 
 **biz-service 的作用：** 企业业务服务，负责企业管理相关功能。依赖 Nacos 和 MariaDB。
 
-**第一步：注入环境变量**
+> 启动脚本会自动从项目根目录的 `env.json` 加载所有环境变量，无需手动 export。
+
+**启动服务：**
 
 ```bash
-# Linux/macOS
-# 注意：biz-service 使用 DB_USER 而不是 DB_USERNAME
+# Linux/macOS（会自动加载 env.json）
+./scripts/deploy-start-biz.sh
+```
+
+```powershell
+# Windows PowerShell（会自动加载 env.json）
+.\scripts\deploy-start-biz.ps1
+```
+
+**手动启动（不依赖 env.json）：**
+
+```bash
+# Linux/macOS（注意：biz-service 使用 DB_USER 而不是 DB_USERNAME）
 export NACOS_ADDR=192.168.1.100:8848
-export DB_USER=root          # 注意变量名不同！
+export DB_USER=root
 export DB_PASSWORD='YourP@ss'
-# 可选：如果数据库 URL 非默认，设置完整 URL
-# export DB_URL="jdbc:mariadb://192.168.1.101:3306/cloudstroll_office_biz?useUnicode=true&characterEncoding=utf8mb4&serverTimezone=Asia/Shanghai"
+java -Xms256m -Xmx512m -jar cloudoffice-biz-service/target/cloudoffice-biz-service-0.0.1-SNAPSHOT.jar
 ```
 
 ```powershell
@@ -796,26 +795,7 @@ export DB_PASSWORD='YourP@ss'
 $env:NACOS_ADDR = "192.168.1.100:8848"
 $env:DB_USER = "root"
 $env:DB_PASSWORD = "YourP@ss"
-```
-
-**第二步：启动服务**
-
-```bash
-# Linux/macOS
-java -Xms256m -Xmx512m \
-  -jar cloudoffice-biz-service/target/cloudoffice-biz-service-0.0.1-SNAPSHOT.jar
-
-# 使用启动脚本
-./scripts/deploy-start-biz.sh
-```
-
-```powershell
-# Windows PowerShell
-java -Xms256m -Xmx512m `
-  -jar cloudoffice-biz-service/target/cloudoffice-biz-service-0.0.1-SNAPSHOT.jar
-
-# 使用启动脚本
-.\scripts\deploy-start-biz.ps1
+java -Xms256m -Xmx512m -jar cloudoffice-biz-service/target/cloudoffice-biz-service-0.0.1-SNAPSHOT.jar
 ```
 
 **第三步：验证启动成功**
@@ -848,16 +828,28 @@ curl -s http://localhost:9200/api/v1/biz/health
 
 **system-service 的作用：** 系统管理服务，负责系统级别的配置管理功能。依赖 Nacos 和 MariaDB。
 
-**第一步：注入环境变量**
+> 启动脚本会自动从项目根目录的 `env.json` 加载所有环境变量，无需手动 export。
+
+**启动服务：**
+
+```bash
+# Linux/macOS（会自动加载 env.json）
+./scripts/deploy-start-system.sh
+```
+
+```powershell
+# Windows PowerShell（会自动加载 env.json）
+.\scripts\deploy-start-system.ps1
+```
+
+**手动启动（不依赖 env.json）：**
 
 ```bash
 # Linux/macOS
-# 与 biz-service 使用相同的变量名体系
 export NACOS_ADDR=192.168.1.100:8848
 export DB_USER=root
 export DB_PASSWORD='YourP@ss'
-# 可选：
-# export DB_URL="jdbc:mariadb://192.168.1.101:3306/cloudstroll_office_system?useUnicode=true&characterEncoding=utf8mb4&serverTimezone=Asia/Shanghai"
+java -Xms256m -Xmx512m -jar cloudoffice-system-service/target/cloudoffice-system-service-0.0.1-SNAPSHOT.jar
 ```
 
 ```powershell
@@ -865,26 +857,7 @@ export DB_PASSWORD='YourP@ss'
 $env:NACOS_ADDR = "192.168.1.100:8848"
 $env:DB_USER = "root"
 $env:DB_PASSWORD = "YourP@ss"
-```
-
-**第二步：启动服务**
-
-```bash
-# Linux/macOS
-java -Xms256m -Xmx512m \
-  -jar cloudoffice-system-service/target/cloudoffice-system-service-0.0.1-SNAPSHOT.jar
-
-# 使用启动脚本
-./scripts/deploy-start-system.sh
-```
-
-```powershell
-# Windows PowerShell
-java -Xms256m -Xmx512m `
-  -jar cloudoffice-system-service/target/cloudoffice-system-service-0.0.1-SNAPSHOT.jar
-
-# 使用启动脚本
-.\scripts\deploy-start-system.ps1
+java -Xms256m -Xmx512m -jar cloudoffice-system-service/target/cloudoffice-system-service-0.0.1-SNAPSHOT.jar
 ```
 
 **第三步：验证启动成功**
@@ -1045,16 +1018,13 @@ if ($pid) { Stop-Process -Id $pid -Force }
 #### 6.2.1 场景一：修改配置后重启
 
 ```bash
-# 1. 重新加载环境变量（如果修改了 .env 文件）
-source scripts/deploy-env-local.sh
-
-# 2. 停止旧进程
+# 1. 停止旧进程
 kill -15 $(jps -l | grep cloudoffice-gateway | awk '{print $1}')
 
-# 3. 等待 5 秒确保旧进程已释放端口
+# 2. 等待 5 秒确保旧进程已释放端口
 sleep 5
 
-# 4. 重新启动
+# 3. 重新启动（会自动加载 env.json）
 ./scripts/deploy-start-gateway.sh
 ```
 
@@ -1086,10 +1056,7 @@ sleep 10
 # 3. 重新编译（可选，如果代码有变更）
 mvn clean package -DskipTests
 
-# 4. 重新加载环境变量
-source scripts/deploy-env-local.sh
-
-# 5. 按顺序启动
+# 4. 按顺序启动（各脚本会自动加载 env.json）
 ./scripts/deploy-start-gateway.sh &
 sleep 15        # 等待 Gateway 完全启动
 ./scripts/deploy-start-auth.sh &
@@ -1402,7 +1369,9 @@ A：确保所有容器处于同一 Docker 网络（`cloud-stroll-network`），D
 | 脚本文件名 | 用途 | Linux/macOS | Windows |
 |-----------|------|-------------|---------|
 | `deploy-check-env.*` | 前置环境检查 | `deploy-check-env.sh` | `deploy-check-env.ps1` |
-| `deploy-env-template.*` | 环境变量模板 | `deploy-env-template.sh` | `deploy-env-template.ps1` |
+| `env.example.json` | 环境变量配置模板（JSON） | 项目根目录 | 项目根目录 |
+| `load-env.*` | 从 env.json 加载环境变量 | `load-env.sh` | `load-env.ps1` |
+| `deploy-env-template.*` | 环境变量模板（已弃用） | `deploy-env-template.sh` | `deploy-env-template.ps1` |
 | `deploy-rsa-keygen.*` | RSA 密钥对生成 | `deploy-rsa-keygen.sh` | `deploy-rsa-keygen.ps1` |
 | `deploy-db-init.*` | 数据库初始化 | `deploy-db-init.sh` | `deploy-db-init.ps1` |
 | `deploy-start-gateway.*` | 启动 Gateway | `deploy-start-gateway.sh` | `deploy-start-gateway.ps1` |
@@ -1420,9 +1389,9 @@ A：确保所有容器处于同一 Docker 网络（`cloud-stroll-network`），D
 ./scripts/deploy-rsa-keygen.sh
 
 # 3. 配置环境变量
-cp scripts/deploy-env-template.sh scripts/deploy-env-local.sh
-# 编辑 deploy-env-local.sh，替换所有 <PLACEHOLDER>
-source scripts/deploy-env-local.sh
+cp env.example.json env.json
+# 编辑 env.json，替换所有 <PLACEHOLDER> 为实际值
+vim env.json
 
 # 4. 初始化数据库
 ./scripts/deploy-db-init.sh
@@ -1430,10 +1399,8 @@ source scripts/deploy-env-local.sh
 # 5. 编译打包
 mvn clean package -DskipTests
 
-# 6. 按顺序启动服务
+# 6. 按顺序启动服务（脚本自动加载 env.json）
 ./scripts/deploy-start-gateway.sh
-# (新开终端或后台运行)
-source scripts/deploy-env-local.sh
 ./scripts/deploy-start-auth.sh
 ./scripts/deploy-start-biz.sh
 ./scripts/deploy-start-system.sh

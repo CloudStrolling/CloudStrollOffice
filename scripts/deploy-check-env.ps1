@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   云漫智企 (CloudStrollOffice) 部署前置检查脚本 (Windows)
 .DESCRIPTION
@@ -30,6 +30,17 @@ param(
   [string]$RedisHost = "192.168.1.102",
   [int]$RedisPort = 6379
 )
+
+# ========== 从 env.json 加载环境变量 ==========
+$MyInvocation.MyCommand.ScriptBlock.Module.SessionState.Path.CurrentFileSystemDrive
+. "$PSScriptRoot\load-env.ps1"
+if (-not $DbPassword -or $DbPassword -eq "<DB_PASSWORD>") { $DbPassword = $env:DB_PASSWORD }
+if ($NacosAddr -eq "192.168.1.100:8848") { $NacosAddr = $env:NACOS_ADDR }
+if (-not $DbHost -or $DbHost -eq "192.168.1.101") { $DbHost = $env:DB_HOST }
+if ($DbPort -eq 3306) { $DbPort = [int]($env:DB_PORT -replace '\D','') }
+if (-not $DbUser -or $DbUser -eq "root") { $DbUser = $env:DB_USERNAME }
+if (-not $RedisHost -or $RedisHost -eq "192.168.1.102") { $RedisHost = $env:REDIS_HOST }
+if ($RedisPort -eq 6379) { $RedisPort = [int]($env:REDIS_PORT -replace '\D','') }
 
 $pass = 0
 $fail = 0

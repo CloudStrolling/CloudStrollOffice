@@ -2,12 +2,9 @@
 # ============================================================
 # 云漫智企 (CloudStrollOffice) 环境变量模板
 # 版本: v0.1.7
-# 说明: 在使用此脚本前，将所有 <PLACEHOLDER> 替换为实际值
-# 用法:
-#   1. cp scripts/deploy-env-template.sh scripts/deploy-env-local.sh
-#   2. 编辑 scripts/deploy-env-local.sh，替换所有 <PLACEHOLDER>
-#   3. source scripts/deploy-env-local.sh
-#   4. 然后运行 java -jar 或 deploy-start-*.sh 脚本
+# 说明: 【已弃用】请改用项目根目录下的 env.json 配置文件
+#       复制 env.example.json 为 env.json，修改配置值，
+#       然后运行脚本时通过 scripts/load-env.sh 自动加载
 # ============================================================
 
 # ============================================================

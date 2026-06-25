@@ -13,14 +13,17 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 JAR_PATH="$PROJECT_DIR/cloudoffice-system-service/target/cloudoffice-system-service-0.0.1-SNAPSHOT.jar"
 
+# ========== 从 env.json 加载环境变量 ==========
+source "$SCRIPT_DIR/load-env.sh"
+
 # ========== 检查必要变量 ==========
 if [ -z "${NACOS_ADDR:-}" ]; then
-  echo "❌ 错误: NACOS_ADDR 未设置。请先执行: source scripts/deploy-env-local.sh"
+  echo "❌ 错误: NACOS_ADDR 未设置。请先配置项目根目录下的 env.json 文件"
   exit 1
 fi
 
 if [ -z "${DB_PASSWORD:-}" ]; then
-  echo "❌ 错误: DB_PASSWORD 未设置。请先执行: source scripts/deploy-env-local.sh"
+  echo "❌ 错误: DB_PASSWORD 未设置。请先配置项目根目录下的 env.json 文件"
   exit 1
 fi
 

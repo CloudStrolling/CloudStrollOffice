@@ -1,17 +1,11 @@
-<#
+﻿<#
 .SYNOPSIS
-  云漫智企 (CloudStrollOffice) 环境变量模板 (Windows PowerShell)
+   云漫智企 (CloudStrollOffice) 环境变量模板 (Windows PowerShell)
 .DESCRIPTION
-  在使用此脚本前，将所有 <PLACEHOLDER> 替换为实际值。
-  在 PowerShell 中执行此脚本以注入环境变量到当前会话。
-.USAGE
-  # 步骤1: 复制模板
-  Copy-Item scripts/deploy-env-template.ps1 scripts/deploy-env-local.ps1
-
-  # 步骤2: 编辑 scripts/deploy-env-local.ps1，替换所有 <PLACEHOLDER>
-
-  # 步骤3: 执行注入环境变量
-  .\scripts\deploy-env-local.ps1
+   此文件为旧版环境变量配置方式，已弃用。
+   请改用项目根目录下的 env.json 配置文件。
+   示例: 复制 env.example.json 为 env.json，修改配置值，
+         然后运行脚本时通过 scripts/load-env.ps1 自动加载。
 
   # 步骤4: 启动服务
   java -jar cloudoffice-gateway/target/cloudoffice-gateway-0.0.1-SNAPSHOT.jar

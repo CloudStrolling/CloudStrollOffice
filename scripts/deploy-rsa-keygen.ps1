@@ -1,13 +1,13 @@
-<#
+﻿<#
 .SYNOPSIS
-  云漫智企 (CloudStrollOffice) RSA 密钥对生成脚本 (Windows)
+   云漫智企 (CloudStrollOffice) RSA 密钥对生成脚本 (Windows)
 .DESCRIPTION
-  生成 RSA 2048 位密钥对并输出 Base64 编码
+   生成 RSA 2048 位密钥对并输出 Base64 编码
 .PARAMETER OutputDir
-  输出目录 (默认: keys)
+   输出目录 (默认: keys)
 .EXAMPLE
-  .\scripts\deploy-rsa-keygen.ps1
-  .\scripts\deploy-rsa-keygen.ps1 -OutputDir "C:\CloudStroll\keys"
+   .\scripts\deploy-rsa-keygen.ps1
+   .\scripts\deploy-rsa-keygen.ps1 -OutputDir "C:\CloudStroll\keys"
 #>
 
 param(
@@ -43,19 +43,13 @@ try {
 
 # 步骤 1: 生成 RSA 2048 位私钥（PKCS#8 格式）
 Write-Host "[1/4] 生成 RSA 2048 位私钥..."
-openssl genpkey -algorithm RSA `
-  -pkeyopt rsa_keygen_bits:2048 `
-  -outform PEM `
-  -out "$privateKeyFile" 2>&1
+openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -outform PEM -out "$privateKeyFile" 2>&1
 if ($LASTEXITCODE -ne 0) { Write-Host "私钥生成失败" -ForegroundColor Red; exit 1 }
 Write-Host "  -> 已生成: $privateKeyFile"
 
 # 步骤 2: 提取公钥
 Write-Host "[2/4] 提取公钥..."
-openssl pkey -in "$privateKeyFile" `
-  -pubout `
-  -outform PEM `
-  -out "$publicKeyFile" 2>&1
+openssl pkey -in "$privateKeyFile" -pubout -outform PEM -out "$publicKeyFile" 2>&1
 if ($LASTEXITCODE -ne 0) { Write-Host "公钥提取失败" -ForegroundColor Red; exit 1 }
 Write-Host "  -> 已生成: $publicKeyFile"
 
@@ -83,12 +77,12 @@ Write-Host "  生成完成！"
 Write-Host "=============================================="
 Write-Host ""
 
-Write-Host "环境变量设置（将以下 Base64 值分别设置为环境变量）：" -ForegroundColor Green
+Write-Host "环境变量配置（将以下 Base64 值写入项目根目录 env.json 或 .env 文件）：" -ForegroundColor Green
 Write-Host ""
-Write-Host '$env:RSA_PRIVATE_KEY = "'$privateKeyBase64'"'
-Write-Host '$env:RSA_PUBLIC_KEY = "'$publicKeyBase64'"'
+Write-Host "  env.json 配置："
+Write-Host '  "RSA_PRIVATE_KEY": "'$privateKeyBase64'"'
+Write-Host '  "RSA_PUBLIC_KEY": "'$publicKeyBase64'"'
 Write-Host ""
-
-Write-Host "===== .env 文件片段（可复制到 .env 文件中）====="
-Write-Host "RSA_PRIVATE_KEY=$privateKeyBase64"
-Write-Host "RSA_PUBLIC_KEY=$publicKeyBase64"
+Write-Host "  .env 配置："
+Write-Host "  RSA_PRIVATE_KEY=$privateKeyBase64"
+Write-Host "  RSA_PUBLIC_KEY=$publicKeyBase64"
