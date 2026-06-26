@@ -179,6 +179,7 @@ temp/
 .env.dev
 .env.prod
 .env.staging
+keys/
 *.pem
 *.key
 
