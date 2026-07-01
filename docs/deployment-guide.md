@@ -1,7 +1,7 @@
 # 云漫智企 (CloudStrollOffice) 部署指南
 
-**版本：** v0.1.7  
-**日期：** 2026-06-25  
+**版本：** v0.2.0  
+**日期：** 2026-06-26  
 **适用环境：** 开发环境 / 测试环境 / 生产环境  
 
 ---
@@ -18,6 +18,7 @@
 8. [健康检查与验证](#8-健康检查与验证)
 9. [运维指南](#9-运维指南)
 10. [常见问题](#10-常见问题)
+11. [Flutter 前端编译与部署](#11-flutter-前端编译与部署)
 
 ---
 
@@ -1362,6 +1363,166 @@ A：确保所有容器处于同一 Docker 网络（`cloud-stroll-network`），D
 
 ---
 
+## 11. Flutter 前端编译与部署
+
+> **Flutter 前端应用** 位于 `cloudoffice-flutter-app/` 目录下，支持 Web（H5）和 Windows 双平台，v0.2.0 版本。
+
+### 11.1 前置条件
+
+| 环境 | 要求 | 验证命令 |
+|------|------|---------|
+| Flutter SDK | >= 3.12.x（含 Dart 3.12+） | `flutter --version`（入口为 `flutter.bat`，非 `flutter.exe`） |
+| Windows 构建 | Visual Studio 2022 含「使用 C++ 的桌面开发」工作负载 | `cl` |
+
+> **Web 平台**只需 Flutter SDK，无需额外工具。
+> **Windows 平台**需要 Visual Studio 2022（Community 版即可），安装时勾选「使用 C++ 的桌面开发」。
+> Flutter SDK 在 Windows 上的入口是 `flutter.bat`（位于 `bin/` 目录），`flutter.exe` 不存在。将 `bin/` 目录加入 PATH 后，在命令行直接输入 `flutter` 即可调用。
+
+### 11.2 配置后端 API 地址
+
+Flutter 应用通过 Gateway（端口 9000）访问后端服务，默认连接 `http://localhost:9000`。
+
+如需修改后端地址，编辑 `cloudoffice-flutter-app/lib/config/api_config.dart`：
+
+```dart
+/// 后端 API 基础地址（API 网关地址）
+static const String baseUrl = 'http://localhost:9000';  // 改为实际网关地址
+```
+
+> **生产环境建议：** 通过构建时环境变量注入（如 `--dart-define=BASE_URL=http://your-gateway:9000`）实现配置与环境解耦，不在代码中硬编码。
+
+### 11.3 Web 平台编译与部署
+
+#### 开发模式运行
+
+```bash
+# 进入 Flutter 项目目录
+cd cloudoffice-flutter-app
+
+# 获取依赖（首次或依赖变更时执行）
+flutter pub get
+
+# 启动开发服务器（默认 http://localhost:51732）
+flutter run -d chrome
+```
+
+#### 生产构建
+
+```bash
+# 进入 Flutter 项目目录
+cd cloudoffice-flutter-app
+
+# 获取依赖
+flutter pub get
+
+# 生产构建 Web 应用
+flutter build web --release
+
+# 构建产物位于 build/web/ 目录
+ls build/web/
+```
+
+#### 部署方式
+
+**方式一：Nginx 静态部署**
+
+```nginx
+# nginx.conf 示例
+server {
+    listen       8080;
+    server_name  cloudstroll.example.com;
+
+    # 将 / 路由到 Flutter 构建产物
+    root   /var/www/cloudstroll-office;
+    index  index.html;
+
+    # Flutter Web 需要支持 History 路由模式
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # 后端 API 反向代理
+    location /api/ {
+        proxy_pass http://127.0.0.1:9000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+```
+
+```bash
+# 将构建产物复制到 Nginx 目录
+cp -r build/web/* /var/www/cloudstroll-office/
+
+# 重新加载 Nginx
+nginx -s reload
+```
+
+**方式二：直接打开（开发/测试环境）**
+
+```bash
+# 使用 Python 内置 HTTP 服务器
+cd build/web
+python3 -m http.server 8080
+# 浏览器访问 http://localhost:8080
+```
+
+### 11.4 Windows 平台编译与部署
+
+#### 开发模式运行
+
+```bash
+# 进入 Flutter 项目目录
+cd cloudoffice-flutter-app
+
+# 获取依赖
+flutter pub get
+
+# 启动 Windows 桌面应用
+flutter run -d windows
+```
+
+#### 生产构建
+
+```bash
+# 进入 Flutter 项目目录
+cd cloudoffice-flutter-app
+
+# 生产构建 Windows 应用
+flutter build windows --release
+
+# 构建产物位于 build/windows/runner/Release/
+ls build/windows/runner/Release/
+```
+
+#### 部署方式
+
+Windows 构建为原生可执行文件，将 `build/windows/runner/Release/` 目录下的所有文件复制到目标机器即可运行：
+
+```bat
+:: 部署步骤
+:: 1. 将 Release 文件夹拷贝到目标机器，例如 C:\Program Files\CloudStrollOffice\
+:: 2. 直接运行 cloudoffice_flutter_app.exe
+:: 3. （可选）创建快捷方式到桌面或开机启动项
+```
+
+> **注意：** Windows 运行时依赖 Visual C++ Redistributable，如目标机器缺少运行库，可以从 Microsoft 官网安装 vc_redist.x64.exe。
+
+### 11.5 验证 Flutter 连接后端
+
+启动 Flutter 应用后，验证是否能正常连接后端：
+
+1. **登录页加载：** 打开应用应显示登录页面
+2. **管理员登录：** 使用 `admin / admin123`（默认租户 `DEFAULT`）登录
+3. **验证 Token：** 登录成功后应跳转到首页，且 API 请求携带有效 Token
+
+> **排查提示：** 如果 Flutter 连接后端失败，检查：
+> - Gateway 是否已启动：`curl http://localhost:9000/api/v1/auth/health`
+> - `api_config.dart` 中的 `baseUrl` 是否正确
+> - 浏览器控制台/应用日志中查看具体请求错误
+
+---
+
 ## 附录 A：部署脚本清单
 
 以下脚本位于 `scripts/` 目录下，用于辅助部署：
@@ -1404,11 +1565,19 @@ mvn clean package -DskipTests
 ./scripts/deploy-start-auth.sh
 ./scripts/deploy-start-biz.sh
 ./scripts/deploy-start-system.sh
+
+# 7. 编译并部署 Flutter 前端（参见第 11 章详细说明）
+cd cloudoffice-flutter-app
+flutter pub get
+flutter build web --release              # Web 平台构建
+# flutter build windows --release        # Windows 平台构建（需要 VS2022）
+cd ..
+# 将 build/web/* 部署到 Web 服务器
 ```
 
 ---
 
 > **文档信息：**
-> - 本文档适用于 CloudStrollOffice v0.1.6 用户认证增强阶段
+> - 本文档适用于 CloudStrollOffice v0.2.0（Flutter 前端 + 认证服务增强）
 > - 后续版本将补充 Kubernetes 部署、CI/CD 流程、生产环境安全加固等内容
 > - 如有问题请联系项目维护者或提交 GitHub Issue

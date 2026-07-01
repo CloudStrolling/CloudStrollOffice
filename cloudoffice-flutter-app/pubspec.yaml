@@ -40,8 +40,8 @@ dependencies:
   # 状态管理
   provider: ^6.1.0
 
-  # 安全存储（Token 等敏感数据）
-  flutter_secure_storage: ^9.2.0
+  # 安全存储（Token 等敏感数据，v2+ 支持 Wasm）
+  flutter_secure_storage_x: ^13.1.0
 
   # 声明式路由管理
   go_router: ^14.2.0

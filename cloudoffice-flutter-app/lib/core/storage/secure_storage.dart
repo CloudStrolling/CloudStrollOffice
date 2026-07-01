@@ -1,4 +1,4 @@
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter_secure_storage_x/flutter_secure_storage_x.dart';
 
 import '../../features/auth/models/token_pair.dart';
 
@@ -15,9 +15,7 @@ class SecureStorage {
   late final FlutterSecureStorage _storage;
 
   SecureStorage._internal() {
-    _storage = const FlutterSecureStorage(
-      aOptions: AndroidOptions(encryptedSharedPreferences: true),
-    );
+    _storage = const FlutterSecureStorage();
   }
 
   /// 获取单例实例

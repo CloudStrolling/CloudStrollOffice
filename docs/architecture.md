@@ -1,12 +1,8 @@
 # 架构文档
 
 **项目中文名称：** 云漫智企
-**项目名称：** CloudStrollOffice
-<<<<<<< HEAD
+**项目名称：** CloudStrollOffic
 **版本号：** v0.2.0
-=======
-**版本号：** v0.1.7
->>>>>>> cso-v0.1.7
 **日期：** 2026-06-24
 
 ---
@@ -15,11 +11,7 @@
 
 ### 1.1 系统定位
 
-<<<<<<< HEAD
-云漫智企（CloudStrollOffice）是一个基于 Java 21 + Spring Boot 3.2.x + Spring Cloud 2023.x 技术栈构建的微服务企业管理平台，旨在为企业提供企业信息管理、人事管理、工作流审批、薪酬管理、统一认证授权等综合服务能力。v0.1.0 阶段完成基础骨架搭建，v0.1.4 阶段完成系统服务模块搭建，v0.1.5 阶段构建了完整的登录认证与权限管理系统，包括 RBAC 多租户权限模型、多端混合登录、JWT + Redis 双重会话管理、双 Token 续签机制和登录日志审计等核心能力。v0.1.6 阶段完成用户认证能力全面增强，引入策略模式实现多模式注册/登录（用户名密码/手机验证码/手机密码/OAuth）、统一认证服务层（AuthenticationService）、密码管理、手机号变更、验证码管理等核心能力，使平台认证体系覆盖主流互联网应用的用户接入场景。v0.1.7 阶段新增管理中台服务（`cloudoffice-admin-service`），提供管理员身份认证与角色权限校验、用户管理 CRUD（创建/查询/编辑/启用禁用/重置密码/角色分配）、管理员操作审计日志等核心能力，通过 OpenFeign 声明式 HTTP 客户端与 auth-service 进行服务间通信，并建立独立数据库 `cloudstroll_office_admin` 存储审计日志等管理后台数据。v0.2.0 阶段新增 Flutter 跨平台前端子项目（`cloudoffice-flutter-app`），面向最终用户提供 Web（Chrome）和 Windows（VS2022）双平台前端应用，实现用户注册、登录、找回密码等基础认证交互能力，与后端认证微服务通过 API 网关对接，形成完整的用户认证闭环。
-=======
 云漫智企（CloudStrollOffice）是一个基于 Java 21 + Spring Boot 3.2.x + Spring Cloud 2023.x 技术栈构建的微服务企业管理平台，旨在为企业提供企业信息管理、人事管理、工作流审批、薪酬管理、统一认证授权等综合服务能力。v0.1.0 阶段完成基础骨架搭建，v0.1.4 阶段完成系统服务模块搭建，v0.1.5 阶段构建了完整的登录认证与权限管理系统，包括 RBAC 多租户权限模型、多端混合登录、JWT + Redis 双重会话管理、双 Token 续签机制和登录日志审计等核心能力。v0.1.6 阶段完成用户认证能力全面增强，引入策略模式实现多模式注册/登录（用户名密码/手机验证码/手机密码/OAuth）、统一认证服务层（AuthenticationService）、密码管理、手机号变更、验证码管理等核心能力，使平台认证体系覆盖主流互联网应用的用户接入场景。v0.1.7 阶段新增管理中台服务（`cloudoffice-admin-service`），提供管理员身份认证与角色权限校验、用户管理 CRUD（创建/查询/编辑/启用禁用/重置密码/角色分配）、管理员操作审计日志等核心能力，通过 OpenFeign 声明式 HTTP 客户端与 auth-service 进行服务间通信，并建立独立数据库 `cloudstroll_office_admin` 存储审计日志等管理后台数据。
->>>>>>> cso-v0.1.7
 
 ### 1.2 架构风格
 
@@ -113,13 +105,11 @@
 | 权限南向校验 | admin-service 负责管理员身份认证与角色权限校验，auth-service 负责用户数据持久化，服务间通过 OpenFeign 解耦调用，禁止跨服务直接访问数据库（v0.1.7 新增） |
 | 管理后台 API 隔离 | 所有管理后台 API 统一使用 `/api/v1/admin/` 前缀，通过网关路由隔离，与普通用户 API 严格分离，新增管理资源仅需新增 Controller 和 Service（v0.1.7 新增） |
 | AOP 审计日志 | 管理员关键操作（创建用户、禁用用户、重置密码、角色分配）通过 `@AdminAuditLog` 注解 + AOP 切面自动记录审计日志，不侵入业务逻辑代码（v0.1.7 新增） |
-<<<<<<< HEAD
 | 分层解耦前端 | Flutter 前端采用 Screen-Provider-Repository 三层架构，UI 层与业务逻辑严格分离，各层职责单一、可独立测试（v0.2.0 新增） |
 | 跨平台一致性 | 基于 Flutter 跨平台框架，同一套 Dart 代码在 Web（Chrome）和 Windows（VS2022）双平台上运行表现一致，UI 布局和行为无明显差异（v0.2.0 新增） |
 | Token 自动刷新 | Flutter 前端基于 Dio 拦截器实现 Access Token 过期自动刷新（Refresh Token Rotation），后台静默完成 Token 轮换，不中断用户操作（v0.2.0 新增） |
 | 前端安全存储 | Token 等敏感数据使用 flutter_secure_storage 安全存储，Web 平台回退加密存储方案，不存储在普通 SharedPreferences 中（v0.2.0 新增） |
-=======
->>>>>>> cso-v0.1.7
+
 
 ---
 
@@ -348,7 +338,6 @@
   - 降级策略：Feign 调用失败时，admin-service 捕获异常并返回友好错误信息
 - **说明：** v0.1.7 为首次实现，遵循项目标准包结构。用户数据不在 admin-service 数据库维护，通过 Feign 调用 auth-service 操作。当前版本权限校验为角色级别粗粒度控制，后续版本可扩展为细粒度权限校验。
 
-<<<<<<< HEAD
 ### 2.7 Flutter 前端应用（cloudoffice-flutter-app）
 
 - **职责：** 云漫智企面向最终用户的跨平台前端应用，提供用户认证（注册、登录、找回密码）等基础交互能力，与后端微服务通过 API 网关通信。支持 Web（Chrome）和 Windows（VS2022）双平台运行。
@@ -381,8 +370,6 @@
 - **客户端类型标识：** Web（Chrome）使用 `H5`、Windows（VS2022）使用 `WINDOWS`
 - **说明：** Flutter 子项目独立位于 `cloudoffice-flutter-app/` 目录，不修改现有后端代码。v0.2.0 仅实现认证相关页面，业务功能页面在后续版本扩展。
 
-=======
->>>>>>> cso-v0.1.7
 ### 模块关系图
 
 ```
@@ -496,10 +483,9 @@
 | **ADR-023** | **admin-service 权限校验位置（v0.1.7）** | **网关层校验管理员角色 vs admin-service 内置过滤器校验** | **admin-service 内置 AdminAuthFilter 校验** | ① 管理员角色校验属于业务逻辑，放在网关层会污染网关的关注点；② admin-service 内置过滤器可获取完整的 JWT Claims 进行角色判断；③ 管理员角色校验与用户数据操作在同一个服务内，减少网关透传的 Header 数量 | 每个管理请求需额外在 admin-service 中校验角色，增加一次 JWT 解析开销；网关仍需做基础 Token 校验 |
 | **ADR-024** | **管理员认证 Token 方案（v0.1.7）** | **网关透传用户 Token vs admin-service 独立 Token** | **复用 auth-service JWT + 网关透传** | ① 管理员使用与普通用户相同的登录接口获取 JWT Token，减少认证入口；② JWT 中已包含 roles 信息，admin-service 解析即可完成角色校验；③ 无需额外签发管理员专用 Token，降低复杂度 | 管理员 Token 与普通用户 Token 格式相同，需在 admin-service 中通过角色字段区分 |
 | **ADR-025** | **审计日志实现方案（v0.1.7）** | **AOP 注解 vs 业务代码手动记录 vs 中间件拦截** | **AOP 注解（@AdminAuditLog）** | ① 注解声明式标记，不侵入业务逻辑代码；② AOP 环绕通知可捕获方法执行前后状态，自动记录成功/失败和异常信息；③ 注解可配置操作类型，扩展性强；④ 相比中间件拦截，实现简单，学习成本低 | AOP 仅对 Spring Bean 方法有效，需确保切面正确配置；相比中间件方案，无法拦截数据库级别的操作 |
-<<<<<<< HEAD
+
 | **ADR-026** | **Flutter 前端技术栈选型（v0.2.0）** | **Flutter vs React Web + Electron vs Vue + Tauri** | **Flutter** | ① 一套代码同时覆盖 Web 和 Windows，开发效率高；② Dart 语言在跨平台场景下表现优于 JavaScript/TypeScript；③ Flutter Web 基于 CanvasKit 渲染，UI 一致性高；④ 团队技术栈统一，降低维护成本 | Flutter Web 的 SEO 能力弱于传统 Web 框架；Flutter Windows 构建产物较大（约 50MB+）；Dart 生态第三方库丰富度低于 JS 生态 |
-=======
->>>>>>> cso-v0.1.7
+
 
 ---
 
@@ -1218,15 +1204,14 @@ public class TokenPairDTO {
 │  │                          :9400                                │         │
 │  └──────────────────────────────────────────────────────────────┘         │
 └────────────────────────────────────────────────────────────────────────────┘
-<<<<<<< HEAD
+
 
 Flutter 前端运行时与后端通信方式：
 - Web 平台：Flutter Web 应用 → HTTP API → localhost:9000（网关）
   - 浏览器直接访问网关地址，需网关配置 CORS 允许 localhost 来源
 - Windows 平台：Flutter Windows 桌面应用 → HTTP API → localhost:9000（网关）
   - 桌面应用无 CORS 限制，HTTP 直连网关
-=======
->>>>>>> cso-v0.1.7
+
 ```
 
 ### 8.2 环境划分
@@ -1717,11 +1702,8 @@ public class TokenPairDTO {
 
 ### D. 参考文档
 
-<<<<<<< HEAD
 - `docs/requires/CloudStrollOffice-requirement-v0.2.0.md` — Flutter 前端需求文档 v0.2.0
 - `docs/prds/CloudStrollOffice-prd-v0.2.0.md` — Flutter 前端 PRD 文档 v0.2.0
-=======
->>>>>>> cso-v0.1.7
 - `docs/requires/CloudStrollOffice-requirement-v0.1.7.md` — 管理中台需求文档 v0.1.7
 - `docs/prds/CloudStrollOffice-prd-v0.1.7.md` — 管理中台 PRD 文档 v0.1.7
 - `docs/requires/CloudStrollOffice-requirement-v0.1.6.md` — 用户认证增强需求文档 v0.1.6
@@ -1741,10 +1723,7 @@ public class TokenPairDTO {
 
 | 变更日期 | 版本号 | 变更说明 |
 |---------|-------|---------|
-<<<<<<< HEAD
 | 2026-06-24 | v0.2.0 | 新增 Flutter 前端架构：新增 2.7 节 cloudoffice-flutter-app 模块设计（Screen-Provider-Repository 三层架构、核心层/功能模块/共享组件）；更新 1.1 节系统定位（追加 Flutter 前端描述）；更新 1.2 节架构风格（新增前端架构风格和跨平台策略）；更新 1.3 节架构层次图（客户端层标注 Flutter Web + Flutter Windows）；更新 1.4 节核心架构特点（新增 4 条 Flutter 前端特点）；更新 3.1 节技术栈全景（新增 Flutter/Dart/Dio/Provider/GoRouter 等 9 项前端技术栈）；新增 ADR-026 Flutter 前端技术栈选型；更新 8.1 节部署架构（新增 Flutter 前端终端层）；更新 10 节目录结构（新增 cloudoffice-flutter-app/ 子项目完整目录） |
-=======
->>>>>>> cso-v0.1.7
 | 2026-06-24 | v0.1.7 | 基于 v0.1.7 PRD 更新架构文档：新增 2.6 节 cloudoffice-admin-service 模块设计（管理员认证与权限校验、用户管理 CRUD、审计日志、Feign 通信）；更新系统架构层次图（新增 admin-service 和 admin 数据库层）；更新模块关系图（新增 admin-service + OpenFeign 调用关系）；新增 ADR-021~ADR-025 架构决策记录（admin-service 独立策略、独立数据库、权限校验位置、Token 方案、AOP 审计日志）；新增 4.1.4~4.1.6 数据流图（管理员请求认证、OpenFeign 服务间调用、审计日志记录）；新增 4.2 节 admin-service 相关模块间数据流转表；新增 5.1 节 cloudstroll_office_admin 数据库设计（t_admin_audit_log 表）；新增 5.4.2~5.4.3 节 v0.1.7 数据库表和角色预置数据；新增 6.1 节 admin-service API 端点（9 个端点）；更新 6.4 节 API 路由表（新增 `/api/v1/admin/**` 路由）；更新 2.2 节网关白名单和白名单路径扩展；更新部署架构图（新增 admin-service 和 admin 数据库）；更新 10 节目录结构（新增 admin-service 模块和 SQL 脚本）；更新参考文档列表 |
 | 2026-06-23 | v0.1.6 | 基于 v0.1.6 PRD 更新架构文档：新增策略模式认证架构（LoginStrategy/RegisterStrategy 接口、4 种登录模式 + 5 种注册模式实现类、策略工厂）；新增统一认证服务层 AuthenticationService；新增密码管理（修改密码/密码找回）；新增验证码管理服务（VerificationCodeService + VerificationCodeManager）；新增手机号变更功能；扩展公共模块（RegisterModeEnum/LoginModeEnum/OAuthProviderEnum 枚举、AUTH-0020~AUTH-0033 错误码）；新增 2 张数据库表（t_auth_oauth_account、t_auth_verification_code）；扩展 t_auth_user 表（5 个新增字段）；新增 8 个 API 端点（含登录/注册扩展）；新增 ADR-017~ADR-020 架构决策记录；更新网关白名单；新增 spring-boot-starter-mail 依赖 |
 | 2026-06-19 | v0.1.4 | 基于PRD更新系统服务模块架构描述——启动入口、健康检查响应体version字段、骨架结构、测试架构；补充NFR指标（健康检查响应时间、编译时间、测试独立性） |
