@@ -1,7 +1,7 @@
 # ============================================================
 # CloudStrollOffice 根目录 .gitignore
 # 适用环境：Windows + Java 21 (Maven 多模块) + Flutter 客户端 + Python（scripts/API-TEST 测试脚本）
-# 基于 impm GITIGNORE-TEMPLATE（317 行）按项目技术栈裁剪合并生成，保留项目自定义条目
+# 基于 impm GITIGNORE-TEMPLATE（317 行）恢复全部语言段合并生成，保留项目自定义条目
 # ============================================================
 
 # ===================== 操作系统 =====================
@@ -176,6 +176,41 @@ ai-tmp/
 ai-generated-temp/
 *.ai-backup
 
+# ===================== 前端 / Node.js =====================
+# 依赖
+node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+bun.lockb
+bun.lock
+
+# 构建产物
+dist/
+build/
+output/
+coverage/
+
+# 日志、缓存
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+.npm
+.eslintcache
+
+# 编译产物
+*.tsbuildinfo
+*.js.map
+*.d.ts.map
+
+# 框架级产物
+.next/
+.nuxt/
+.output/
+.svelte-kit/
+.vercel/
+
 # ===================== Python（scripts/API-TEST 测试脚本） =====================
 __pycache__/
 *.py[cod]
@@ -205,6 +240,43 @@ gradle-app.setting
 *.jar
 *.war
 *.ear
+
+# ===================== C/C++ / CMake =====================
+cmake-build-*/
+cmake-build-debug/
+cmake-build-release/
+Debug/
+Release/
+*.o
+*.obj
+*.exe
+*.dll
+*.so
+*.a
+*.lib
+
+# ===================== Rust =====================
+# 编译产物（/target/ 仅匹配根目录，与 Maven 的 target/ 不冲突）
+/target/
+*.rs.bk
+# Cargo.lock：库项目通常忽略，应用项目建议提交
+Cargo.lock
+
+# ===================== Go =====================
+# 测试二进制与覆盖率输出
+*.test
+*.out
+*.prof
+coverage.out
+# 编译产物（macOS 动态库）
+*.dylib
+
+# ===================== PHP =====================
+# Composer 依赖
+/vendor/
+composer.phar
+# PHPUnit 结果缓存
+.phpunit.result.cache
 
 # ===================== Dart / Flutter =====================
 .dart_tool/
