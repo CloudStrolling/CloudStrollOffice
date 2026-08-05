@@ -1,0 +1,6 @@
+﻿{
+    "plugin":  [
+                   "opencode-impm"
+               ],
+    "$schema":  "https://opencode.ai/config.json"
+}

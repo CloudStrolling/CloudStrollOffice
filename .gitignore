@@ -1,0 +1,56 @@
+# ============================================================
+# CloudStrollOffice 根目录 .gitignore
+# 适用环境：Windows + Java 21 (Maven 多模块) + Flutter 客户端
+# ============================================================
+
+# ---------- Java / Maven 构建产物 ----------
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+
+# ---------- Flutter / Dart 构建产物（cloudoffice-flutter-app）----------
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+build/
+
+# ---------- IDE 与工具 ----------
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+*.swp
+.DS_Store
+
+# ---------- impm 工作目录（不提交）----------
+.opencode/
+
+# ---------- 日志与临时文件 ----------
+*.log
+logs/
+tmp/
+temp/
+*.tmp
+*.bak
+
+# ---------- 环境配置与密钥（一律不提交）----------
+# env.json 包含真实数据库密码与 RSA 私钥，必须忽略
+env.json
+.env
+*.local
+.secret
+keys/
+*.pem
+*.key
+
+# ---------- Windows ----------
+*.lnk
+Thumbs.db
+Desktop.ini

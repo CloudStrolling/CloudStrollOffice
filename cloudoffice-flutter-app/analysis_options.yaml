@@ -1,0 +1,46 @@
+# 云漫智企 Flutter 前端应用代码分析配置
+include: package:flutter_lints/flutter.yaml
+
+linter:
+  rules:
+    # 代码风格
+    - prefer_const_constructors
+    - prefer_const_declarations
+    - prefer_final_locals
+    - avoid_print
+    - prefer_single_quotes
+    - require_trailing_commas
+    - curly_braces_in_flow_control_structures
+    - prefer_const_literals_to_create_immutables
+    
+    # 命名规范
+    - camel_case_types
+    - constant_identifier_names
+    - non_constant_identifier_names
+    - file_names
+    
+    # 代码质量
+    - avoid_empty_else
+    - avoid_init_to_null
+    # - avoid_null_checks_with_nullable_parameters (supported in newer Dart versions)
+    - avoid_redundant_argument_values
+    - avoid_return_types_on_setters
+    - avoid_shadowing_type_parameters
+    - avoid_types_as_parameter_names
+    - empty_constructor_bodies
+    - no_duplicate_case_values
+    - prefer_contains
+    - prefer_generic_function_type_aliases
+    - prefer_is_empty
+    - prefer_is_not_empty
+    - prefer_iterable_whereType
+    - recursive_getters
+    - type_init_formals
+    - unnecessary_string_interpolations
+    - use_function_type_syntax_for_parameters
+    - use_rethrow_when_possible
+    
+    # 可维护性
+    # - sort_constructors_first  # 不强制构造函数在前，factory 在前更便于阅读
+    - sort_child_properties_last
+    - directives_ordering

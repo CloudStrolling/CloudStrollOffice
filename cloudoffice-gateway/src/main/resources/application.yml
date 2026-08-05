@@ -1,0 +1,65 @@
+server:
+  port: 9000
+
+spring:
+  redis:
+    host: ${REDIS_HOST:127.0.0.1}
+    port: ${REDIS_PORT:6379}
+    password: ${REDIS_PASSWORD:}
+    database: ${REDIS_DATABASE:0}
+    timeout: 5000ms
+    lettuce:
+      pool:
+        max-active: 8
+        max-idle: 8
+        min-idle: 0
+        max-wait: -1ms
+
+  cloud:
+    gateway:
+      routes:
+        - id: auth-service
+          uri: lb://cloudoffice-auth-service
+          predicates:
+            - Path=/api/v1/auth/**
+        - id: biz-service
+          uri: lb://cloudoffice-biz-service
+          predicates:
+            - Path=/api/v1/biz/**
+        - id: system-service
+          uri: lb://cloudoffice-system-service
+          predicates:
+            - Path=/api/v1/system/**
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOriginPatterns: "*"
+            allowedMethods: "*"
+            allowedHeaders: "*"
+            allowCredentials: true
+      discovery:
+        locator:
+          enabled: true
+
+# RSA 公钥配置
+# 优先级：环境变量 > 配置文件 Base64 > PEM 文件路径
+auth:
+  rsa:
+    public-key: ${RSA_PUBLIC_KEY:}
+    public-key-path: ${RSA_PUBLIC_KEY_PATH:}
+  white-list:
+    - /api/v1/auth/login
+    - /api/v1/auth/register
+    - /api/v1/auth/refresh
+    - /api/v1/auth/health
+    - /api/v1/auth/verification-code/send
+    - /api/v1/auth/password/forgot/send-code
+    - /api/v1/auth/password/forgot/reset
+    - /swagger-ui/**
+    - /v3/api-docs/**
+    - /favicon.ico
+    - /webjars/**
+
+logging:
+  level:
+    org.springframework.cloud.gateway: INFO
