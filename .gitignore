@@ -1,56 +1,270 @@
 # ============================================================
 # CloudStrollOffice 根目录 .gitignore
-# 适用环境：Windows + Java 21 (Maven 多模块) + Flutter 客户端
+# 适用环境：Windows + Java 21 (Maven 多模块) + Flutter 客户端 + Python（scripts/API-TEST 测试脚本）
+# 基于 impm GITIGNORE-TEMPLATE（317 行）按项目技术栈裁剪合并生成，保留项目自定义条目
 # ============================================================
 
-# ---------- Java / Maven 构建产物 ----------
+# ===================== 操作系统 =====================
+# Mac
+.DS_Store
+.AppleDouble
+._*
+# Windows
+Thumbs.db
+desktop.ini
+# Windows 快捷方式（项目自定义）
+*.lnk
+# Linux
+*~
+
+# ===================== 通用 IDE / 编辑器 =====================
+# JetBrains 系列（IntelliJ IDEA / GoLand / CLion / PyCharm / WebStorm / PhpStorm / Rider 等）
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+# Rider（.NET）：解决方案级用户设置
+*.DotSettings.user
+
+# vscode
+.vscode/
+*.code-workspace
+
+# Sublime
+*.sublime-project
+*.sublime-workspace
+# Vim
+*.swp
+*.swo
+# Atom
+.atom/
+
+# ===================== 其他 IDE / 编辑器（小众） =====================
+# Eclipse
+.metadata/
+.settings/
+.classpath
+.project
+/bin/
+# NetBeans
+nbproject/private/
+nbdist/
+.nb-gradle/
+# Xcode（Flutter iOS 构建产物）
+xcuserdata/
+DerivedData/
+*.xcuserstate
+*.xccheckout
+*.moved-aside
+*.dSYM/
+.swiftpm/
+# Android Studio（Flutter Android 构建产物）
+local.properties
+*.apk
+*.aab
+*.ap_
+captures/
+.externalNativeBuild/
+.cxx/
+# Visual Studio / .NET
+.vs/
+*.suo
+*.user
+*.userosscache
+*.ncb
+*.sdf
+*.opensdf
+*.cachefile
+*.VC.db
+*.VC.VC.opendb
+/obj/
+# Qt Creator
+*.pro.user
+*.pro.user.*
+.qmake.stash
+.qmake.cache
+.qtc_clangd/
+*.autosave
+# Code::Blocks
+*.layout
+*.depend
+# RStudio
+.Rproj.user/
+.Rhistory
+.RData
+.Ruserdata
+# Spyder
+.spyproject/
+# BlueJ
+bluej.pkh
+# Komodo Edit/IDE
+.komodotools/
+
+# ===================== AI 开发工具 =====================
+# OpenCode
+.opencode/
+.opencode.json
+opencode.json
+opencode.jsonc
+opencode-cache/
+.opencode-snapshots/
+.opencode-history/
+*.opencode.tmp
+
+# Claude Code
+.claude/
+.claudeignore
+.claude-history/
+.claude/conversations/
+.claude/sessions/
+.claude/checkpoints/
+.claude/skills/.cache/
+.claude/settings.local.json
+*.skill-backup
+conversation-history.jsonl
+
+# OpenAI Codex
+.codex/
+.codexignore
+codex_history/
+codex-*.log
+
+# GitHub Copilot
+.copilot/
+.copilot-agent/
+copilot-*.log
+.copilotignore
+.vscode/copilot/
+
+# Cursor AI
+.cursor/
+.cursor-index/
+.cursor-cache/
+
+# Codeium / Windsurf
+.codeium/
+windsurf-sessions/
+
+# Tabnine
+.tabnine/
+.tabnine-cache/
+
+# Gemini CLI
+.gemini/
+.geminiignore
+gemini-*.log
+
+# Cline / Roo
+.cline/
+.clineignore
+.roo/
+.rooignore
+
+# Aider
+.aider.chat.history.md
+.aider.input.history
+.aider.tags.cache.v3
+.aider.models.cache.v3
+
+# Continue
+.continue/
+.continueignore
+
+# AI 通用临时文件
+ai-tmp/
+ai-generated-temp/
+*.ai-backup
+
+# ===================== Python（scripts/API-TEST 测试脚本） =====================
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+env/
+venv/
+.venv/
+env.bak/
+venv.bak/
+.pytest_cache/
+.coverage
+htmlcov/
+*.pyd
+
+# ===================== Java / Maven / Gradle =====================
+# Maven
 target/
+pom.xml.tag
+pom.xml.releaseBackup
+# Gradle
+.gradle/
+gradle-app.setting
+!gradle-wrapper.jar
+# 编译 class
 *.class
 *.jar
 *.war
 *.ear
-*.zip
-*.tar.gz
 
-# ---------- Flutter / Dart 构建产物（cloudoffice-flutter-app）----------
+# ===================== Dart / Flutter =====================
 .dart_tool/
+.packages
 .flutter-plugins
 .flutter-plugins-dependencies
+# 项目自定义：pub 缓存与构建产物（含 Flutter Windows 桌面构建）
 .pub-cache/
 .pub/
 build/
 
-# ---------- IDE 与工具 ----------
-.idea/
-.vscode/
-*.iml
-*.ipr
-*.iws
-*.swp
-.DS_Store
-
-# ---------- impm 工作目录（不提交）----------
-.opencode/
-
-# ---------- 日志与临时文件 ----------
+# ===================== 数据库 / 缓存 / 日志 / 临时 =====================
+# 日志
 *.log
 logs/
+log/
+# 数据库
+*.db
+*.sqlite
+*.sqlite3
+# 缓存、临时文件
 tmp/
 temp/
+.cache/
 *.tmp
+# 本地分支记录、补丁、合并冲突备份
+*.patch
+*.diff
+*.orig
+# 备份文件
 *.bak
+*.backup
 
-# ---------- 环境配置与密钥（一律不提交）----------
-# env.json 包含真实数据库密码与 RSA 私钥，必须忽略
-env.json
+# ===================== 环境密钥 =====================
 .env
+.env.local
+.env.dev
+.env.test
+.env.staging
+.env.prod
+.env.*
+!.env.example
+# 项目自定义：env.json 包含真实数据库密码与 RSA 私钥，必须忽略
+env.json
 *.local
 .secret
+# 项目自定义：RSA 密钥目录与文件
 keys/
 *.pem
 *.key
 
-# ---------- Windows ----------
-*.lnk
-Thumbs.db
-Desktop.ini
+# ===================== 包管理器 =====================
+.pnp
+.pnp.js
+
+# ===================== 压缩包 =====================
+*.tgz
+# 项目自定义：其他压缩包
+*.zip
+*.tar.gz
+
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 CloudStrolling/jenemy8023 <jenemy8023@163.com>
