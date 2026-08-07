@@ -1,0 +1,356 @@
+{
+    "projectName": "云漫智企（CloudStrollOffice）",
+    "version": "0.0.1",
+    "sequence": 1,
+    "tasks": [
+        {
+            "id": "TASK-001",
+            "title": "公共模块 common（统一响应/异常体系/常量/DTO/SpringDoc）",
+            "description": "搭建 cloudoffice-common 公共依赖模块（F-018/F-017）：ApiResult/PageResult 统一响应结构、BaseException→BusinessException/AuthException 异常体系与 29 个统一错误码、登录/注册/客户端/OAuth 枚举常量、RedisKeyConstants、跨服务 DTO（LoginUserDTO/TokenPairDTO）、SpringDoc OpenAPI 3 配置。作为全部模块的公共底座。",
+            "taskType": "common",
+            "userStoryId": "US-006",
+            "apiId": "",
+            "upstreamTaskIds": [],
+            "downstreamTaskIds": [
+                "TASK-002",
+                "TASK-015",
+                "TASK-016",
+                "TASK-017"
+            ],
+            "priority": "P0",
+            "status": "未完成",
+            "testMethod": "单元测试",
+            "acceptanceCriteria": "ApiResult 成功响应 code=200 且含 data/timestamp；PageResult 含 records/total/page/size；29 个错误码枚举完整；异常体系映射正确；SpringDoc 配置可自动生成 OpenAPI 文档"
+        },
+        {
+            "id": "TASK-002",
+            "title": "认证服务骨架与健康检查（实体/Mapper/配置层）",
+            "description": "搭建 cloudoffice-auth-service 骨架（F-016 部分/F-019 相关）：9 张表实体与 Mapper（tenant/user/role/permission/user_role/role_permission/login_log/oauth_account/verification_code）、配置层（SecurityConfig/RsaKeyConfig/RedisConfig/MyBatisPlusConfig/PasswordProperties/VerificationCodeProperties/OAuth2Config）、健康检查端点 /api/v1/auth/health（API-012）、默认租户 DEFAULT 与超级管理员初始化数据校验。",
+            "taskType": "backend",
+            "userStoryId": "US-006",
+            "apiId": "API-012",
+            "upstreamTaskIds": [
+                "TASK-001"
+            ],
+            "downstreamTaskIds": [
+                "TASK-003",
+                "TASK-004",
+                "TASK-005",
+                "TASK-006",
+                "TASK-012"
+            ],
+            "priority": "P0",
+            "status": "未完成",
+            "testMethod": "单元测试+接口测试",
+            "acceptanceCriteria": "auth-service 可启动并注册 Nacos；/api/v1/auth/health 返回服务名/状态/版本/时间戳；9 张表实体与 Mapper 完整；RSA 密钥/密码策略/验证码策略配置生效；初始数据含默认租户 DEFAULT 与管理员账号"
+        },
+        {
+            "id": "TASK-003",
+            "title": "验证码管理（生成/发送/校验/频率控制/过期清理）",
+            "description": "实现验证码全生命周期（F-008）：VerificationCodeManager 生成 6 位数字验证码、发送（模拟通道 SimulatedVerificationCodeService 与真实通道抽象）、校验（一次性失效/防暴力错误次数限制）、60 秒频率控制、5 分钟有效期、按用途隔离（REGISTER/LOGIN/RESET_PASSWORD/CHANGE_PHONE）、过期清理；发送验证码接口 /api/v1/auth/verification-code/send（API-011）。",
+            "taskType": "backend",
+            "userStoryId": "US-008",
+            "apiId": "API-011",
+            "upstreamTaskIds": [
+                "TASK-002"
+            ],
+            "downstreamTaskIds": [
+                "TASK-007",
+                "TASK-008",
+                "TASK-010",
+                "TASK-011"
+            ],
+            "priority": "P0",
+            "status": "未完成",
+            "testMethod": "单元测试+接口测试",
+            "acceptanceCriteria": "验证码 6 位数字且首字不为 0；60 秒内重复发送返回频率限制错误；验证码 5 分钟有效、校验成功一次性失效；用途不匹配返回错误；模拟模式返回固定验证码；过期记录可定时清理"
+        },
+        {
+            "id": "TASK-004",
+            "title": "JWT RS256 双 Token 签发与轮换",
+            "description": "实现 Token 服务（F-003）：JwtUtils 基于 RSA 2048 RS256 签名签发 Access Token（2 小时）与 Refresh Token（7 天）、解析与 tokenType 校验、Token 签名 SHA-256 指纹；TokenServiceImpl 刷新轮换（旧 Refresh Token 入黑名单防重放、重查最新角色权限、更新会话）；刷新接口 /api/v1/auth/refresh（API-003）。",
+            "taskType": "backend",
+            "userStoryId": "US-002",
+            "apiId": "API-003",
+            "upstreamTaskIds": [
+                "TASK-002"
+            ],
+            "downstreamTaskIds": [
+                "TASK-008",
+                "TASK-009",
+                "TASK-015"
+            ],
+            "priority": "P0",
+            "status": "未完成",
+            "testMethod": "单元测试+接口测试",
+            "acceptanceCriteria": "Access Token 有效期 2h、Refresh Token 有效期 7d；refresh 校验签名/有效期/黑名单/tokenType；刷新后旧 Refresh Token 入黑名单防重放；签发新 Token 对；私钥仅 auth-service 持有"
+        },
+        {
+            "id": "TASK-005",
+            "title": "Redis 会话管理（会话/黑名单/状态缓存）",
+            "description": "实现 LoginSessionService（F-004 基础）：登录态会话创建/查询/移除/全端移除（SCAN 匹配 auth:session:{userId}:*）、Token 黑名单增查（TTL=剩余有效期）、账号状态缓存与租户状态缓存读写；RedisKeyConstants 统一 Key 规范；Redis 不可用降级容错（不影响登录主流程）。",
+            "taskType": "backend",
+            "userStoryId": "US-003",
+            "apiId": "",
+            "upstreamTaskIds": [
+                "TASK-002"
+            ],
+            "downstreamTaskIds": [
+                "TASK-008",
+                "TASK-009",
+                "TASK-010",
+                "TASK-015"
+            ],
+            "priority": "P0",
+            "status": "未完成",
+            "testMethod": "单元测试",
+            "acceptanceCriteria": "会话 Key 格式 auth:session:{userId}:{clientType} 且 TTL=7d；黑名单按签名指纹存储且 TTL 精确；全端移除使用 SCAN 不阻塞；状态缓存读写正确；Redis 异常时降级不阻断主流程"
+        },
+        {
+            "id": "TASK-006",
+            "title": "登录日志审计",
+            "description": "实现登录日志审计（F-014）：LoginLogEntity/Mapper 与 LoginLogService，登录成功/失败均记录（用户/租户/IP/客户端类型/登录模式/结果/失败原因/时间），登出与踢人更新日志；日志写入失败不影响登录主流程。",
+            "taskType": "backend",
+            "userStoryId": "US-002",
+            "apiId": "",
+            "upstreamTaskIds": [
+                "TASK-002"
+            ],
+            "downstreamTaskIds": [
+                "TASK-008"
+            ],
+            "priority": "P1",
+            "status": "未完成",
+            "testMethod": "单元测试",
+            "acceptanceCriteria": "登录成功与失败均写入 t_auth_login_log；日志含 IP/客户端类型/结果/失败原因/时间；日志写入异常不影响登录主流程；日志不输出密码与 Token"
+        },
+        {
+            "id": "TASK-007",
+            "title": "用户注册（5 种注册策略 + 两步注册）",
+            "description": "实现注册能力（F-001）：RegisterStrategyFactory 与 5 种注册策略（USERNAME/PHONE_CODE/OAUTH/PHONE_SET_USERNAME/OAUTH_SET_INFO）、两步注册（account_settled=0 未完善状态与完善账号信息）、唯一性校验（登录名/手机号租户内唯一）、默认角色分配、注册成功自动登录签发双 Token；注册接口 /api/v1/auth/register（API-002）与完善账号信息接口 /api/v1/auth/account/settlement（API-010）。",
+            "taskType": "backend",
+            "userStoryId": "US-001",
+            "apiId": "API-002,API-010",
+            "upstreamTaskIds": [
+                "TASK-003"
+            ],
+            "downstreamTaskIds": [],
+            "priority": "P0",
+            "status": "未完成",
+            "testMethod": "单元测试+接口测试",
+            "acceptanceCriteria": "5 种注册策略均可注册；登录名/手机号租户内唯一性校验生效；两步注册先创建后补全可走通；注册成功分配默认角色并返回双 Token；无效注册模式返回 REGISTER_MODE_INVALID"
+        },
+        {
+            "id": "TASK-008",
+            "title": "多模式登录（4 种登录策略 + 编排）",
+            "description": "实现登录能力（F-002/F-009/F-010）：LoginStrategyFactory 与 4 种登录策略（USERNAME_PASSWORD/PHONE_CODE/PHONE_PASSWORD/OAUTH）、AuthenticationService 统一编排（租户状态→账号状态→凭据校验→同端互斥→签发双 Token→创建会话→记录日志→更新 lastLoginTime/lastLoginIp）、6 种客户端类型同端互斥与多端共存、登录失败统一提示防账号枚举；登录接口 /api/v1/auth/login（API-001）。",
+            "taskType": "backend",
+            "userStoryId": "US-002",
+            "apiId": "API-001",
+            "upstreamTaskIds": [
+                "TASK-003",
+                "TASK-004",
+                "TASK-005",
+                "TASK-006"
+            ],
+            "downstreamTaskIds": [
+                "TASK-009",
+                "TASK-018"
+            ],
+            "priority": "P0",
+            "status": "未完成",
+            "testMethod": "单元测试+接口测试",
+            "acceptanceCriteria": "4 种登录策略均可登录；同一 clientType 重复登录旧会话失效（同端互斥）、不同端共存；账号/租户状态异常拒绝登录；登录失败统一提示不泄露原因；登录成功返回双 Token 并创建会话与日志"
+        },
+        {
+            "id": "TASK-009",
+            "title": "登出与强制踢人（会话安全控制）",
+            "description": "实现会话安全控制（F-004）：LoginServiceImpl 登出（Access Token 入黑名单+清除会话+幂等）、管理员强制踢人（X-Roles 校验 admin 角色、指定 clientType 踢指定端/不指定踢所有端、踢人审计日志）；登出接口 /api/v1/auth/logout（API-004）与强制踢人接口 /api/v1/auth/kickout（API-005）。",
+            "taskType": "backend",
+            "userStoryId": "US-003",
+            "apiId": "API-004,API-005",
+            "upstreamTaskIds": [
+                "TASK-004",
+                "TASK-005",
+                "TASK-008"
+            ],
+            "downstreamTaskIds": [],
+            "priority": "P0",
+            "status": "未完成",
+            "testMethod": "单元测试+接口测试",
+            "acceptanceCriteria": "登出后 Token 入黑名单且会话清除；重复登出不报错（幂等）；非 admin 调用踢人返回 403；指定端踢人仅该端失效、不指定踢所有端；踢人审计日志记录"
+        },
+        {
+            "id": "TASK-010",
+            "title": "密码管理（修改密码/忘记密码找回）",
+            "description": "实现密码管理（F-006）：PasswordService 修改密码（旧密码 BCrypt 校验、新密码长度 8-64 且不与旧密码相同、成功后清除全部登录态）与忘记密码找回（发送重置验证码→校验验证码→重置密码、成功后全端下线）；接口 /api/v1/auth/password/change（API-006）、/api/v1/auth/password/forgot/send-code（API-007）、/api/v1/auth/password/forgot/reset（API-008）。",
+            "taskType": "backend",
+            "userStoryId": "US-004",
+            "apiId": "API-006,API-007,API-008",
+            "upstreamTaskIds": [
+                "TASK-003",
+                "TASK-005"
+            ],
+            "downstreamTaskIds": [],
+            "priority": "P0",
+            "status": "未完成",
+            "testMethod": "单元测试+接口测试",
+            "acceptanceCriteria": "修改密码旧密码错误返回错误；新密码长度 8-64 且与旧密码不同；修改/找回成功后全部客户端类型登录态清除；找回全流程（发送验证码→校验→重置）可走通；密码 BCrypt 存储禁止明文"
+        },
+        {
+            "id": "TASK-011",
+            "title": "手机号变更",
+            "description": "实现手机号变更（F-007）：原手机号可用时通过原手机短信验证码变更、原手机号停用时通过邮箱验证码变更；校验新手机号租户内唯一；变更成功后更新 phone_verified 状态；修改手机号接口 /api/v1/auth/phone/change（API-009）。",
+            "taskType": "backend",
+            "userStoryId": "US-004",
+            "apiId": "API-009",
+            "upstreamTaskIds": [
+                "TASK-003"
+            ],
+            "downstreamTaskIds": [],
+            "priority": "P0",
+            "status": "未完成",
+            "testMethod": "单元测试+接口测试",
+            "acceptanceCriteria": "原手机可用时短信验证码变更成功；原手机停用时邮箱验证码变更成功；新手机号与租户内其他用户重复返回冲突错误；变更成功后新手机号可用于登录与找回"
+        },
+        {
+            "id": "TASK-012",
+            "title": "RBAC 权限管理（权限树 CRUD）",
+            "description": "实现权限管理（F-013/F-009）：权限树形结构（parentId 自关联）、权限 CRUD、permCode 全局唯一、删除前处理角色-权限关联；接口树形权限列表 /api/v1/auth/permissions/tree（API-026）、所有权限列表（API-027）、权限详情（API-028）、创建权限（API-029）、更新权限（API-030）、删除权限（API-031）。",
+            "taskType": "backend",
+            "userStoryId": "US-005",
+            "apiId": "API-026,API-027,API-028,API-029,API-030,API-031",
+            "upstreamTaskIds": [
+                "TASK-002"
+            ],
+            "downstreamTaskIds": [
+                "TASK-013"
+            ],
+            "priority": "P0",
+            "status": "未完成",
+            "testMethod": "单元测试+接口测试",
+            "acceptanceCriteria": "权限树按 parentId 正确组装；权限编码全局唯一；删除被角色关联的权限被阻止；CRUD 操作限定当前租户空间"
+        },
+        {
+            "id": "TASK-013",
+            "title": "角色管理（CRUD/权限分配）",
+            "description": "实现角色管理（F-012）：角色 CRUD、角色编码租户内唯一、角色-权限关联分配（全量更新先删后插）、删除前处理用户-角色关联；接口分页查询角色列表（API-019）、所有角色列表（API-020）、角色详情（API-021）、创建角色（API-022）、更新角色（API-023）、删除角色（API-024）、分配角色权限（API-025）。",
+            "taskType": "backend",
+            "userStoryId": "US-005",
+            "apiId": "API-019,API-020,API-021,API-022,API-023,API-024,API-025",
+            "upstreamTaskIds": [
+                "TASK-012"
+            ],
+            "downstreamTaskIds": [
+                "TASK-014"
+            ],
+            "priority": "P0",
+            "status": "未完成",
+            "testMethod": "单元测试+接口测试",
+            "acceptanceCriteria": "角色编码租户内唯一；角色权限分配后关联关系生效；删除已被用户分配的角色被阻止；角色数据限定当前租户空间"
+        },
+        {
+            "id": "TASK-014",
+            "title": "用户管理（CRUD/封禁解封/角色分配）",
+            "description": "实现用户管理（F-011/F-010）：用户分页列表与详情、创建/更新/逻辑删除、状态管理（封禁/解封实时生效同步 Redis 状态缓存）、角色分配（全量更新）、账号信息补全；租户数据隔离（数据限定当前租户空间）；接口分页查询用户列表（API-013）、用户详情（API-014）、更新用户（API-015）、删除用户（API-016）、分配用户角色（API-017）、变更用户状态（API-018）。",
+            "taskType": "backend",
+            "userStoryId": "US-005",
+            "apiId": "API-013,API-014,API-015,API-016,API-017,API-018",
+            "upstreamTaskIds": [
+                "TASK-013"
+            ],
+            "downstreamTaskIds": [],
+            "priority": "P0",
+            "status": "未完成",
+            "testMethod": "单元测试+接口测试",
+            "acceptanceCriteria": "分页查询返回 PageResult 且限定当前租户；创建/更新校验登录名/手机号租户内唯一；封禁后登录与访问立即失效、解封恢复；角色分配生效；删除用户清理用户-角色关联"
+        },
+        {
+            "id": "TASK-015",
+            "title": "网关 AuthFilter 全局认证（9 步校验）",
+            "description": "实现 cloudoffice-gateway（F-005）：统一路由 /api/v1/{module}/**、CORS、AuthFilter 全局 9 步认证（白名单放行→Bearer 格式→RS256 公钥验签→tokenType=access→Redis 黑名单→登录态→账号状态→租户状态→用户信息 Header 透传 X-User-Id 等）、ReactiveRedisTemplate 响应式校验、统一 401/403 ApiResult 错误响应。",
+            "taskType": "backend",
+            "userStoryId": "US-006",
+            "apiId": "",
+            "upstreamTaskIds": [
+                "TASK-001",
+                "TASK-004",
+                "TASK-005"
+            ],
+            "downstreamTaskIds": [
+                "TASK-018"
+            ],
+            "priority": "P0",
+            "status": "未完成",
+            "testMethod": "单元测试+接口测试",
+            "acceptanceCriteria": "白名单路径直接放行；无 Token/非 Bearer 请求返回 401；验签失败/黑名单命中/登录态不存在返回 401；账号封禁/租户停用返回 403；校验通过透传 X-User-Id/X-Tenant-Id/X-Roles/X-Permissions；错误响应统一 ApiResult 不泄露堆栈"
+        },
+        {
+            "id": "TASK-016",
+            "title": "企业服务骨架 biz-service（健康检查）",
+            "description": "搭建 cloudoffice-biz-service 骨架（F-019/F-016）：注册 Nacos、健康检查端点 /api/v1/biz/health（API-032）、仅依赖 common 禁止依赖其他服务，为后续企业信息/人事/工作流/薪酬业务预留扩展空间。",
+            "taskType": "backend",
+            "userStoryId": "US-006",
+            "apiId": "API-032",
+            "upstreamTaskIds": [
+                "TASK-001"
+            ],
+            "downstreamTaskIds": [],
+            "priority": "P1",
+            "status": "未完成",
+            "testMethod": "单元测试+接口测试",
+            "acceptanceCriteria": "biz-service 可启动并注册 Nacos；/api/v1/biz/health 返回服务名/状态/版本/时间戳；仅依赖 common 模块"
+        },
+        {
+            "id": "TASK-017",
+            "title": "系统服务骨架 system-service（健康检查）",
+            "description": "搭建 cloudoffice-system-service 骨架（F-019/F-016）：注册 Nacos、健康检查端点 /api/v1/system/health（API-033）、仅依赖 common 禁止依赖其他服务，为后续系统配置/审计业务预留扩展空间。",
+            "taskType": "backend",
+            "userStoryId": "US-006",
+            "apiId": "API-033",
+            "upstreamTaskIds": [
+                "TASK-001"
+            ],
+            "downstreamTaskIds": [],
+            "priority": "P1",
+            "status": "未完成",
+            "testMethod": "单元测试+接口测试",
+            "acceptanceCriteria": "system-service 可启动并注册 Nacos；/api/v1/system/health 返回服务名/状态/版本/时间戳；仅依赖 common 模块"
+        },
+        {
+            "id": "TASK-018",
+            "title": "Flutter 客户端基础工程（网络层/Token 存储/路由）",
+            "description": "搭建 cloudoffice-flutter-app 基础工程（F-015 部分）：dio 网络层（ApiClient/ApiInterceptor 自动携带 Authorization、401 后携带 Refresh Token 刷新重试）、flutter_secure_storage 安全存储 Access/Refresh Token 与启动恢复登录态、go_router 路由守卫（未登录跳转登录页）、provider 状态管理框架、api_config.dart 网关地址配置（默认 :9000）、validators.dart 表单校验、password_strength_indicator.dart 密码强度指示。",
+            "taskType": "frontend",
+            "userStoryId": "US-007",
+            "apiId": "",
+            "upstreamTaskIds": [
+                "TASK-008",
+                "TASK-015"
+            ],
+            "downstreamTaskIds": [
+                "TASK-019"
+            ],
+            "priority": "P0",
+            "status": "未完成",
+            "testMethod": "功能测试+UI测试",
+            "acceptanceCriteria": "ApiClient 自动携带 Authorization Header；收到 401 自动刷新 Token 并重试原请求；刷新失败清除本地 Token 跳转登录；Token 经 flutter_secure_storage 安全存储且启动可恢复登录态；未登录访问受限页面自动跳转登录"
+        },
+        {
+            "id": "TASK-019",
+            "title": "Flutter 客户端认证页面（登录/注册/忘记密码/首页）",
+            "description": "实现客户端认证页面（F-015/F-001/F-002/F-006）：登录页（4 种登录模式切换、租户编码/客户端类型选择）、注册页（用户名密码/手机验证码两种表单与发送验证码倒计时）、忘记密码页（发送验证码/重置密码）、首页（登录态展示）、AuthProvider/ForgotPasswordProvider/HomeProvider 状态管理；页面与后端接口联调（API-001/API-002/API-007/API-008/API-011）。",
+            "taskType": "frontend",
+            "userStoryId": "US-007",
+            "apiId": "API-001,API-002,API-007,API-008,API-011",
+            "upstreamTaskIds": [
+                "TASK-018"
+            ],
+            "downstreamTaskIds": [],
+            "priority": "P0",
+            "status": "未完成",
+            "testMethod": "功能测试+UI测试",
+            "acceptanceCriteria": "登录页可切换 4 种登录模式并完成登录进入首页；注册页用户名密码/手机验证码两种方式可完成注册并自动登录；忘记密码页可完成验证码重置；表单本地校验不通过不发起请求；Web 与 Windows 双平台可构建运行"
+        }
+    ]
+}
