@@ -1,9 +1,3 @@
-# ============================================================
-# CloudStrollOffice 根目录 .gitignore
-# 适用环境：Windows + Java 21 (Maven 多模块) + Flutter 客户端 + Python（scripts/API-TEST 测试脚本）
-# 基于 impm GITIGNORE-TEMPLATE（317 行）恢复全部语言段合并生成，保留项目自定义条目
-# ============================================================
-
 # ===================== 操作系统 =====================
 # Mac
 .DS_Store
@@ -12,7 +6,6 @@
 # Windows
 Thumbs.db
 desktop.ini
-# Windows 快捷方式（项目自定义）
 *.lnk
 # Linux
 *~
@@ -51,7 +44,7 @@ out/
 nbproject/private/
 nbdist/
 .nb-gradle/
-# Xcode（Flutter iOS 构建产物）
+# Xcode
 xcuserdata/
 DerivedData/
 *.xcuserstate
@@ -59,7 +52,7 @@ DerivedData/
 *.moved-aside
 *.dSYM/
 .swiftpm/
-# Android Studio（Flutter Android 构建产物）
+# Android Studio
 local.properties
 *.apk
 *.aab
@@ -211,7 +204,7 @@ yarn-error.log*
 .svelte-kit/
 .vercel/
 
-# ===================== Python（scripts/API-TEST 测试脚本） =====================
+# ===================== Python =====================
 __pycache__/
 *.py[cod]
 *$py.class
@@ -239,7 +232,6 @@ gradle-app.setting
 *.class
 *.jar
 *.war
-*.ear
 
 # ===================== C/C++ / CMake =====================
 cmake-build-*/
@@ -283,10 +275,6 @@ composer.phar
 .packages
 .flutter-plugins
 .flutter-plugins-dependencies
-# 项目自定义：pub 缓存与构建产物（含 Flutter Windows 桌面构建）
-.pub-cache/
-.pub/
-build/
 
 # ===================== 数据库 / 缓存 / 日志 / 临时 =====================
 # 日志
@@ -301,7 +289,6 @@ log/
 tmp/
 temp/
 .cache/
-*.tmp
 # 本地分支记录、补丁、合并冲突备份
 *.patch
 *.diff
@@ -319,14 +306,11 @@ temp/
 .env.prod
 .env.*
 !.env.example
-# 项目自定义：env.json 包含真实数据库密码与 RSA 私钥，必须忽略
-env.json
-*.local
-.secret
-# 项目自定义：RSA 密钥目录与文件
+# 项目特有敏感文件（密钥、环境配置，一律不提交）
 keys/
-*.pem
-*.key
+env.json
+# 旧文档副本目录（重新初始化后不纳入版本库）
+docs2/
 
 # ===================== 包管理器 =====================
 .pnp
@@ -334,9 +318,6 @@ keys/
 
 # ===================== 压缩包 =====================
 *.tgz
-# 项目自定义：其他压缩包
-*.zip
-*.tar.gz
 
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2026 CloudStrolling/jenemy8023 <jenemy8023@163.com>
