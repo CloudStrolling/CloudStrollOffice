@@ -276,6 +276,15 @@ composer.phar
 .flutter-plugins
 .flutter-plugins-dependencies
 
+# ===================== 客户端构建产物（deploy/cloudoffice-flutter-app） =====================
+# 客户端最终产物（Web 部署包、Windows Release 产物）统一输出至 deploy/cloudoffice-flutter-app，
+# 与后端 jar（*.jar）策略一致：产物不入库，仅保留 .gitkeep 占位文件保证目录结构可追踪。
+# 注意：必须带 deploy/ 路径前缀，避免误伤 cloudoffice-flutter-app/web、windows 客户端源码目录。
+deploy/cloudoffice-flutter-app/web/*
+!deploy/cloudoffice-flutter-app/web/.gitkeep
+deploy/cloudoffice-flutter-app/windows/*
+!deploy/cloudoffice-flutter-app/windows/.gitkeep
+
 # ===================== 数据库 / 缓存 / 日志 / 临时 =====================
 # 日志
 *.log

@@ -1,0 +1,6 @@
+# 客户端最终产物输出目录（cloudoffice-flutter-app 构建产物统一落点）
+# 说明：
+# - windows/ : Flutter Windows 构建最终产物（exe + 依赖 DLL + data/）
+# - web/     : Flutter Web 构建最终产物（index.html、main.dart.js、assets/ 等）
+# 产物由 cloudoffice-flutter-app/build-release.ps1 / build-release.sh 构建后自动输出，
+# 无需手动维护；*.exe / *.dll / *.zip 等产物文件被 .gitignore 忽略，不入库。

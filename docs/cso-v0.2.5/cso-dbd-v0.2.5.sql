@@ -1,0 +1,55 @@
+-- ============================================================
+-- CloudStrollOffice（云漫智企）数据库脚本（DBD 配套 SQL）
+-- 版本：v0.2.5（部署资产集中化版本）
+-- 生成日期：2026-08-09
+-- 数据库：MariaDB 10.6 LTS（兼容 MySQL 5.7+）
+--
+-- 变更说明：
+--   v0.2.5 为"部署资产集中化"工程版本（新建 deploy 目录、最终构建产物
+--   输出至 deploy、env.json / env.example.json 与 scripts 下 .sh/.ps1
+--   迁移至 deploy 及 deploy/scripts），本版本【无数据库结构变更】：
+--     - 无建库/删库
+--     - 无建表/改表/删表
+--     - 无索引增删改
+--     - 无视图/存储过程/触发器变更
+--     - 无初始化数据变更
+--
+-- 数据库初始化请使用全量基线脚本（与主文档 docs/cso-dbd.sql 一致）：
+--   docs/cso-dbd.sql（全量可重复执行，INSERT IGNORE 幂等）
+--   scripts/sql/init-v0.2.0-full.sql（部署脚本引用的初始化脚本副本）
+--
+-- 本版本数据库相关改动仅涉及部署脚本中数据库初始化脚本的路径引用
+-- 适配（随 .sh/.ps1 脚本迁移至 deploy/scripts 时同步更新），
+-- SQL 语句本身无任何变更。
+-- ============================================================
+
+-- ============================================================
+-- 本版本无可执行 SQL 变更（v0.2.5）
+-- ============================================================
+-- 如需初始化数据库，请执行 docs/cso-dbd.sql（或 scripts/sql/init-v0.2.0-full.sql）。
+
+-- ============================================================
+-- 附：v0.2.5 版本数据库对象清单（沿用 v0.0.1 基线，仅列名供核对）
+-- ============================================================
+-- 数据库：
+--   cloudstroll_office_auth（认证库，9 张业务表）
+--   cloudstroll_office_biz（预留库）
+--   cloudstroll_office_system（预留库）
+--
+-- 业务表（9 张）：
+--   t_auth_tenant / t_auth_user / t_auth_role / t_auth_permission
+--   t_auth_user_role / t_auth_role_permission / t_auth_login_log
+--   t_auth_oauth_account / t_auth_verification_code
+--
+-- 索引（含主键）：
+--   主键索引 9 个；唯一索引 7 个（uk_tenant_code / uk_user_login_name /
+--   uk_role_code / uk_perm_code / uk_user_role / uk_role_perm / uk_provider_openid）
+--   普通索引 9 个（idx_register_mode / idx_status / idx_parent_id /
+--   idx_role_id / idx_perm_id / idx_log_user_time / idx_log_tenant_time /
+--   idx_user_id / idx_target_purpose / idx_expire_time）
+--
+-- 视图 / 存储过程 / 触发器：无
+-- ============================================================
+
+-- 说明：本脚本仅为版本变更说明，无实际可执行语句；数据库初始化请使用
+--       docs/cso-dbd.sql（全量基线脚本）。

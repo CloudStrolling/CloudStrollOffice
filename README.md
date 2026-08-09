@@ -6,15 +6,18 @@
 [![MyBatis-Plus](https://img.shields.io/badge/MyBatis--Plus-3.5.6-orange.svg)](https://baomidou.com/)
 [![MariaDB](https://img.shields.io/badge/MariaDB-10.6-blue.svg)](https://mariadb.org/)
 [![Nacos](https://img.shields.io/badge/Nacos-2.3.0-green.svg)](https://nacos.io/)
+[![Flutter](https://img.shields.io/badge/Flutter-3.12.2-blue.svg)](https://flutter.dev/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-red.svg)](https://www.apache.org/licenses/LICENSE-2.0)
 
 ## 项目简介
 
-**云漫智企 (CloudStrollOffice)** 是一个基于 **Java 21 + Spring Boot 3.2.x + Spring Cloud 2023.x** 技术栈构建的微服务企业办公套件。
+**云漫智企 (CloudStrollOffice)** 是一个基于 **Java 21 + Spring Boot 3.2.x + Spring Cloud 2023.x** 技术栈构建的微服务企业办公套件，配套 **Flutter 多端客户端**（支持 Web 与 Windows 双平台）。
 
 项目采用 Maven 多模块架构，由认证服务（auth-service）、企业服务（biz-service）、系统服务（system-service）、API 网关（gateway）及公共模块（common）组成，为企业提供企业信息管理、人事管理、工作流审批、薪酬管理、统一认证授权等综合服务能力。
 
-当前版本 **v0.1.6** 在 v0.1.5 RBAC 权限体系基础上新增**用户认证增强**能力：多模式登录（用户名密码/手机验证码/手机+密码/OAuth）与多模式注册（用户名密码/手机验证码/OAuth）；两步注册机制（先注册后补全信息）；密码管理（修改密码/密码找回）；手机号变更（原手机可用→短信验证，原手机停用→邮箱验证）；验证码管理（生成/发送/校验/频率控制）。新增 2 张数据库表（OAuth 账号关联表、验证码记录表），用户表扩展 5 个字段，206 个单元测试全部通过。
+当前版本 **v0.2.5** 完成**部署资产集中化**：新建统一的 `deploy` 目录作为所有最终构建产物（后端 jar 包、客户端安装文件/exe）与部署资产（env.json、env.example.json、全部 .sh/.ps1 部署运维脚本）的唯一落点；修改 Maven 各模块与 Flutter 客户端构建配置，使最终产物统一输出到 `deploy` 目录，中间产物（target 等）不进入 deploy；根目录 `scripts` 下仅保留 docker、sql、API-TEST、部署指南等非脚本内容。
+
+上一版本 **v0.1.6** 在 v0.1.5 RBAC 权限体系基础上新增**用户认证增强**能力：多模式登录（用户名密码/手机验证码/手机+密码/OAuth）与多模式注册（用户名密码/手机验证码/OAuth）；两步注册机制（先注册后补全信息）；密码管理（修改密码/密码找回）；手机号变更（原手机可用→短信验证，原手机停用→邮箱验证）；验证码管理（生成/发送/校验/频率控制）。新增 2 张数据库表（OAuth 账号关联表、验证码记录表），用户表扩展 5 个字段，206 个单元测试全部通过。
 
 ## 功能特性
 
@@ -37,10 +40,12 @@
 | 密码管理 | 修改密码（旧密码校验）和密码找回（验证码重置），重置后自动清除所有登录态 |
 | 手机号变更 | 原手机可用时短信验证变更，原手机停用时邮箱验证变更 |
 | 验证码管理 | 验证码生成、发送（模拟/真实）、校验、频率控制（60 秒间隔）和生命周期管理 |
+| Flutter 客户端 | 独立客户端工程，支持 Web 与 Windows 双平台，dio 网络层 + provider 状态管理 + go_router 路由 |
 | API 文档 | SpringDoc (OpenAPI 3) 自动生成，按模块分组，在线调试 |
 | API 网关 | Spring Cloud Gateway，路由转发、CORS 跨域、Nacos 服务发现集成 |
 | 服务注册发现 | Nacos 2.3.0 统一管理，各服务启动后自动注册 |
 | 健康检查链路 | 所有业务服务提供 `/api/v1/{module}/health` 健康检查端点 |
+| 部署资产集中化 | `deploy` 目录统一存放最终产物（jar/客户端安装包）、环境配置与部署脚本，中间产物严格隔离（v0.2.5） |
 | Docker 部署 | 多阶段构建镜像 + Docker Compose 一键编排 8 个容器 |
 | 开发环境配置 | IDEA 运行配置、.editorconfig、Checkstyle、代码风格统一 |
 
@@ -50,6 +55,10 @@
 ┌────────────────────────────────────────────────────────────────────────────┐
 │                             客户端层 (Client)                               │
 │          PC端 / H5 / Android / iOS / 微信小程序 / 第三方 API                 │
+│          ┌─────────────────────────────────────────────────────┐           │
+│          │  Flutter 客户端 (cloudoffice-flutter-app)            │           │
+│          │  Web / Windows 双平台，产物输出至 deploy/            │           │
+│          └─────────────────────────────────────────────────────┘           │
 └────────────────────────────────────────────────────────────────────────────┘
                                     │
                                     ▼
@@ -80,7 +89,7 @@
 ┌────────────────────┐ ┌────────────────────┐
 │    MariaDB 10.6    │ │   Redis 7.2.x      │
 │    数据库层         │ │   缓存层            │
-│  7 张 RBAC 业务表   │ │  登录态会话 │ 黑名单 │
+│  9 张认证业务表     │ │  登录态会话 │ 黑名单 │
 │  用户/租户/角色/权限  │ │  账号状态 │ 租户状态 │
 └────────────────────┘ └────────────────────┘
                                     │
@@ -113,16 +122,19 @@
 | 数据库驱动 | MariaDB Connector/J | 3.3.3 |
 | 构建工具 | Maven | 3.9+ |
 | 单元测试 | JUnit 5 + Mockito | 内置于 Spring Boot Starter Test |
+| 客户端语言 | Dart | 3 (Flutter SDK ^3.12.2) |
+| 客户端框架 | Flutter | 3.x（Web / Windows 双平台） |
 
 ## 模块说明
 
 | 模块 | 端口 | 依赖 | 功能描述 |
 |------|------|------|---------|
-| `cloudoffice-common` | - | 无 | 公共模块：统一响应体 `ApiResult<T>`、分页响应 `PageResult<T>`、异常体系（`BaseException`/`BusinessException`/`AuthException`）、全局异常处理器 `GlobalExceptionHandler`、实体基类 `BaseEntity`、SpringDoc 配置、MyBatis-Plus 自动填充配置、JSON 工具类、TokenPairDTO/LoginUserDTO、ClientTypeEnum/LoginModeEnum（4种登录模式）/RegisterModeEnum（5种注册模式）/OAuthProviderEnum（4种OAuth提供商）、RedisKeyConstants（含验证码前缀常量）、29 个错误码（含 19 个认证授权错误码 + 14 个 v0.1.6 新增 AUTH-0020~AUTH-0033） |
-| `cloudoffice-gateway` | 9000 | common, Nacos, Redis | API 网关：请求路由转发（3 条路由规则）、CORS 跨域配置、Nacos 服务发现集成、`AuthFilter` 全局认证过滤器（9 步校验流程：白名单放行 → Bearer 格式校验 → RS256 公钥验签 → tokenType 校验 → Redis 黑名单 → 登录态 → 账号状态 → 租户状态 → Header 透传；v0.1.6 新增验证码发送/密码找回白名单路径） |
+| `cloudoffice-common` | - | 无 | 公共模块：统一响应体 `ApiResult<T>`、分页响应 `PageResult<T>`、异常体系（`BaseException`/`BusinessException`/`AuthException`）、全局异常处理器 `GlobalExceptionHandler`、实体基类 `BaseEntity`、SpringDoc 配置、MyBatis-Plus 自动填充配置、JSON 工具类、TokenPairDTO/LoginUserDTO、ClientTypeEnum/LoginModeEnum（4种登录模式）/RegisterModeEnum（5种注册模式）/OAuthProviderEnum（4种OAuth提供商）、RedisKeyConstants（含验证码前缀常量）、29 个错误码 |
+| `cloudoffice-gateway` | 9000 | common, Nacos, Redis | API 网关：请求路由转发（3 条路由规则）、CORS 跨域配置、Nacos 服务发现集成、`AuthFilter` 全局认证过滤器（9 步校验流程：白名单放行 → Bearer 格式校验 → RS256 公钥验签 → tokenType 校验 → Redis 黑名单 → 登录态 → 账号状态 → 租户状态 → Header 透传） |
 | `cloudoffice-auth-service` | 9100 | common, Nacos, MyBatis-Plus, MariaDB, Redis | 认证服务：RBAC 多租户权限模型（7 张数据表）+ OAuth 账号关联表 + 验证码记录表（共 9 表）；6 种客户端类型混合登录（同端互斥 + 多端共存）；JWT RS256 双 Token（Access Token 2h + Refresh Token 7d + 轮换机制）；BCrypt 密码编码；多模式登录（4 种：用户名密码/手机验证码/手机+密码/OAuth，LoginStrategy 策略工厂模式）；多模式注册（5 种：用户名密码/手机验证码/OAuth/手机号设用户名/OAuth补全信息，RegisterStrategy 策略工厂模式 + 两步注册机制）；认证编排服务 AuthenticationService（统一编排登录/注册流程）；密码管理（修改密码/密码找回重置，重置后自动清除所有登录态）；手机号变更（原手机可用→短信验证，原手机停用→邮箱验证）；验证码管理（VerificationCodeManager 生成/校验/频率控制 + VerificationCodeService 发送，模拟模式 mock）；Redis 登录态/黑名单/状态缓存管理；用户/角色/权限 CRUD 管理 API；登录日志审计 |
 | `cloudoffice-biz-service` | 9200 | common, Nacos, MyBatis-Plus, MariaDB | 企业服务（骨架）：企业信息/人事管理业务骨架、健康检查接口 |
 | `cloudoffice-system-service` | 9400 | common, Nacos, MyBatis-Plus, MariaDB | 系统服务（骨架）：系统配置/日志/监控/定时任务骨架、健康检查接口 |
+| `cloudoffice-flutter-app` | - | dio / provider / go_router 等 | Flutter 客户端（独立工程）：Web + Windows 双平台；登录/注册/忘记密码/首页等页面；AuthProvider 认证状态管理；ApiClient 网络封装（Token 注入、401 自动刷新、白名单）；SecureStorage Token 安全存储 |
 
 ## 快速开始
 
@@ -135,6 +147,7 @@
 | MariaDB | 10.6+ | 关系型数据库 |
 | Redis | 7.2.x | 缓存（登录态会话、Token 黑名单、状态缓存） |
 | Nacos | 2.3.x | 服务注册中心与配置中心 |
+| Flutter | 3.x (SDK ^3.12.2) | 客户端构建（可选，仅客户端开发需要） |
 | Docker (可选) | 24+ | 容器化部署 |
 
 ### 1. 克隆项目
@@ -193,14 +206,28 @@ docker run -d \
 docker compose -f scripts/docker/docker-compose.yml up -d nacos mariadb
 ```
 
-### 4. 配置文件说明
+### 4. 环境配置与部署脚本（v0.2.5 起位于 deploy 目录）
 
-各服务的配置文件位于 `src/main/resources/` 目录下：
+自 **v0.2.5** 起，环境配置与部署运维脚本统一收拢至 `deploy` 目录：
+
+| 资产 | 位置 | 说明 |
+|------|------|------|
+| 环境配置 | `deploy/env.json` / `deploy/env.example.json` | 实际环境配置与模板（数据库、Redis、RSA 密钥等） |
+| 部署脚本 | `deploy/scripts/` | 全部 .sh/.ps1 部署运维脚本（环境检查、DB 初始化、RSA 密钥生成、服务启停、load-env 等） |
+| 最终产物 | `deploy/` | 后端 jar 包（auth/biz/system/gateway）、客户端安装产物（cloudoffice-flutter-app/） |
+
+```bash
+# 从模板生成环境配置
+cd deploy/scripts
+./deploy-env.sh          # 或 PowerShell: .\deploy-env.ps1
+```
+
+各服务的配置文件位于各模块 `src/main/resources/` 目录下：
 
 - `bootstrap.yml` — Nacos 注册中心地址配置（默认 `127.0.0.1:8848`，可通过 `NACOS_ADDR` 环境变量覆盖）
 - `application.yml` — 服务端口、数据库连接、JWT 密钥等配置
 
-关键环境变量：
+关键环境变量（详见 `deploy/env.example.json`）：
 
 | 变量名 | 默认值 | 适用服务 | 说明 |
 |--------|--------|---------|------|
@@ -222,7 +249,7 @@ docker compose -f scripts/docker/docker-compose.yml up -d nacos mariadb
 | `PASSWORD_MIN_LENGTH` | `8` | auth-service | 密码最小长度 |
 | `PASSWORD_MAX_LENGTH` | `64` | auth-service | 密码最大长度 |
 
-> **RSA 密钥对生成：** 生产环境使用 OpenSSL 生成 RSA 2048 位密钥对：
+> **RSA 密钥对生成：** 生产环境使用 `deploy/scripts/deploy-rsa-keygen.sh`（或 .ps1）自动生成，或手动使用 OpenSSL 生成 RSA 2048 位密钥对：
 > ```bash
 > # 生成私钥并转换为 PKCS#8 格式
 > openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -outform PEM -out private_key.pem
@@ -244,9 +271,11 @@ mvn clean compile -DskipTests
 # 编译并运行所有测试
 mvn clean test
 
-# 打包为 JAR
+# 打包为 JAR（最终 jar 将输出到 deploy 目录，v0.2.5 起）
 mvn clean package -DskipTests
 ```
+
+> **v0.2.5 说明：** 构建完成后，auth-service、biz-service、system-service、gateway 的最终可执行 jar 包统一出现在 `deploy` 目录，无需在各模块 target 目录中查找。
 
 ### 6. 启动服务
 
@@ -281,6 +310,17 @@ mvn spring-boot:run -pl cloudoffice-system-service
 ```bash
 # 构建并启动所有服务（Nacos + MariaDB + Redis + 4 个微服务）
 docker compose -f scripts/docker/docker-compose.yml up -d --build
+```
+
+**方式四：deploy/scripts 脚本启动（v0.2.5 起）**
+
+```bash
+# 在 deploy/scripts 下执行
+./deploy-start-services.sh    # 一键启动全部服务（或 .\deploy-start-services.ps1）
+./deploy-start-auth.sh        # 单独启动认证服务
+./deploy-start-biz.sh         # 单独启动企业服务
+./deploy-start-system.sh      # 单独启动系统服务
+./deploy-start-gateway.sh     # 单独启动网关
 ```
 
 ### 7. 验证部署
@@ -318,7 +358,7 @@ open http://localhost:9100/swagger-ui.html
 }
 ```
 
-### 8. 验证认证 API（v0.1.6）
+### 8. 验证认证 API（v0.1.6 能力，v0.2.5 无新增接口）
 
 ```bash
 # 注册新用户（用户名密码模式）
@@ -437,23 +477,23 @@ curl -s -X POST http://localhost:9000/api/v1/auth/logout \
   -H "Authorization: Bearer $TOKEN" | jq .
 ```
 
-## API 接口列表（v0.1.6）
+## API 接口列表（v0.1.6 完整接口；v0.2.5 为工程目录调整，无新增接口）
 
 ### 认证接口
 
 | 方法 | 路径 | 说明 | 认证 |
 |------|------|------|------|
-| POST | `/api/v1/auth/register` | 用户注册（v0.1.6 新增 registerMode 字段，支持 5 种注册模式） | 白名单 |
-| POST | `/api/v1/auth/login` | 用户登录（v0.1.6 新增 loginMode/loginCode 字段，支持 4 种登录模式） | 白名单 |
+| POST | `/api/v1/auth/register` | 用户注册（支持 5 种注册模式） | 白名单 |
+| POST | `/api/v1/auth/login` | 用户登录（支持 4 种登录模式） | 白名单 |
 | POST | `/api/v1/auth/refresh` | 刷新 Token | 白名单 |
 | POST | `/api/v1/auth/logout` | 用户登出 | 需认证 |
 | POST | `/api/v1/auth/kickout` | 强制踢人（管理员） | 需认证 |
-| POST | `/api/v1/auth/verification-code/send` | 发送验证码（v0.1.6 新增，支持短信/邮箱） | 白名单 |
-| POST | `/api/v1/auth/password/forgot/send-code` | 密码找回-发送验证码（v0.1.6 新增） | 白名单 |
-| POST | `/api/v1/auth/password/forgot/reset` | 密码找回-重置密码（v0.1.6 新增） | 白名单 |
-| PUT | `/api/v1/auth/password/change` | 修改密码（v0.1.6 新增） | 需认证 |
-| PUT | `/api/v1/auth/phone/change` | 修改手机号（v0.1.6 新增） | 需认证 |
-| PUT | `/api/v1/auth/account/settlement` | 完善账号信息（v0.1.6 新增，两步注册第二步） | 需认证 |
+| POST | `/api/v1/auth/verification-code/send` | 发送验证码（支持短信/邮箱） | 白名单 |
+| POST | `/api/v1/auth/password/forgot/send-code` | 密码找回-发送验证码 | 白名单 |
+| POST | `/api/v1/auth/password/forgot/reset` | 密码找回-重置密码 | 白名单 |
+| PUT | `/api/v1/auth/password/change` | 修改密码 | 需认证 |
+| PUT | `/api/v1/auth/phone/change` | 修改手机号 | 需认证 |
+| PUT | `/api/v1/auth/account/settlement` | 完善账号信息（两步注册第二步） | 需认证 |
 
 ### 用户管理接口
 
@@ -531,8 +571,13 @@ mvn clean test
 mvn clean test -pl cloudoffice-common
 mvn clean test -pl cloudoffice-auth-service
 
-# 打包
+# 打包（最终 jar 输出到 deploy 目录，v0.2.5 起）
 mvn clean package -DskipTests
+
+# 客户端构建（Flutter，产物输出到 deploy/cloudoffice-flutter-app）
+cd cloudoffice-flutter-app
+flutter build web
+flutter build windows
 
 # 查看依赖树
 mvn dependency:tree
@@ -565,21 +610,12 @@ CloudStrollOffice/
 ├── cloudoffice-common/             # 公共模块（JAR 包，无启动类）
 │   └── src/main/java/org/cloudstrolling/cloudoffice/common/
 │       ├── config/                 # MyBatis-Plus 配置、SpringDoc 配置
-│       │   ├── MyBatisPlusConfig.java
-│       │   └── SpringDocConfig.java
-│       ├── exception/              # 异常定义
-│       │   ├── ErrorCode.java      # 错误码枚举
-│       │   ├── BaseException.java  # 异常基类
-│       │   ├── BusinessException.java
-│       │   ├── AuthException.java
-│       │   └── GlobalExceptionHandler.java
-│       ├── model/                  # 公共模型
-│       │   ├── ErrorCode.java      # 错误码接口
-│       │   ├── ApiResult.java      # 统一响应体
-│       │   ├── BaseEntity.java     # 实体基类
-│       │   └── PageResult.java     # 分页响应
-│       └── util/
-│           └── JsonUtils.java      # JSON 工具类
+│       ├── constant/               # RedisKeyConstants（Redis Key 常量）
+│       ├── dto/                    # LoginUserDTO、TokenPairDTO
+│       ├── enums/                  # ClientTypeEnum、LoginModeEnum、RegisterModeEnum、OAuthProviderEnum
+│       ├── exception/              # 异常定义（ErrorCode、BaseException、GlobalExceptionHandler 等）
+│       ├── model/                  # 公共模型（ApiResult、PageResult、BaseEntity）
+│       └── util/                   # JsonUtils
 │
 ├── cloudoffice-gateway/            # API 网关（端口 9000）
 │   └── src/main/java/org/cloudstrolling/cloudoffice/gateway/
@@ -591,88 +627,48 @@ CloudStrollOffice/
 ├── cloudoffice-auth-service/       # 认证服务（端口 9100，v0.1.6 用户认证增强）
 │   └── src/main/java/org/cloudstrolling/cloudoffice/auth/
 │       ├── AuthApplication.java    # 启动类
-│       ├── config/
-│       │   ├── SecurityConfig.java            # Spring Security（v0.1.6 白名单扩展）
-│       │   ├── RsaKeyConfig.java              # RSA 密钥配置
-│       │   ├── RedisConfig.java               # Redis 配置
-│       │   ├── MyBatisPlusConfig.java         # MyBatis-Plus 配置
-│       │   ├── VerificationCodeProperties.java # 验证码配置（v0.1.6 新增）
-│       │   └── PasswordProperties.java        # 密码策略配置（v0.1.6 新增）
-│       ├── controller/
-│       │   ├── AuthController.java    # 12 个端点（登录/注册/刷新/登出/踢人/发送验证码/密码修改/密码找回/手机变更/账号补全）
-│       │   ├── UserController.java    # 用户 CRUD + 状态管理 + 角色分配
-│       │   ├── RoleController.java    # 角色 CRUD + 权限分配
-│       │   ├── PermissionController.java  # 权限树 CRUD
-│       │   └── HealthController.java
-│       ├── entity/                 # 9 个实体类（User/Tenant/Role/Permission/UserRole/RolePermission/LoginLog/OAuthAccount/VerificationCode）
-│       ├── dto/                    # 12 个请求 DTO
-│       ├── mapper/                 # 9 个 Mapper 接口（含 OAuthAccountMapper、VerificationCodeMapper v0.1.6）
-│       ├── service/
-│       │   ├── AuthenticationService.java/impl # 认证编排服务（v0.1.6 新增，统一编排登录/注册）
-│       │   ├── LoginService.java / impl        # 登录认证（13 步完整流程）
-│       │   ├── LoginSessionService.java/impl   # Redis 会话管理
-│       │   ├── LoginLogService.java/impl       # 登录日志审计
-│       │   ├── TokenService.java/impl          # 双 Token 签发 + 轮换
-│       │   ├── PasswordService.java/impl       # 密码管理（v0.1.6 新增）
-│       │   ├── VerificationCodeManager.java/impl # 验证码管理器（v0.1.6 新增，生成/校验/频率控制）
-│       │   ├── VerificationCodeService.java/impl # 验证码发送服务（v0.1.6 新增）
-│       │   ├── SimulatedVerificationCodeService.java # 模拟验证码服务（v0.1.6 新增，开发环境使用）
-│       │   ├── UserService.java/impl           # 用户管理
-│       │   ├── RoleService.java/impl           # 角色管理
-│       │   └── PermissionService.java/impl     # 权限管理
-│       ├── strategy/                # 策略模式（v0.1.6 新增）
-│       │   ├── login/               # 登录策略
-│       │   │   ├── LoginStrategy.java              # 登录策略接口
-│       │   │   ├── LoginStrategyFactory.java       # 登录策略工厂
-│       │   │   ├── UsernamePasswordLoginStrategy.java   # 用户名密码登录
-│       │   │   ├── PhoneCodeLoginStrategy.java         # 手机验证码登录
-│       │   │   ├── PhonePasswordLoginStrategy.java     # 手机+密码登录
-│       │   │   └── OAuthLoginStrategy.java             # OAuth 登录
-│       │   └── register/            # 注册策略
-│       │       ├── RegisterStrategy.java               # 注册策略接口
-│       │       ├── RegisterStrategyFactory.java        # 注册策略工厂
-│       │       ├── UsernameRegisterStrategy.java       # 用户名密码注册
-│       │       ├── PhoneCodeRegisterStrategy.java      # 手机验证码注册
-│       │       ├── OAuthRegisterStrategy.java          # OAuth 注册
-│       │       ├── PhoneSetUsernameRegisterStrategy.java # 手机号设用户名注册
-│       │       └── OAuthSetInfoRegisterStrategy.java    # OAuth 补全信息注册
-│       └── util/
-│           └── JwtUtils.java         # JWT RS256 双 Token 工具类
+│       ├── config/                 # SecurityConfig、RsaKeyConfig、RedisConfig、PasswordProperties 等
+│       ├── controller/             # AuthController（12 端点）、UserController、RoleController、PermissionController、HealthController
+│       ├── entity/                 # 9 个实体类
+│       ├── dto/                    # 12 个请求 DTO + 2 个结果 DTO
+│       ├── mapper/                 # 9 个 Mapper 接口
+│       ├── service/                # AuthenticationService、LoginService、TokenService、PasswordService、验证码服务、用户/角色/权限服务等
+│       ├── strategy/               # login（4 策略）、register（5 策略）
+│       └── util/                   # JwtUtils
 │
-├── cloudoffice-biz-service/        # 企业服务（端口 9200）
-│   └── src/main/java/org/cloudstrolling/cloudoffice/biz/
-│       ├── BizApplication.java     # 启动类
-│       ├── config/
-│       └── controller/
-│           └── HealthController.java
+├── cloudoffice-biz-service/        # 企业服务（端口 9200，骨架）
+├── cloudoffice-system-service/     # 系统服务（端口 9400，骨架）
 │
-├── cloudoffice-system-service/     # 系统服务（端口 9400）
-│   └── src/main/java/org/cloudstrolling/cloudoffice/system/
-│       ├── SystemApplication.java  # 启动类
-│       ├── config/
-│       └── controller/
-│           └── HealthController.java
+├── cloudoffice-flutter-app/        # Flutter 客户端（Web + Windows 双平台）
+│   ├── lib/
+│   │   ├── main.dart / app.dart    # 入口与根组件
+│   │   ├── config/                 # ApiConfig、ThemeConfig
+│   │   ├── core/                   # http（ApiClient/ApiInterceptor）、router、storage、utils
+│   │   ├── features/               # auth（login/register/forgot）、home
+│   │   └── shared/                 # constants、widgets
+│   └── test/                       # 27 个测试文件
+│
+├── deploy/                         # 部署资产集中化目录（v0.2.5 起）
+│   ├── cloudoffice-auth-service.jar     # 认证服务最终 jar 包
+│   ├── cloudoffice-biz-service.jar      # 企业服务最终 jar 包
+│   ├── cloudoffice-system-service.jar   # 系统服务最终 jar 包
+│   ├── cloudoffice-gateway.jar          # 网关最终 jar 包
+│   ├── cloudoffice-flutter-app/         # 客户端构建产物（web/、windows/）
+│   ├── env.json / env.example.json      # 环境配置与模板
+│   └── scripts/                         # 部署运维脚本（.sh/.ps1，22 个）
 │
 ├── docs/                           # 项目文档
 │   ├── project.md                  # 项目信息、编码规范、项目地图
-│   ├── architecture.md             # 架构文档
-│   ├── dbd.md                      # 数据库设计文档
-│   ├── sds/                        # 技术规格说明书
-│   ├── prds/                       # PRD 文档
-│   ├── requires/                   # 需求文档
-│   ├── origin-requires/            # 原始需求文档
-│   └── prompts/                    # AI 交互历史记录
+│   ├── sad.md                      # 系统架构设计文档
+│   ├── cso-urs.md / cso-prd.md / cso-api.md / cso-dbd.md / cso-dbd.sql / cso-lld.md / cso-testcase.md  # 主文档
+│   ├── cso-v0.2.5/                 # 版本目录（URS/PRD/API/DBD/LLD/Task/Testcase/Review/进度等）
+│   └── deployment-guide.md         # 部署指南
 │
-└── scripts/                        # 脚本与模板
-    ├── sql/
-    │   ├── init.sql                # 通用数据库初始化脚本（仅建库）
-    │   └── auth-init-v0.1.5.sql    # 认证服务 v0.1.5 数据库初始化（7 表 + 初始数据）
-    └── docker/
-        ├── docker-compose.yml      # Docker Compose 编排（8 个容器）
-        ├── gateway/Dockerfile
-        ├── auth-service/Dockerfile
-        ├── biz-service/Dockerfile
-        └── system-service/Dockerfile
+└── scripts/                        # 脚本与模板（v0.2.5 后仅保留非 sh/ps1 内容）
+    ├── sql/                        # 数据库初始化脚本（init.sql、auth-init-v0.1.5.sql 等）
+    ├── docker/                     # Docker Compose 编排与 Dockerfile
+    ├── API-TEST/                   # 接口自动化测试脚本
+    └── deployment-guide.md         # 部署指南副本
 ```
 
 ## 端口分配
@@ -702,10 +698,13 @@ CloudStrollOffice/
                                 └──▶ [Nacos Cluster:8848] ──▶ [Nacos Cluster]
 ```
 
+部署资产统一位于 `deploy` 目录（v0.2.5 起）：最终 jar 包、客户端安装产物、env.json 环境配置与 `deploy/scripts` 部署脚本。详细编译与部署方案见 `deploy/build.md`、`deploy/deploy.md`（由 impm-deploy-update 技能维护）。
+
 ## 版本规划
 
 | 版本 | 阶段 | 计划内容 |
 |------|------|---------|
+| v0.2.5 | 部署资产集中化 ✅ | 新建 deploy 目录；后端 jar/客户端安装产物统一输出到 deploy；env.json 与 env.example.json 迁移；deploy/scripts 子目录建立；scripts 下全部 sh/ps1 迁移并适配路径；中间产物不入 deploy |
 | v0.1.6 | 用户认证增强 ✅ | 多模式登录（4种登录策略）+ 多模式注册（5种注册策略）+ 两步注册/账号补全 + 密码管理（修改/找回）+ 手机号变更 + 验证码管理（模拟/真实发送）+ 认证编排服务 AuthenticationService + 9 张数据表 + 234 个单元测试 |
 | v0.1.5 | 登录认证与权限管理 ✅ | RBAC 多租户权限模型（7 表）、6 种客户端混合登录、JWT RS256 双 Token、Redis 登录态管理、网关 AuthFilter 全局认证、登录日志审计、用户/角色/权限管理 API、351 个单元测试 |
 | v0.1.4 | 系统服务搭建 ✅ | 系统服务模块（cloudoffice-system-service）完整骨架、健康检查端点、单元测试、Docker 部署配置 |
@@ -749,3 +748,5 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ```
+
+<!-- SPDX-License-Identifier: Apache-2.0 / Copyright 2026 jenemy8023 <jenemy8023@163.com> -->

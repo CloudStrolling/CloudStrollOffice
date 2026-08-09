@@ -75,6 +75,29 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
+
+            <!-- 产物输出：package 阶段将最终可执行 jar 复制至 deploy（在 spring-boot 插件之后，复制 repackage 后的产物） -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>copy-final-jar-to-deploy</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <target>
+                                <!-- 仅复制单个最终 jar 文件，禁止整目录递归复制 target（保证中间产物不进入 deploy） -->
+                                <copy file="${project.build.directory}/${project.build.finalName}.jar"
+                                      tofile="${deployDir}/cloudoffice-biz-service.jar"
+                                      overwrite="true"/>
+                            </target>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
 

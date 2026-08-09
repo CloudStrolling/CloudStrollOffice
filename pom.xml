@@ -51,6 +51,12 @@
 
         <!-- 数据库驱动 -->
         <mariadb-java-client.version>3.3.3</mariadb-java-client.version>
+
+        <!-- 构建产物输出：最终产物统一落点（deploy 目录，以多模块根目录相对方式定位） -->
+        <deployDir>${maven.multiModuleProjectDirectory}/deploy</deployDir>
+
+        <!-- 构建插件版本 -->
+        <maven-antrun-plugin.version>3.2.0</maven-antrun-plugin.version>
     </properties>
 
     <!-- ======================== 统一依赖版本管理 ======================== -->
@@ -154,6 +160,13 @@
                             </exclude>
                         </excludes>
                     </configuration>
+                </plugin>
+
+                <!-- Maven AntRun 插件：package 阶段将各模块最终 jar 复制至 deploy（版本统一管理） -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-antrun-plugin</artifactId>
+                    <version>${maven-antrun-plugin.version}</version>
                 </plugin>
             </plugins>
         </pluginManagement>

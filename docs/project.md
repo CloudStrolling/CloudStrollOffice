@@ -44,23 +44,25 @@
 - 提交信息遵循 Conventional Commits 规范（feat:/fix:/docs:/refactor:/test:/chore:）。
 
 # 项目地图
-（初始版本由 impm-init-project 根据源码扫描反推生成，后续由 impm-project-update 技能通过扫描源码目录自动维护；共扫描 119 个文件。）
+（由 impm-project-update 技能在 v0.2.5 通过扫描源码目录维护：impm_project_analyzer 扫描 177 个文件，另含 Flutter Dart 源码 58 个文件（扫描器不识别 .dart，由 SA 手动提取声明补全），合计 235 个文件。）
 
 ## cloudoffice-common/ — 公共模块（JAR，无启动类）
-- `config/MyBatisPlusConfig.java` — MyBatis-Plus 自动填充配置（insertFill/updateFill 元数据填充）
+- `config/MyBatisPlusConfig.java` — MyBatis-Plus 自动填充处理器（insertFill/updateFill 元数据填充）
 - `config/SpringDocConfig.java` — SpringDoc OpenAPI 3 配置，按模块分组（auth/biz/cloud/system）
 - `constant/RedisKeyConstants.java` — Redis Key 常量与构建（会话/黑名单/状态/验证码）
 - `dto/LoginUserDTO.java`、`dto/TokenPairDTO.java` — 登录用户信息、双 Token 传输对象
-- `enums/ClientTypeEnum.java` — 6 种客户端类型枚举（Windows/Ubuntu/H5/Android/iOS/WeChatMini，同端互斥逻辑）
+- `enums/ClientTypeEnum.java` — 6 种客户端类型枚举（Windows/Ubuntu/H5/Android/iOS/WeChatMini，含 DeviceCategory 同端互斥逻辑）
 - `enums/LoginModeEnum.java`、`enums/RegisterModeEnum.java`、`enums/OAuthProviderEnum.java` — 登录/注册/OAuth 提供商枚举
-- `exception/` — 异常体系：`ErrorCode`（29 个错误码）、`BaseException`、`BusinessException`、`AuthException`、`GlobalExceptionHandler`（@RestControllerAdvice 统一兜底 10+ 类异常）
+- `exception/` — 异常体系：`ErrorCode`（29 个错误码）、`BaseException`、`BusinessException`、`AuthException`、`GlobalExceptionHandler`（@RestControllerAdvice 统一兜底 13 类异常）
 - `model/ApiResult.java`（统一响应体）、`model/PageResult.java`（分页响应）、`model/BaseEntity.java`（实体基类）、`model/ErrorCode.java`
 - `util/JsonUtils.java` — JSON 工具类
+- `src/test/` — 13 个测试类（MyBatisPlusConfigTest、RedisKeyConstantsTest、LoginUserDTOTest、TokenPairDTOTest、ClientTypeEnumTest、BaseExceptionTest、BusinessExceptionTest、ErrorCodeTest、GlobalExceptionHandlerTest、ApiResultTest、BaseEntityTest、PageResultTest、JsonUtilsTest）
 
 ## cloudoffice-gateway/ — API 网关（端口 9000）
 - `GatewayApplication.java` — 网关启动类
-- `config/AuthProperties.java`（认证白名单等属性）、`config/RedisConfig.java`（ReactiveRedis）、`config/RsaKeyConfig.java`（RS256 公钥加载）
-- `filter/AuthFilter.java` — 全局认证过滤器：getOrder/filter，9 步校验（白名单放行 → Bearer 格式校验 → RS256 公钥验签 → tokenType 校验 → Redis 黑名单 → 登录态 → 账号状态 → 租户状态 → Header 透传），writeErrorResponse 统一错误响应
+- `config/AuthProperties.java`（认证白名单等属性）、`config/RedisConfig.java`（ReactiveRedis）、`config/RsaKeyConfig.java`（RS256 公钥 PEM 加载与校验）
+- `filter/AuthFilter.java` — 全局认证过滤器：getOrder/filter 9 步校验（白名单放行 → Bearer 格式校验 → RS256 公钥验签 → tokenType 校验 → Redis 黑名单 → 登录态 → 账号状态 → 租户状态 → Header 透传），辅助方法 checkBlacklist/checkSession/checkAccountStatus/checkTenantStatus/isWhiteListPath/parseToken/getTokenSignature/forwardWithHeaders/writeErrorResponse
+- `src/test/` — 6 个测试类（GatewayApplicationTest、AuthPropertiesTest、RedisConfigTest、RsaKeyConfigTest、AuthFilterTest、TestRsaKeyProvider）
 
 ## cloudoffice-auth-service/ — 认证服务（端口 9100，核心业务模块）
 - `AuthApplication.java` — 启动类
@@ -73,33 +75,45 @@
 - `mapper/` — 9 个 Mapper 接口（UserMapper/TenantMapper/RoleMapper/PermissionMapper/UserRoleMapper/RolePermissionMapper/LoginLogMapper/OAuthAccountMapper/VerificationCodeMapper）
 - `service/`（接口 + impl）：
   - `AuthenticationService` — 认证编排服务：authenticate/register 统一编排登录注册，checkTenantStatus/checkUserStatus/processMutualExclusion
-  - `LoginService` — 登录认证：login/logout/kickout 全流程
-  - `LoginSessionService` — Redis 会话管理：createSession/getSession/removeSession/addToBlacklist/isBlacklisted/账号租户状态缓存
-  - `TokenService` — 双 Token 签发与轮换：refresh/parseAndValidateRefreshToken
+  - `LoginService` + `LoginServiceImpl` — 登录认证：login/logout/kickout 全流程
+  - `LoginSessionService` + `LoginSessionServiceImpl` — Redis 会话管理：createSession/getSession/removeSession/removeAllSessions/addToBlacklist/isBlacklisted/账号租户状态缓存
+  - `TokenService` + `TokenServiceImpl` — 双 Token 签发与轮换：refresh/parseAndValidateRefreshToken
   - `PasswordService` — 密码管理：changePassword/forgotPasswordSendCode/forgotPasswordReset/changePhone
-  - `VerificationCodeManager` — 验证码管理器：generateCode/verifyCode/isSendTooFrequent/cleanExpiredCodes
+  - `VerificationCodeManager` + `VerificationCodeManagerImpl` — 验证码管理器：generateCode/verifyCode/isSendTooFrequent/cleanExpiredCodes
   - `VerificationCodeService` + `SimulatedVerificationCodeService` — 验证码发送（模拟模式 sendSmsCode/sendEmailCode）
-  - `UserService` — 用户管理：register/banUser/unbanUser/lockUser/unlockUser/list/assignRoles/accountSettlement
-  - `RoleService`、`PermissionService`、`LoginLogService` — 角色/权限/登录日志审计
+  - `UserService` + `UserServiceImpl` — 用户管理：register/banUser/unbanUser/lockUser/unlockUser/list/assignRoles/accountSettlement
+  - `RoleService` + `RoleServiceImpl`、`PermissionService` + `PermissionServiceImpl`、`LoginLogService` + `LoginLogServiceImpl` — 角色/权限/登录日志审计
 - `service/strategy/` — 策略模式（工厂 + 策略实现）：
   - 登录 4 策略：UsernamePasswordStrategy、PhoneCodeLoginStrategy、PhonePasswordLoginStrategy、OAuthLoginStrategy（LoginStrategyFactory 装配）
   - 注册 5 策略：UsernamePwdRegisterStrategy、PhoneCodeRegisterStrategy、OAuthRegisterStrategy、PhoneSetUsernameStrategy、OAuthSetInfoStrategy（RegisterStrategyFactory 装配，含两步注册）
 - `util/JwtUtils.java` — JWT RS256 双 Token 工具：generateAccessToken/generateRefreshToken/parseAccessToken/parseRefreshToken/getTokenSignature
+- `vo/PermissionVO.java` — 权限视图对象
+- `src/test/` — 28 个测试类（AuthApplicationTest、RsaKeyConfigTest、SecurityConfigTest、AuthControllerTest、UserControllerTest、RoleControllerTest、PermissionControllerTest、HealthControllerTest、AuthenticationServiceTest、PasswordServiceTest、各 service/impl 测试、各 strategy 测试、JwtUtilsTest 等）
 
 ## cloudoffice-biz-service/ — 企业服务（端口 9200，骨架）
 - `BizApplication.java` — 启动类
 - `controller/HealthController.java` — 健康检查（health）
 - 企业信息管理、人事管理等业务功能待版本迭代填充
+- `src/test/` — 2 个测试类（BizApplicationTest、HealthControllerTest）
 
 ## cloudoffice-system-service/ — 系统服务（端口 9400，骨架）
 - `SystemApplication.java` — 启动类
 - `controller/HealthController.java` — 健康检查（health）
 - 系统配置、日志、监控、定时任务等功能待版本迭代填充
+- `src/test/` — 2 个测试类（SystemApplicationTest、HealthControllerTest）
 
 ## cloudoffice-flutter-app/ — Flutter 客户端（独立工程，Web + Windows 双平台）
 - `pubspec.yaml` — 依赖：dio 5.4（网络）、provider 6.1（状态管理）、go_router 14.2（路由）、flutter_secure_storage_x 13.1（Token 安全存储）、shared_preferences 2.2（本地配置）；dev：flutter_lints 6.0、mockito 5.4
-- `lib/` — 客户端主要源码目录（页面/服务/模型，待 impm-project-update 扫描补全明细）
-- `test/` — 客户端测试目录
+- `lib/main.dart` — 应用入口（main）；`lib/app.dart` — 根组件 CloudStrollOfficeApp
+- `lib/config/` — `ApiConfig`（API 地址配置）、`ThemeConfig`（主题配置）
+- `lib/core/http/` — `ApiClient`（dio 封装 get/post/put/delete）、`ApiInterceptor`（Token 注入、白名单、401 自动刷新与请求排队）、`ApiResult`（响应模型）
+- `lib/core/router/` — `AppRouter`（go_router 路由表）；`lib/core/storage/SecureStorage`（Token 安全存储 save/get/clear）；`lib/core/utils/Validators`（校验与密码强度计算）
+- `lib/features/auth/models/` — 7 个模型：LoginRequest、RegisterRequest、TokenPair、UserInfo、PasswordForgotRequest、SendVerificationCodeRequest、RegisterResult
+- `lib/features/auth/providers/` — `AuthProvider`（login/loginWithSmsCode/register/registerWithPhone/logout/checkLoginStatus）、`ForgotPasswordProvider`（三步找回：sendVerificationCode/verifyIdentity/resetPassword）
+- `lib/features/auth/repositories/` — `AuthRepository`（认证接口访问）；`lib/features/auth/screens/` — LoginScreen、RegisterScreen、ForgotPasswordScreen
+- `lib/features/home/` — `providers/HomeProvider`（loadUserInfo/logout）、`screens/HomeScreen`（用户信息展示）
+- `lib/shared/` — `constants/AppConstants`、`widgets/`（CustomTextField、LoadingButton、PasswordField、PasswordStrengthIndicator、VerificationCodeField）
+- `test/` — 27 个测试文件（widget_test、各 config/core/features/shared 单元测试，含 StubAuthRepository、ApiClientSpy 等测试替身）
 
 ## 根目录关键文件与目录
 - `pom.xml` — Maven 父 POM（groupId: org.cloudstrolling，统一依赖管理）

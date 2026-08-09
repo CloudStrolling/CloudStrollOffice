@@ -1,8 +1,8 @@
 # 系统架构设计文档（SAD）
 
 **项目名称**：云漫智企（CloudStrollOffice）
-**版本号**：0.0.1
-**日期**：2026-08-07
+**版本号**：0.2.5
+**日期**：2026-08-09
 **编写人**：SA
 
 ## 1. 设计目标与约束
@@ -13,12 +13,14 @@
 - **G-A3 安全纵深防御**：网关统一认证拦截（9 步校验）+ 服务端 JWT RS256 双 Token 轮换 + Redis 会话/黑名单/状态缓存 + BCrypt 密码加密，实现登出/踢人/密码重置实时生效、安全事件可审计追溯。
 - **G-A4 多租户数据隔离**：基于 RBAC（用户-角色-权限）模型实现多租户数据空间隔离，租户内用户名唯一、租户间数据不可见。
 - **G-A5 多端一致体验**：Flutter 客户端（Web + Windows 双平台）与后端共用同一套 API 契约（ApiResult 统一响应体、29 个统一错误码），Token 安全存储、网关地址可配置。
+- **G-A6 部署资产集中化**：以根目录 `deploy` 为全部最终构建产物（后端微服务 jar 包、客户端安装文件/exe）与部署资产（env.json/env.example.json、deploy/scripts 下 .sh/.ps1 部署运维脚本）的唯一落点，实现"产物集中、纯净交付、迁移无损"；构建中间产物（target 目录、编译临时文件、测试产物）一律不进入 deploy。
 
 ### 1.2 设计约束
 - **技术约束**：后端统一 Java 21 + Spring Boot 3.2.5 + Spring Cloud 2023.0.1 + Spring Cloud Alibaba 2023.0.1.0；客户端统一 Flutter（Dart 3，SDK ^3.12.2）；ORM 统一 MyBatis-Plus 3.5.6；禁止引入与现有技术栈重复的第三方框架。
 - **架构约束**：模块间依赖单向（下游依赖 common），服务间禁止循环依赖；所有服务注册到 Nacos，网关统一路由 `/api/v1/{module}/**`。
 - **安全约束**：密码一律 BCrypt 加密存储，日志禁止输出密码与 Token；JWT 私钥仅存在于 auth-service（签名），公钥存在于 gateway 与 auth-service（验签）；密钥通过环境变量注入，禁止硬编码。
 - **资源约束**：基础中间件（MariaDB 10.6 / Redis 7.2 / Nacos 2.3）通过 Docker Compose 一键编排（8 个容器）；开发环境验证码采用模拟模式，生产切换真实通道。
+- **部署资产约束**：最终构建产物（后端各服务 jar 包、客户端安装文件/exe）统一输出至根目录 `deploy` 目录；环境配置 `env.json`/`env.example.json` 与部署运维脚本（`deploy/scripts` 下的 .sh/.ps1）集中存放于 deploy 下；构建中间产物（target 目录、编译临时文件、测试产物）禁止进入 deploy；迁移后脚本内环境配置/密钥/产物路径引用必须同步适配，保证部署功能不因路径变化失效。
 - **合规约束**：接口统一 ApiResult 响应结构，错误码统一 29 个，全局异常处理不泄露堆栈信息；登录失败不泄露具体原因，避免账号枚举。
 
 ## 2. 技术栈选型及理由
@@ -40,6 +42,7 @@
 | 客户端框架 | Flutter（Dart 3，SDK ^3.12.2） | 一套代码多端运行（Web + Windows + 移动端），UI 一致性好 |
 | 客户端网络 | dio + provider + go_router + flutter_secure_storage | dio 封装 HTTP（ApiClient/ApiInterceptor 自动刷新 Token）、provider 状态管理、go_router 路由守卫、安全存储 Token |
 | 部署编排 | Docker Compose | 一键编排 8 个容器（Nacos/MariaDB/Redis/gateway/auth/biz/system），开发与演示环境快速部署 |
+| 构建产物管理 | Maven 构建插件（如 maven-antrun-plugin/copy 插件）+ Flutter 构建脚本 | 将各模块最终产物（后端 jar 包、客户端安装文件/exe）集中输出到根目录 `deploy`，仅复制最终产物、隔离中间产物，交付人员单目录获取全部可交付资产 |
 | 代码规范 | Checkstyle（checkstyle.xml） | 统一代码风格与质量门禁 |
 
 ## 3. 系统上下文图
@@ -189,9 +192,24 @@ flowchart TB
     Env -.->|"环境变量注入"| A
     Env -.->|"环境变量注入"| B
     Env -.->|"环境变量注入"| S
+
+    subgraph Artifacts["deploy 目录（根目录，构建产物与部署资产唯一落点）"]
+        JAR["后端最终 jar 包<br/>gateway/auth/biz/system"]
+        CLI["客户端安装产物<br/>安装文件 / exe"]
+        ENVF["env.json / env.example.json"]
+        SCR["deploy/scripts<br/>.sh / .ps1 部署运维脚本"]
+    end
+    G -->|"mvn package 最终产物"| JAR
+    A -->|"mvn package 最终产物"| JAR
+    B -->|"mvn package 最终产物"| JAR
+    S -->|"mvn package 最终产物"| JAR
+    WEB -->|"Flutter 构建产物"| CLI
+    WIN -->|"Flutter 构建产物"| CLI
 ```
 
 部署说明：后端各服务以 Docker 容器部署于同一桥接网络，容器间通过服务名通信；端口映射：Nacos 8848、MariaDB 3306、Redis 6379、网关 9000、认证服务 9100、业务服务 9200、系统服务 9400；RSA 密钥与数据库/中间件连接信息通过 `.env` 环境变量注入，生产环境应使用密钥管理服务托管。
+
+部署资产说明（v0.2.5 起）：根目录 `deploy` 为最终构建产物与部署资产的唯一落点——Maven 各模块 package 生成的最终 jar 包与 Flutter 客户端构建生成的安装文件/exe 均输出到 `deploy` 目录；`env.json`/`env.example.json` 环境配置与 `deploy/scripts` 下全部 .sh/.ps1 部署运维脚本集中存放；构建中间产物（target 目录、编译临时文件、测试产物等）禁止进入 deploy；`deploy/scripts` 脚本内部对 env.json、密钥文件（keys）、jar 包等路径引用随迁移同步适配。
 
 ## 7. 安全架构
 
@@ -276,5 +294,6 @@ flowchart LR
 | ADR-010 | 客户端技术栈 | Flutter（Dart 3）一套代码支持 Web + Windows 双平台，dio 网络层 + flutter_secure_storage 安全存储 + go_router 路由守卫 | 跨端 UI 一致、开发效率高；Token 安全存储防明文泄漏；路由守卫保证未登录跳转 | 2026-08-07 |
 | ADR-011 | 统一响应与异常 | 全接口统一 ApiResult（code/message/data/timestamp）+ PageResult 分页 + 29 个统一错误码 + 全局异常处理器（@RestControllerAdvice） | 客户端统一解析、错误语义一致、兜底响应不泄露堆栈，降低联调与运维成本 | 2026-08-07 |
 | ADR-012 | 部署方式 | Docker Compose 一键编排 8 个容器（Nacos/MariaDB/Redis/gateway/auth/biz/system），密钥与连接信息环境变量注入 | 开发与演示环境快速拉起，环境差异最小化；生产环境可平滑迁移至 K8s | 2026-08-07 |
+| ADR-013 | 构建产物与部署资产集中化 | 新建根目录 `deploy` 作为全部最终构建产物唯一落点（后端 jar 包、客户端安装文件/exe）；`env.json`/`env.example.json` 迁移至 deploy；scripts 下全部 .sh/.ps1 迁移至 `deploy/scripts` 并同步适配路径引用；构建中间产物禁止进入 deploy | 产物集中、纯净交付、迁移无损；发布/交付人员单目录收集全部可交付资产；源代码与运行/部署资产清晰分离，部署运维入口统一 | 2026-08-09 |
 
 <!-- SPDX-License-Identifier: Apache-2.0 / Copyright 2026 jenemy8023 <jenemy8023@163.com> -->
