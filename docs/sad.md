@@ -1,7 +1,7 @@
 # 系统架构设计文档（SAD）
 
 **项目名称**：云漫智企（CloudStrollOffice）
-**版本号**：0.2.5
+**版本号**：0.2.6
 **日期**：2026-08-09
 **编写人**：SA
 
@@ -16,9 +16,9 @@
 - **G-A6 部署资产集中化**：以根目录 `deploy` 为全部最终构建产物（后端微服务 jar 包、客户端安装文件/exe）与部署资产（env.json/env.example.json、deploy/scripts 下 .sh/.ps1 部署运维脚本）的唯一落点，实现"产物集中、纯净交付、迁移无损"；构建中间产物（target 目录、编译临时文件、测试产物）一律不进入 deploy。
 
 ### 1.2 设计约束
-- **技术约束**：后端统一 Java 21 + Spring Boot 3.2.5 + Spring Cloud 2023.0.1 + Spring Cloud Alibaba 2023.0.1.0；客户端统一 Flutter（Dart 3，SDK ^3.12.2）；ORM 统一 MyBatis-Plus 3.5.6；禁止引入与现有技术栈重复的第三方框架。
+- **技术约束**：后端统一 Java 21 + Spring Boot 3.2.5 + Spring Cloud 2023.0.1 + Spring Cloud Alibaba 2023.0.1.0；客户端统一 Flutter（Dart 3，SDK ^3.12.2）；ORM 统一 MyBatis-Plus 3.5.6；禁止引入与现有技术栈重复的第三方框架。gateway/auth/biz/system 四个服务模块必须引入 `spring-cloud-starter-bootstrap`（Spring Cloud 2023.0.1 配置引导依赖），保证 bootstrap.yml（含 Nacos discovery/config server-addr）在 Spring Boot 3.x 下正常加载，Nacos 配置/注册引导链路不得断裂（v0.2.6 修复 v0.0.1 基线遗留缺陷）。
 - **架构约束**：模块间依赖单向（下游依赖 common），服务间禁止循环依赖；所有服务注册到 Nacos，网关统一路由 `/api/v1/{module}/**`。
-- **安全约束**：密码一律 BCrypt 加密存储，日志禁止输出密码与 Token；JWT 私钥仅存在于 auth-service（签名），公钥存在于 gateway 与 auth-service（验签）；密钥通过环境变量注入，禁止硬编码。
+- **安全约束**：密码一律 BCrypt 加密存储，日志禁止输出密码与 Token；JWT 私钥仅存在于 auth-service（签名），公钥存在于 gateway 与 auth-service（验签）；密钥通过环境变量注入，禁止硬编码。RSA 密钥格式统一为 **DER 编码单行 Base64**（无 PEM 头尾标记、无换行）：deploy-rsa-keygen.ps1 生成/env.json 注入的 `RSA_PUBLIC_KEY`、`RSA_PRIVATE_KEY` 必须与 Java 端 `Base64.getDecoder()` + `X509EncodedKeySpec`/`PKCS8EncodedKeySpec` 解码契约严格一致，严禁将多行 PEM 整体 Base64（含 BEGIN/END 标记与 \r\n）直接注入 env.json（v0.2.6 修复 v0.0.1 基线遗留缺陷）。
 - **资源约束**：基础中间件（MariaDB 10.6 / Redis 7.2 / Nacos 2.3）通过 Docker Compose 一键编排（8 个容器）；开发环境验证码采用模拟模式，生产切换真实通道。
 - **部署资产约束**：最终构建产物（后端各服务 jar 包、客户端安装文件/exe）统一输出至根目录 `deploy` 目录；环境配置 `env.json`/`env.example.json` 与部署运维脚本（`deploy/scripts` 下的 .sh/.ps1）集中存放于 deploy 下；构建中间产物（target 目录、编译临时文件、测试产物）禁止进入 deploy；迁移后脚本内环境配置/密钥/产物路径引用必须同步适配，保证部署功能不因路径变化失效。
 - **合规约束**：接口统一 ApiResult 响应结构，错误码统一 29 个，全局异常处理不泄露堆栈信息；登录失败不泄露具体原因，避免账号枚举。
@@ -31,6 +31,7 @@
 | 后端框架 | Spring Boot 3.2.5 | 快速构建微服务应用，生态成熟，内置 WebFlux/WebMVC 支持 |
 | 微服务框架 | Spring Cloud 2023.0.1 | 提供网关、负载均衡、服务发现等微服务全套能力 |
 | 微服务组件 | Spring Cloud Alibaba 2023.0.1.0（Nacos 2.3） | Nacos 承担注册中心与配置中心，服务发现/配置管理一体化，运维简单 |
+| 配置引导 | spring-cloud-starter-bootstrap（Spring Cloud 2023.0.1） | Spring Boot 3.x 下 bootstrap.yml 默认不加载，需显式引入该依赖恢复 Nacos 配置/注册引导链路，消除 `No spring.config.import property has been defined` 启动报错（v0.2.6 修复 v0.0.1 基线遗留缺陷） |
 | API 网关 | Spring Cloud Gateway（Reactive） | 响应式高性能网关；AuthFilter 全局过滤器实现 9 步统一认证；支持 CORS 与负载均衡路由 |
 | ORM | MyBatis-Plus 3.5.6 | 无侵入增强 MyBatis，内置分页插件与逻辑删除，CRUD 开发效率高 |
 | 数据库 | MariaDB 10.6 | 兼容 MySQL 生态，开源免费，稳定性与性能满足企业办公场景 |
@@ -186,7 +187,7 @@ flowchart TB
     S --> N
 
     subgraph Env["密钥注入（环境变量）"]
-        K["RSA_PRIVATE_KEY → auth-service（私钥签名）<br/>RSA_PUBLIC_KEY → gateway + auth-service（公钥验签）<br/>DB/REDIS/NACOS 连接信息"]
+        K["RSA_PRIVATE_KEY（DER 单行 Base64）→ auth-service（私钥签名）<br/>RSA_PUBLIC_KEY（DER 单行 Base64）→ gateway + auth-service（公钥验签）<br/>DB/REDIS/NACOS 连接信息"]
     end
     Env -.->|"环境变量注入"| G
     Env -.->|"环境变量注入"| A
@@ -207,7 +208,7 @@ flowchart TB
     WIN -->|"Flutter 构建产物"| CLI
 ```
 
-部署说明：后端各服务以 Docker 容器部署于同一桥接网络，容器间通过服务名通信；端口映射：Nacos 8848、MariaDB 3306、Redis 6379、网关 9000、认证服务 9100、业务服务 9200、系统服务 9400；RSA 密钥与数据库/中间件连接信息通过 `.env` 环境变量注入，生产环境应使用密钥管理服务托管。
+部署说明：后端各服务以 Docker 容器部署于同一桥接网络，容器间通过服务名通信；端口映射：Nacos 8848、MariaDB 3306、Redis 6379、网关 9000、认证服务 9100、业务服务 9200、系统服务 9400；RSA 密钥与数据库/中间件连接信息通过 `.env` 环境变量注入，生产环境应使用密钥管理服务托管。各服务已引入 `spring-cloud-starter-bootstrap`，启动时 bootstrap.yml（Nacos discovery/config server-addr）先于 application.yml 加载，完成 Nacos 配置引导与注册；`RSA_PUBLIC_KEY`/`RSA_PRIVATE_KEY` 一律为 DER 编码单行 Base64（由 deploy-rsa-keygen.ps1 生成），与 Java 端 RsaKeyConfig 解码契约一致（v0.2.6 修复项）。
 
 部署资产说明（v0.2.5 起）：根目录 `deploy` 为最终构建产物与部署资产的唯一落点——Maven 各模块 package 生成的最终 jar 包与 Flutter 客户端构建生成的安装文件/exe 均输出到 `deploy` 目录；`env.json`/`env.example.json` 环境配置与 `deploy/scripts` 下全部 .sh/.ps1 部署运维脚本集中存放；构建中间产物（target 目录、编译临时文件、测试产物等）禁止进入 deploy；`deploy/scripts` 脚本内部对 env.json、密钥文件（keys）、jar 包等路径引用随迁移同步适配。
 
@@ -224,6 +225,7 @@ flowchart TB
 - **数据安全**：
   - 密码 BCrypt 加密存储（min 8 / max 64 字符策略），禁止明文；日志禁止输出密码与 Token。
   - JWT 密钥、数据库密码、Redis 密码一律通过环境变量注入，代码与配置文件不含真实密钥。
+  - RSA 密钥格式契约统一：`RSA_PUBLIC_KEY`/`RSA_PRIVATE_KEY` 采用 DER 编码单行 Base64（无 PEM 头尾、无换行），由 deploy-rsa-keygen.ps1 生成并注入 env.json，与 Java 端 `Base64.getDecoder()` + `X509EncodedKeySpec`（公钥）/`PKCS8EncodedKeySpec`（私钥）解码契约严格一致；私钥不得入库、不得写入日志（v0.2.6 修复项）。
   - 登录日志记录 IP/客户端类型/结果/失败原因，供安全审计追溯。
 - **账号安全**：
   - 会话实时可控：登出幂等（Token 入黑名单 + 会话清除）；管理员强制踢人（指定端/所有端）即时生效；密码修改/找回成功后清除该用户全部登录态。
@@ -295,5 +297,7 @@ flowchart LR
 | ADR-011 | 统一响应与异常 | 全接口统一 ApiResult（code/message/data/timestamp）+ PageResult 分页 + 29 个统一错误码 + 全局异常处理器（@RestControllerAdvice） | 客户端统一解析、错误语义一致、兜底响应不泄露堆栈，降低联调与运维成本 | 2026-08-07 |
 | ADR-012 | 部署方式 | Docker Compose 一键编排 8 个容器（Nacos/MariaDB/Redis/gateway/auth/biz/system），密钥与连接信息环境变量注入 | 开发与演示环境快速拉起，环境差异最小化；生产环境可平滑迁移至 K8s | 2026-08-07 |
 | ADR-013 | 构建产物与部署资产集中化 | 新建根目录 `deploy` 作为全部最终构建产物唯一落点（后端 jar 包、客户端安装文件/exe）；`env.json`/`env.example.json` 迁移至 deploy；scripts 下全部 .sh/.ps1 迁移至 `deploy/scripts` 并同步适配路径引用；构建中间产物禁止进入 deploy | 产物集中、纯净交付、迁移无损；发布/交付人员单目录收集全部可交付资产；源代码与运行/部署资产清晰分离，部署运维入口统一 | 2026-08-09 |
+| ADR-014 | bootstrap 配置引导依赖 | 四个服务模块（gateway/auth/biz/system）统一引入 `spring-cloud-starter-bootstrap`，恢复 bootstrap.yml（含 Nacos discovery/config server-addr）在 Spring Boot 3.x 下的加载，打通 Nacos 配置引导链路 | Spring Boot 3.x 默认不加载 bootstrap.yml，全项目 pom 缺该依赖导致 auth/biz/system 启动报 `No spring.config.import property has been defined`、Nacos 引导断裂（v0.0.1 基线遗留缺陷 T-02，v0.2.6 修复）；引入依赖为最小改动且不改变接口契约 | 2026-08-09 |
+| ADR-015 | RSA 密钥格式契约 | 统一 RSA 密钥格式为 DER 编码单行 Base64：deploy-rsa-keygen.ps1 输出/env.json 注入的 `RSA_PUBLIC_KEY`/`RSA_PRIVATE_KEY` 与 Java 端 `Base64.getDecoder()` + `X509EncodedKeySpec`（公钥）/`PKCS8EncodedKeySpec`（私钥）解码逻辑严格一致；禁止多行 PEM 整体 Base64 直接注入 | 原 env.json 注入 PEM 整体 Base64（多行、含 BEGIN/END）与 Java 严格解码契约不匹配，网关启动报 `RSA 公钥解析失败`（v0.0.1 基线遗留缺陷 T-02，v0.2.6 修复）；统一脚本输出契约可消除配置歧义，Java 端无需兼容代码、运行时代码零改动 | 2026-08-09 |
 
 <!-- SPDX-License-Identifier: Apache-2.0 / Copyright 2026 jenemy8023 <jenemy8023@163.com> -->

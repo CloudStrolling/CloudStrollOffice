@@ -65,9 +65,9 @@ public class PermissionServiceImpl implements PermissionService {
             vo.setChildren(children);
         }
 
-        // 返回顶级权限（parentId 为 null 的权限）
+        // 返回顶级权限（parentId 为 null 或 0 的权限；初始化数据顶级 parent_id=0）
         return voList.stream()
-                .filter(vo -> vo.getParentId() == null)
+                .filter(vo -> vo.getParentId() == null || vo.getParentId() == 0L)
                 .collect(Collectors.toList());
     }
 
@@ -127,13 +127,23 @@ public class PermissionServiceImpl implements PermissionService {
             throw new BusinessException(ErrorCode.NOT_FOUND.getCode(), "权限不存在");
         }
 
+        // 检查是否存在子权限（有子权限不可删除，契约 409，见 testcase TC-040）
+        Long childCount = permissionMapper.selectCount(
+                Wrappers.lambdaQuery(PermissionEntity.class)
+                        .eq(PermissionEntity::getParentId, permId));
+        if (childCount != null && childCount > 0) {
+            log.warn("删除失败：权限存在子权限 | permId={} | childCount={}", permId, childCount);
+            throw new BusinessException(ErrorCode.CONFLICT.getCode(), "权限存在子权限，无法删除");
+        }
+
         // 检查是否被角色关联
         Long refCount = rolePermissionMapper.selectCount(
                 Wrappers.lambdaQuery(RolePermissionEntity.class)
                         .eq(RolePermissionEntity::getPermId, permId));
         if (refCount != null && refCount > 0) {
             log.warn("删除失败：权限已被角色关联 | permId={} | refCount={}", permId, refCount);
-            throw new BusinessException(ErrorCode.BAD_REQUEST.getCode(), "权限已被关联到角色，无法删除");
+            // 契约：被角色绑定权限删除返回 409 资源冲突
+            throw new BusinessException(ErrorCode.CONFLICT.getCode(), "权限已被关联到角色，无法删除");
         }
 
         permissionMapper.deleteById(permId);
@@ -160,7 +170,8 @@ public class PermissionServiceImpl implements PermissionService {
         PermissionEntity existing = permissionMapper.selectOne(queryWrapper);
         if (existing != null && (excludePermId == null || !excludePermId.equals(existing.getId()))) {
             log.warn("权限编码已存在 | permCode={} | existingPermId={}", permCode, existing.getId());
-            throw new BusinessException(ErrorCode.BAD_REQUEST.getCode(), "权限编码已存在");
+            // 契约：权限编码重复返回 409 资源冲突（见 testcase TC-039）
+            throw new BusinessException(ErrorCode.CONFLICT.getCode(), "权限编码已存在");
         }
     }
 

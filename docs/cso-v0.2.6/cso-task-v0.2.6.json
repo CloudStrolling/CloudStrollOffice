@@ -1,0 +1,91 @@
+{
+    "projectName": "cso",
+    "version": "0.2.6",
+    "sequence": 1,
+    "tasks": [
+        {
+            "id": "TASK-001",
+            "title": "引入 spring-cloud-starter-bootstrap 配置引导依赖（根 pom + 4 个服务模块 pom）",
+            "description": "修复 v0.0.1 基线遗留缺陷（v0.2.5 回归报告审核项 T-02，SAD ADR-014，PRD F-001）：在根 pom.xml 的 dependencyManagement 统一声明 spring-cloud-starter-bootstrap（版本随 Spring Cloud 2023.0.1 管理），并在 gateway/auth-service/biz-service/system-service 四个服务模块 pom 中实际引入该依赖（仅根 pom 声明而不在模块引入仍会报 import-check 错误）。引入后恢复 bootstrap.yml（含 spring.cloud.nacos.discovery.server-addr 与 spring.cloud.nacos.config.server-addr）在 Spring Boot 3.x 下的加载，打通 Nacos 配置引导链路，消除 auth/biz/system 启动报错 No spring.config.import property has been defined。仅允许构建/依赖配置变更，不得改动接口层（Controller/DTO/响应体）、业务代码逻辑、数据库结构。",
+            "taskType": "backend",
+            "userStoryId": "US-001",
+            "apiId": "",
+            "upstreamTaskIds": [],
+            "downstreamTaskIds": [
+                "TASK-003"
+            ],
+            "priority": "P0",
+            "status": "已完成",
+            "testMethod": "构建验证：mvn package 依赖解析无冲突；启动验证：服务启动日志不再出现 No spring.config.import property has been defined",
+            "acceptanceCriteria": "1. 根 pom dependencyManagement 与 4 个服务模块 pom 均包含 spring-cloud-starter-bootstrap 依赖；2. mvn package 构建通过、无依赖解析错误；3. 服务启动日志不再出现 No spring.config.import property has been defined；4. bootstrap.yml 生效，Nacos discovery/config server-addr 被正确加载；5. 无接口层/业务代码/客户端代码改动"
+        },
+        {
+            "id": "TASK-002",
+            "title": "统一 RSA 密钥格式契约为 DER 编码单行 Base64（deploy-rsa-keygen.ps1 + deploy/env.json）",
+            "description": "修复 v0.0.1 基线遗留缺陷（v0.2.5 回归报告审核项 T-02，SAD ADR-015，PRD F-002）：采用方案 A（脚本侧修复）——修改 deploy/scripts/deploy-rsa-keygen.ps1，生成 RSA 2048 密钥对后输出 DER 编码单行 Base64（公钥 X.509 SubjectPublicKeyInfo / 私钥 PKCS#8 PrivateKeyInfo 经 Base64 编码，无 -----BEGIN/END----- 头尾标记、无换行符），并更新 deploy/env.json 中 RSA_PUBLIC_KEY/RSA_PRIVATE_KEY 的注入值（覆盖旧 PEM 整体 Base64）。修复后 env.json 注入值与 Java 端 RsaKeyConfig 解码契约（Base64.getDecoder() + X509EncodedKeySpec/PKCS8EncodedKeySpec）严格一致，消除网关启动报错 RSA 公钥解析失败（Unable to decode key / extra data at the end）。私钥不得入库、不得写入日志；数据库/Redis/Nacos 连接参数保持不变。",
+            "taskType": "common",
+            "userStoryId": "US-002",
+            "apiId": "",
+            "upstreamTaskIds": [],
+            "downstreamTaskIds": [
+                "TASK-003"
+            ],
+            "priority": "P0",
+            "status": "已完成",
+            "testMethod": "契约校验：脚本输出/env.json 值不含 -----BEGIN/-----END 子串、不含换行符、可被 Base64.getDecoder() 严格解码；启动验证：网关启动无 RSA 公钥解析失败",
+            "acceptanceCriteria": "1. deploy-rsa-keygen.ps1 输出为 DER 编码单行 Base64（无 PEM 头尾、无换行）；2. deploy/env.json 的 RSA_PUBLIC_KEY/RSA_PRIVATE_KEY 已更新为 DER 单行 Base64 并与其严格一致；3. 注入后可被 Java 端严格 Base64 解码构造密钥（X509/PKCS8EncodedKeySpec）；4. 网关启动无 RSA 公钥解析失败，RS256 签名验签链路正常；5. 私钥不写入日志、不进入代码仓库"
+        },
+        {
+            "id": "TASK-003",
+            "title": "重新构建 4 个服务 jar 并完成启动验证与健康检查（gateway/auth/biz/system）",
+            "description": "在 TASK-001（bootstrap 依赖）与 TASK-002（RSA 密钥契约）修复完成后（PRD F-003，US-001/US-002）：在项目根目录执行 mvn package 重新构建 gateway/auth-service/biz-service/system-service 4 个服务 jar（确认 deploy/ 下最终产物更新）；按部署文档标准流程（deploy/env.json 环境变量注入 + Nacos 注册 + MariaDB/Redis 依赖可用）启动 4 个服务；核对启动日志不再出现 No spring.config.import property has been defined 与 RSA 公钥解析失败；确认 4 个服务全部注册到 Nacos（控制台可见 cloudoffice-* 实例）；访问健康检查接口 /api/v1/auth/health、/api/v1/biz/health、/api/v1/system/health 均返回服务名/状态/版本/时间戳且状态正常。任一步骤失败按启动日志定位（bootstrap 依赖/RSA 密钥/基础设施）并修复后重新构建启动。",
+            "taskType": "backend",
+            "userStoryId": "US-001,US-002",
+            "apiId": "API-012,API-032,API-033",
+            "upstreamTaskIds": [
+                "TASK-001",
+                "TASK-002"
+            ],
+            "downstreamTaskIds": [
+                "TASK-004",
+                "TASK-005"
+            ],
+            "priority": "P0",
+            "status": "已完成",
+            "testMethod": "服务启动日志检查（无两项缺陷报错）；接口测试：调用 /api/v1/{auth|biz|system}/health 健康检查接口验证返回正常；Nacos 注册实例核对",
+            "acceptanceCriteria": "1. mvn package 构建通过，deploy/ 下 4 个服务 jar 更新落位；2. 4 个服务全部启动成功且注册到 Nacos；3. 启动日志无 No spring.config.import property has been defined 与 RSA 公钥解析失败；4. /api/v1/auth/health、/api/v1/biz/health、/api/v1/system/health 健康检查全部返回正常（服务名/状态/版本/时间戳）；5. 网关（9000）与认证服务（9100）可访问，为回归脚本执行提供前置条件"
+        },
+        {
+            "id": "TASK-004",
+            "title": "补跑 v0.0.1 基线接口回归并闭环（cso-api-test-v0.0.1.py，TC-001~045）",
+            "description": "在 TASK-003 服务启动验证通过后（PRD F-004，US-003）：执行 python scripts/API-TEST/cso-api-test-v0.0.1.py http://localhost:9000，使 TC-001~045（v0.0.1 基线接口契约 API-001~API-033 动态回归：登录/刷新/登出/用户/角色/权限/网关鉴权/健康检查等）全部动态执行通过，消除历史\"待执行/环境阻塞\"状态（v0.2.5 回归报告记录的阻塞项）。前置条件：网关（9000）、auth-service（9100）可访问，MariaDB/Redis/Nacos 正常，admin/admin123 可用；执行结果期望退出码 0、PASS=45、FAIL=0；个别用例因测试数据冲突失败时记录失败用例、清理测试数据后重跑直至全部通过；回归结果记录到 docs/cso-v0.2.6/regression-api-test.md（用例明细、统计、根因闭环说明 T-02）。",
+            "taskType": "common",
+            "userStoryId": "US-003",
+            "apiId": "",
+            "upstreamTaskIds": [
+                "TASK-003"
+            ],
+            "downstreamTaskIds": [],
+            "priority": "P0",
+            "status": "已完成",
+            "testMethod": "接口测试：执行 python cso-api-test-v0.0.1.py http://localhost:9000 动态回归，核对 TC-001~045 断言结果与退出码",
+            "acceptanceCriteria": "1. 脚本正常跑完、退出码 0，不再因连接拒绝崩溃；2. TC-001~045 全部动态执行通过，PASS=45、FAIL=0；3. 登录、认证、网关鉴权、业务接口契约（API-001~API-033）全部动态通过；4. 回归结果记录到 docs/cso-v0.2.6/regression-api-test.md，闭环 v0.0.1 基线遗留项"
+        },
+        {
+            "id": "TASK-005",
+            "title": "保障既有接口契约无回归并输出 v0.2.6 回归报告（cso-api-test-v0.2.5.py，TC-046~051）",
+            "description": "在 TASK-003 服务启动验证通过后（PRD F-005，US-004）：执行 python scripts/API-TEST/cso-api-test-v0.2.5.py <项目根>，复核 TC-046~051 保持通过（PASS=26、FAIL=0，TC-046-3 健康检查为可选场景，服务未启动时按脚本约定 SKIP 不视为失败）；核对 git 变更清单确认本版本无接口层（Controller/DTO/响应体）与客户端 lib/ 运行时代码改动，静态确认 API-001~API-033 契约完整保留、无新增/变更/删除接口（API v0.2.6 文档声明）；将 TC-046~051 复核结果与 TASK-004 的 TC-001~045 结果汇总，输出 docs/cso-v0.2.6/regression-api-test.md 完整回归报告（脚本清单、执行明细、统计、T-02 两项缺陷闭环说明、签名确认），API 测试全部跑通。",
+            "taskType": "common",
+            "userStoryId": "US-004",
+            "apiId": "",
+            "upstreamTaskIds": [
+                "TASK-003"
+            ],
+            "downstreamTaskIds": [],
+            "priority": "P1",
+            "status": "已完成",
+            "testMethod": "接口测试：执行 python cso-api-test-v0.2.5.py <项目根> 复核 TC-046~051；git 变更清单核对（无接口层/客户端运行时代码改动）",
+            "acceptanceCriteria": "1. cso-api-test-v0.2.5.py 执行通过，TC-046~051 保持 PASS=26、FAIL=0；2. git 变更清单无 Controller/DTO/响应体与客户端 lib/ 运行时代码改动；3. 静态确认 API-001~API-033 契约完整保留、无新增/变更/删除接口；4. docs/cso-v0.2.6/regression-api-test.md 完整输出，记录 TC-001~051 全部动态执行结果与 T-02 缺陷闭环说明，API 测试全部跑通"
+        }
+    ]
+}

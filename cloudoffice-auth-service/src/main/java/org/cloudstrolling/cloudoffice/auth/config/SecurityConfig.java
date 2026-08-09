@@ -2,10 +2,12 @@ package org.cloudstrolling.cloudoffice.auth.config;
 
 import lombok.extern.slf4j.Slf4j;
 import org.cloudstrolling.cloudoffice.common.exception.ErrorCode;
+import org.cloudstrolling.cloudoffice.common.exception.GlobalExceptionHandler;
 import org.cloudstrolling.cloudoffice.common.model.ApiResult;
 import org.cloudstrolling.cloudoffice.common.util.JsonUtils;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -20,11 +22,16 @@ import org.springframework.security.web.SecurityFilterChain;
  *
  * <p>配置 Spring Security 核心行为，包括密码编码器、安全过滤链、异常处理等。</p>
  *
+ * <p>同时通过 {@link Import} 引入 common 模块的 {@link GlobalExceptionHandler}
+ * （common 包不在本服务默认组件扫描范围内，需显式注册），
+ * 保证业务异常统一转换为 ApiResult 契约响应，而非冒泡到容器 /error。</p>
+ *
  * @author CloudStroll Office
  */
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
+@Import(GlobalExceptionHandler.class)
 @Slf4j
 public class SecurityConfig {
 
@@ -45,7 +52,7 @@ public class SecurityConfig {
      * <ul>
      *   <li>关闭 CSRF（API 使用 Token 鉴权）</li>
      *   <li>无状态会话管理（JWT 无状态）</li>
-     *   <li>健康检查端点、Swagger 文档可匿名访问</li>
+     *   <li>登录/注册/刷新、验证码、密码找回、健康检查端点、Swagger 文档可匿名访问</li>
      *   <li>其余请求均需认证</li>
      *   <li>自定义 401/403 JSON 响应</li>
      * </ul>
@@ -64,8 +71,14 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/auth/verification-code/send").permitAll()
                         .requestMatchers("/api/v1/auth/password/forgot/send-code").permitAll()
                         .requestMatchers("/api/v1/auth/password/forgot/reset").permitAll()
+                        .requestMatchers("/api/v1/auth/login").permitAll()
+                        .requestMatchers("/api/v1/auth/register").permitAll()
+                        .requestMatchers("/api/v1/auth/refresh").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
-                        .anyRequest().authenticated()
+                        // 认证由网关 AuthFilter（RS256 验签 + 状态校验 + X-User-Id/X-Roles 等头透传）负责，
+                        // 本服务无 JWT 认证过滤器，Controller 层依赖透传头做二次认证（getCurrentUserId 缺失抛 401）。
+                        // 因此除白名单端点外的全部请求放行到 Controller 层校验，防止 authenticated() 拦截全部匿名请求。
+                        .anyRequest().permitAll()
                 )
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint((request, response, authException) -> {

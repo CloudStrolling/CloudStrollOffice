@@ -66,6 +66,7 @@ class LoginUserDTOTest {
                 100L,
                 "test_user",
                 "WEB",
+                "token-signature-sample",
                 roles,
                 permissions
         );
@@ -75,6 +76,7 @@ class LoginUserDTOTest {
         assertEquals(100L, dto.getTenantId());
         assertEquals("test_user", dto.getUserName());
         assertEquals("WEB", dto.getClientType());
+        assertEquals("token-signature-sample", dto.getTokenSignature());
         assertSame(roles, dto.getRoles());
         assertSame(permissions, dto.getPermissions());
     }

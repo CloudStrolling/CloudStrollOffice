@@ -45,6 +45,9 @@ public class LoginUserDTO implements Serializable {
     /** 客户端类型编码 */
     private String clientType;
 
+    /** 当前 Access Token 签名指纹（SHA-256），用于同端互斥/登出时吊销旧 Token */
+    private String tokenSignature;
+
     /** 角色编码列表（默认空列表） */
     @Builder.Default
     private List<String> roles = new ArrayList<>();

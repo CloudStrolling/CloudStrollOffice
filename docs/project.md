@@ -44,51 +44,55 @@
 - 提交信息遵循 Conventional Commits 规范（feat:/fix:/docs:/refactor:/test:/chore:）。
 
 # 项目地图
-（由 impm-project-update 技能在 v0.2.5 通过扫描源码目录维护：impm_project_analyzer 扫描 177 个文件，另含 Flutter Dart 源码 58 个文件（扫描器不识别 .dart，由 SA 手动提取声明补全），合计 235 个文件。）
+（由 impm-project-update 技能在 v0.2.6 通过扫描源码目录维护：impm_project_analyzer 扫描 174 个文件，另含 Flutter Dart 源码 58 个文件（扫描器不识别 .dart，由 SA 手动提取声明补全），合计 232 个文件。）
 
 ## cloudoffice-common/ — 公共模块（JAR，无启动类）
 - `config/MyBatisPlusConfig.java` — MyBatis-Plus 自动填充处理器（insertFill/updateFill 元数据填充）
 - `config/SpringDocConfig.java` — SpringDoc OpenAPI 3 配置，按模块分组（auth/biz/cloud/system）
 - `constant/RedisKeyConstants.java` — Redis Key 常量与构建（会话/黑名单/状态/验证码）
-- `dto/LoginUserDTO.java`、`dto/TokenPairDTO.java` — 登录用户信息、双 Token 传输对象
+- `dto/LoginUserDTO.java`、`dto/TokenPairDTO.java` — 登录用户信息、双 Token 传输对象（v0.2.6 调整 LoginUserDTO 以支持网关透传）
 - `enums/ClientTypeEnum.java` — 6 种客户端类型枚举（Windows/Ubuntu/H5/Android/iOS/WeChatMini，含 DeviceCategory 同端互斥逻辑）
 - `enums/LoginModeEnum.java`、`enums/RegisterModeEnum.java`、`enums/OAuthProviderEnum.java` — 登录/注册/OAuth 提供商枚举
-- `exception/` — 异常体系：`ErrorCode`（29 个错误码）、`BaseException`、`BusinessException`、`AuthException`、`GlobalExceptionHandler`（@RestControllerAdvice 统一兜底 13 类异常）
+- `exception/` — 异常体系：`ErrorCode`（29 个错误码）、`BaseException`、`BusinessException`、`AuthException`、`GlobalExceptionHandler`（@RestControllerAdvice 统一兜底 14 类异常：MethodArgumentNotValid/Bind/ConstraintViolation 参数校验、Business/Auth 业务认证异常、BadCredentials 凭证错误、AccessDenied 越权、MethodNotSupported 405、NoHandlerFound 404、MissingRequestHeader/MissingServletRequestParameter 缺参、TypeMismatch 类型不匹配、HttpMessageNotReadable 请求体解析失败、兜底 Exception 500）
 - `model/ApiResult.java`（统一响应体）、`model/PageResult.java`（分页响应）、`model/BaseEntity.java`（实体基类）、`model/ErrorCode.java`
 - `util/JsonUtils.java` — JSON 工具类
 - `src/test/` — 13 个测试类（MyBatisPlusConfigTest、RedisKeyConstantsTest、LoginUserDTOTest、TokenPairDTOTest、ClientTypeEnumTest、BaseExceptionTest、BusinessExceptionTest、ErrorCodeTest、GlobalExceptionHandlerTest、ApiResultTest、BaseEntityTest、PageResultTest、JsonUtilsTest）
 
 ## cloudoffice-gateway/ — API 网关（端口 9000）
 - `GatewayApplication.java` — 网关启动类
+- `pom.xml` — 网关依赖（Spring Cloud Gateway、ReactiveRedis、RS256 验签依赖，v0.2.6 调整）
 - `config/AuthProperties.java`（认证白名单等属性）、`config/RedisConfig.java`（ReactiveRedis）、`config/RsaKeyConfig.java`（RS256 公钥 PEM 加载与校验）
-- `filter/AuthFilter.java` — 全局认证过滤器：getOrder/filter 9 步校验（白名单放行 → Bearer 格式校验 → RS256 公钥验签 → tokenType 校验 → Redis 黑名单 → 登录态 → 账号状态 → 租户状态 → Header 透传），辅助方法 checkBlacklist/checkSession/checkAccountStatus/checkTenantStatus/isWhiteListPath/parseToken/getTokenSignature/forwardWithHeaders/writeErrorResponse
+- `filter/AuthFilter.java` — 全局认证过滤器：getOrder/filter 9 步校验（白名单放行 → Bearer 格式校验 → RS256 公钥验签 → tokenType 校验 → Redis 黑名单 → 登录态 → 账号状态 → 租户状态 → Header 透传），辅助方法 checkBlacklist/checkSession/checkAccountStatus/checkTenantStatus/isWhiteListPath/parseToken/getTokenSignature/commaSeparateClaim/getAccountStatusError/getTenantStatusError/forwardWithHeaders/writeErrorResponse
+- `application.yml` — RSA 公钥配置与认证白名单（v0.2.6 更新）
 - `src/test/` — 6 个测试类（GatewayApplicationTest、AuthPropertiesTest、RedisConfigTest、RsaKeyConfigTest、AuthFilterTest、TestRsaKeyProvider）
 
 ## cloudoffice-auth-service/ — 认证服务（端口 9100，核心业务模块）
 - `AuthApplication.java` — 启动类
-- `config/` — `SecurityConfig`（Spring Security + BCrypt）、`RsaKeyConfig`（RS256 密钥对）、`RedisConfig`、`MyBatisPlusConfig`、`PasswordProperties`（密码策略）、`VerificationCodeProperties`（验证码配置）、`OAuth2Config`（OAuth2 授权服务器骨架）
-- `controller/AuthController.java` — 认证端点：login/register/refresh/logout/kickout/changePassword/forgotPasswordSendCode/forgotPasswordReset/changePhone/accountSettlement/sendVerificationCode
+- `config/` — `SecurityConfig`（Spring Security 安全过滤链 + BCrypt 密码编码器）、`RsaKeyConfig`（RS256 密钥对）、`RedisConfig`、`MyBatisPlusConfig`、`PasswordProperties`（密码策略）、`VerificationCodeProperties`（验证码配置）、`OAuth2Config`（OAuth2 授权服务器骨架）
+- `controller/AuthController.java` — 认证端点：login/register/refresh/logout/kickout/changePassword/forgotPasswordSendCode/forgotPasswordReset/changePhone/accountSettlement/sendVerificationCode/getCurrentUserId
 - `controller/UserController.java` — 用户管理：getUserById/updateUser/deleteUser/assignRoles/updateStatus
-- `controller/RoleController.java`、`controller/PermissionController.java`（tree/list/create）、`controller/HealthController.java`（health）
+- `controller/RoleController.java`、`controller/PermissionController.java`（tree/list/getById/create/update/delete）、`controller/HealthController.java`（health）
 - `entity/` — 9 个实体：UserEntity、TenantEntity、RoleEntity、PermissionEntity、UserRoleEntity、RolePermissionEntity、LoginLogEntity、OAuthAccountEntity、VerificationCodeEntity
 - `dto/` — 12 个请求 DTO：LoginRequest、RegisterRequest、RefreshTokenRequest、KickoutRequest、PasswordChangeRequest、PasswordForgotRequest、PhoneChangeRequest、AccountSettlementRequest、SendVerificationCodeRequest、UserStatusRequest、UserUpdateRequest、AssignRolesRequest；`dto/result/AuthResult.java`、`dto/result/RegisterResult.java`
 - `mapper/` — 9 个 Mapper 接口（UserMapper/TenantMapper/RoleMapper/PermissionMapper/UserRoleMapper/RolePermissionMapper/LoginLogMapper/OAuthAccountMapper/VerificationCodeMapper）
 - `service/`（接口 + impl）：
-  - `AuthenticationService` — 认证编排服务：authenticate/register 统一编排登录注册，checkTenantStatus/checkUserStatus/processMutualExclusion
-  - `LoginService` + `LoginServiceImpl` — 登录认证：login/logout/kickout 全流程
-  - `LoginSessionService` + `LoginSessionServiceImpl` — Redis 会话管理：createSession/getSession/removeSession/removeAllSessions/addToBlacklist/isBlacklisted/账号租户状态缓存
-  - `TokenService` + `TokenServiceImpl` — 双 Token 签发与轮换：refresh/parseAndValidateRefreshToken
+  - `AuthenticationService` — 认证编排服务：authenticate/register 统一编排登录注册，checkTenantStatus/checkUserStatus/processMutualExclusion/getClientIp
+  - `LoginService` + `LoginServiceImpl` — 登录认证：login/logout/kickout 全流程 + getCurrentOperator/isAdmin/recordKickoutLog（操作者识别与踢出审计）
+  - `LoginSessionService` + `LoginSessionServiceImpl` — Redis 会话管理：createSession/getSession/removeSession/removeAllSessions/addToBlacklist/isBlacklisted/账号租户状态缓存（maskSignature 脱敏）
+  - `TokenService` + `TokenServiceImpl` — 双 Token 签发与轮换：refresh/parseAndValidateRefreshToken + checkUserStatus/checkTenantStatus/calculateRemainingSeconds/maskSignature（刷新时复核账号租户状态）
   - `PasswordService` — 密码管理：changePassword/forgotPasswordSendCode/forgotPasswordReset/changePhone
   - `VerificationCodeManager` + `VerificationCodeManagerImpl` — 验证码管理器：generateCode/verifyCode/isSendTooFrequent/cleanExpiredCodes
   - `VerificationCodeService` + `SimulatedVerificationCodeService` — 验证码发送（模拟模式 sendSmsCode/sendEmailCode）
-  - `UserService` + `UserServiceImpl` — 用户管理：register/banUser/unbanUser/lockUser/unlockUser/list/assignRoles/accountSettlement
-  - `RoleService` + `RoleServiceImpl`、`PermissionService` + `PermissionServiceImpl`、`LoginLogService` + `LoginLogServiceImpl` — 角色/权限/登录日志审计
+  - `UserService` + `UserServiceImpl` — 用户管理：register/update/delete/updateStatus/banUser/unbanUser/lockUser/unlockUser/list/assignRoles/accountSettlement/assignDefaultRole
+  - `RoleService` + `RoleServiceImpl` — 角色管理：list/listAll/findById/create/update/delete/assignPermissions/checkRoleCodeUnique
+  - `PermissionService` + `PermissionServiceImpl` — 权限管理：tree/listAll/findById/create/update/delete/checkPermCodeUnique/convertToVO
+  - `LoginLogService` + `LoginLogServiceImpl` — 登录日志审计：recordLoginSuccess/recordLoginFailure/updateLogoutTime
 - `service/strategy/` — 策略模式（工厂 + 策略实现）：
   - 登录 4 策略：UsernamePasswordStrategy、PhoneCodeLoginStrategy、PhonePasswordLoginStrategy、OAuthLoginStrategy（LoginStrategyFactory 装配）
   - 注册 5 策略：UsernamePwdRegisterStrategy、PhoneCodeRegisterStrategy、OAuthRegisterStrategy、PhoneSetUsernameStrategy、OAuthSetInfoStrategy（RegisterStrategyFactory 装配，含两步注册）
-- `util/JwtUtils.java` — JWT RS256 双 Token 工具：generateAccessToken/generateRefreshToken/parseAccessToken/parseRefreshToken/getTokenSignature
+- `util/JwtUtils.java` — JWT RS256 双 Token 工具：generateAccessToken/generateRefreshToken/parseAccessToken/parseRefreshToken/getTokenSignature/getAccessTokenExpiration/getRefreshTokenExpiration/parseToken
 - `vo/PermissionVO.java` — 权限视图对象
-- `src/test/` — 28 个测试类（AuthApplicationTest、RsaKeyConfigTest、SecurityConfigTest、AuthControllerTest、UserControllerTest、RoleControllerTest、PermissionControllerTest、HealthControllerTest、AuthenticationServiceTest、PasswordServiceTest、各 service/impl 测试、各 strategy 测试、JwtUtilsTest 等）
+- `src/test/` — 29 个测试类（AuthApplicationTest、RsaKeyConfigTest、SecurityConfigTest、AuthControllerTest、UserControllerTest、RoleControllerTest、PermissionControllerTest、HealthControllerTest、AuthenticationServiceTest、PasswordServiceTest、LoginLogServiceImplTest、LoginServiceImplTest、LoginSessionServiceImplTest、RoleServiceImplTest、TokenServiceImplTest、UserServiceImplTest、VerificationCodeManagerImplTest、LoginStrategyFactoryTest、RegisterStrategyFactoryTest、UsernamePasswordStrategyTest、PhoneCodeLoginStrategyTest、PhonePasswordLoginStrategyTest、OAuthLoginStrategyTest、UsernamePwdRegisterStrategyTest、PhoneCodeRegisterStrategyTest、OAuthRegisterStrategyTest、PhoneSetUsernameStrategyTest、OAuthSetInfoStrategyTest、JwtUtilsTest）
 
 ## cloudoffice-biz-service/ — 企业服务（端口 9200，骨架）
 - `BizApplication.java` — 启动类

@@ -22,8 +22,8 @@ import org.springframework.stereotype.Component;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Base64;
 import java.util.Date;
-import java.util.HexFormat;
 
 /**
  * JWT 令牌工具类（RS256 双 Token）。
@@ -101,6 +101,7 @@ public class JwtUtils {
      *   <li>{@code tokenType} — 固定值 "access"</li>
      *   <li>{@code roles} — 角色编码列表</li>
      *   <li>{@code permissions} — 权限标识列表</li>
+     *   <li>{@code tokenVersion} — 雪花算法生成的唯一版本号（保证同一用户同秒重复登录的 Token 不重复）</li>
      *   <li>{@code iat} — 签发时间</li>
      *   <li>{@code exp} — 过期时间（当前时间 + 配置的 accessTokenExpiration）</li>
      * </ul>
@@ -119,6 +120,7 @@ public class JwtUtils {
                 .claim("tokenType", "access")
                 .claim("roles", loginUser.getRoles())
                 .claim("permissions", loginUser.getPermissions())
+                .claim("tokenVersion", snowflake.nextId())
                 .issuedAt(now)
                 .expiration(expiration)
                 .signWith(rsaKeyConfig.getPrivateKey())
@@ -215,18 +217,19 @@ public class JwtUtils {
     /**
      * 获取 Token 的签名指纹。
      *
-     * <p>对 Token 字符串进行 SHA-256 摘要计算，返回 64 字符的十六进制小写字符串。
-     * 用于 Token 黑名单的 Key 标识。</p>
+     * <p>对 Token 字符串进行 SHA-256 摘要计算，返回 Base64 URL 安全编码（无填充）字符串。
+     * 用于 Token 黑名单的 Key 标识，算法必须与网关 {@code AuthFilter.getTokenSignature}
+     * （SHA-256 + Base64 URL 无填充）保持一致，否则黑名单校验永远无法命中。</p>
      *
      * @param token JWT 令牌字符串
-     * @return 64 字符的 SHA-256 十六进制摘要
+     * @return SHA-256 的 Base64 URL 安全摘要（无填充）
      */
     public String getTokenSignature(String token) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] hash = digest.digest(
                     token.getBytes(StandardCharsets.UTF_8));
-            return HexFormat.of().formatHex(hash);
+            return Base64.getUrlEncoder().withoutPadding().encodeToString(hash);
         } catch (NoSuchAlgorithmException e) {
             log.error("SHA-256 算法不可用", e);
             throw new RuntimeException("SHA-256 algorithm not available", e);

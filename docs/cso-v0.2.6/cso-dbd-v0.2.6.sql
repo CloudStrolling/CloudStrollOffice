@@ -1,0 +1,63 @@
+-- ============================================================
+-- CloudStrollOffice（云漫智企）数据库脚本（DBD 配套 SQL）
+-- 版本：v0.2.6（部署与配置缺陷修复版本）
+-- 生成日期：2026-08-09
+-- 数据库：MariaDB 10.6 LTS（兼容 MySQL 5.7+）
+--
+-- 变更说明：
+--   v0.2.6 为"部署与配置缺陷修复"工程版本（需求来源：
+--   docs/cso-v0.2.5/regression-api-test.md 记录的回归测试问题）：
+--     - F-001 引入 spring-cloud-starter-bootstrap 依赖，恢复
+--       bootstrap.yml 加载（Nacos 配置/注册引导链路），消除
+--       `No spring.config.import property has been defined` 启动报错；
+--     - F-002 统一 RSA 密钥格式契约（deploy-rsa-keygen.ps1 生成/
+--       env.json 注入的 RSA_PUBLIC_KEY/RSA_PRIVATE_KEY 由 PEM 整体
+--       Base64 改为 DER 编码单行 Base64），与 Java 端 RsaKeyConfig
+--       解码契约一致，消除 `RSA 公钥解析失败` 启动报错。
+--   以上均为构建/依赖配置与密钥格式契约类修复（PRD v0.2.6 第 6 章
+--   数据需求：不新增数据表、不修改表结构），本版本【无数据库结构变更】：
+--     - 无建库/删库
+--     - 无建表/改表/删表
+--     - 无索引增删改
+--     - 无视图/存储过程/触发器变更
+--     - 无初始化数据变更
+--
+-- 数据库初始化请使用全量基线脚本（与主文档 docs/cso-dbd.sql 一致）：
+--   docs/cso-dbd.sql（全量可重复执行，INSERT IGNORE 幂等）
+--   scripts/sql/init-v0.2.0-full.sql（部署脚本引用的初始化脚本副本，
+--   供 v0.2.6 回归测试初始化测试数据使用）
+--
+-- 本版本数据库相关改动仅涉及 deploy/env.json 中 RSA 密钥配置值的
+-- 格式（非数据库配置，不影响任何连接参数），SQL 语句本身无任何变更。
+-- ============================================================
+
+-- ============================================================
+-- 本版本无可执行 SQL 变更（v0.2.6）
+-- ============================================================
+-- 如需初始化数据库，请执行 docs/cso-dbd.sql（或 scripts/sql/init-v0.2.0-full.sql）。
+
+-- ============================================================
+-- 附：v0.2.6 版本数据库对象清单（沿用 v0.0.1 基线，仅列名供核对）
+-- ============================================================
+-- 数据库：
+--   cloudstroll_office_auth（认证库，9 张业务表）
+--   cloudstroll_office_biz（预留库）
+--   cloudstroll_office_system（预留库）
+--
+-- 业务表（9 张）：
+--   t_auth_tenant / t_auth_user / t_auth_role / t_auth_permission
+--   t_auth_user_role / t_auth_role_permission / t_auth_login_log
+--   t_auth_oauth_account / t_auth_verification_code
+--
+-- 索引（含主键）：
+--   主键索引 9 个；唯一索引 7 个（uk_tenant_code / uk_user_login_name /
+--   uk_role_code / uk_perm_code / uk_user_role / uk_role_perm / uk_provider_openid）
+--   普通索引 9 个（idx_register_mode / idx_status / idx_parent_id /
+--   idx_role_id / idx_perm_id / idx_log_user_time / idx_log_tenant_time /
+--   idx_user_id / idx_target_purpose / idx_expire_time）
+--
+-- 视图 / 存储过程 / 触发器：无
+-- ============================================================
+
+-- 说明：本脚本仅为版本变更说明，无实际可执行语句；数据库初始化请使用
+--       docs/cso-dbd.sql（全量基线脚本）。

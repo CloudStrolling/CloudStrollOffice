@@ -2,6 +2,8 @@
 
 本项目基于 impm（iterative project management）软件工程流程，由 1 个主控 Agent（PM）与 12 个 subagent 协作完成瀑布式开发。所有 Agent 定义位于 `.opencode/agents/` 目录，技能定义位于 `.opencode/skills/` 目录。
 
+**当前版本 v0.2.6（部署与配置缺陷修复）**：依据 `docs/cso-v0.2.5/regression-api-test.md` 记录的问题完成修复——5 个 pom 引入 `spring-cloud-starter-bootstrap`（ADR-014）、RSA 密钥统一 DER 单行 Base64 契约（ADR-015）、SecurityConfig 白名单增补（login/register/refresh）与全局异常处理器注册等契约行为对齐；4 个服务全部正常启动，**API 回归测试全量跑通**（TC-001~051 PASS=72、FAIL=0、SKIP=0），接口契约 API-001~033 无回归，客户端零改动。
+
 ## 一、Agent 角色一览
 
 | 角色 | 英文名 | 类型 | 职责 | 主要技能 |
@@ -71,7 +73,7 @@
 | 项目主文档 | `docs/project.md`（基本信息、编码规范、项目地图） | SA |
 | 系统架构设计 | `docs/sad.md` | SA |
 | 主文档（URS/PRD/API/DBD/LLD/Testcase） | `docs/cso-urs.md`、`docs/cso-prd.md`、`docs/cso-api.md`、`docs/cso-dbd.md`、`docs/cso-dbd.sql`、`docs/cso-lld.md`、`docs/cso-testcase.md` | 各角色编写，DW 合并 |
-| 版本目录 | `docs/cso-v{版本号}/`（URS/PRD/DBD/API/LLD/Task/Testcase/Review/进度） | 各角色 |
+| 版本目录 | `docs/cso-v{版本号}/`（URS/PRD/DBD/API/LLD/Task/Testcase/Review/回归报告/进度等），最新 `docs/cso-v0.2.6/` | 各角色 |
 | 项目根 README | `readme.md`（项目介绍、快速开始、目录结构、命令说明） | DW |
 | Agent 说明 | `agent.md`（本文件） | DW |
 | 编译部署文档 | `deploy/build.md`、`deploy/deploy.md` | DW |

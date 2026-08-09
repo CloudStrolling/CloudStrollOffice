@@ -62,7 +62,8 @@ public class UsernamePasswordStrategy implements LoginStrategy {
         UserEntity user = userMapper.selectByTenantIdAndLoginName(tenant.getId(), request.getLoginName());
         if (user == null) {
             log.warn("用户不存在 | loginName={} | tenantId={}", request.getLoginName(), tenant.getId());
-            throw new AuthException(ErrorCode.USER_NOT_FOUND);
+            // 防账号枚举：用户不存在与密码错误返回一致错误（见 testcase TC-006 契约）
+            throw new AuthException(ErrorCode.LOGIN_FAILED);
         }
 
         // 4. BCrypt 校验密码

@@ -17,6 +17,7 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.validation.BindException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -56,13 +57,20 @@ public class GlobalExceptionHandler {
     /**
      * 业务异常，由 {@link BusinessException} 抛出。
      *
+     * <p>HTTP 状态码按 {@link BusinessException#getCode()}（即 ErrorCode.code，通常对应 HTTP 状态码）映射，
+     * 保证 409 冲突、429 限频、403 无权限等错误码返回一致的 HTTP 状态（契约见 docs/cso-api.md 错误码表）。</p>
+     *
      * @param ex 业务异常
-     * @return 400 + 错误码和消息
+     * @return 对应 HTTP 状态码 + 错误码和消息
      */
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ApiResult<Void>> handleBusinessException(BusinessException ex) {
         log.error("业务异常 | code={} | message={}", ex.getCode(), ex.getMessage(), ex);
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+        HttpStatus status = HttpStatus.resolve(ex.getCode());
+        if (status == null) {
+            status = HttpStatus.BAD_REQUEST;
+        }
+        return ResponseEntity.status(status)
                 .body(ApiResult.error(ex.getCode(), ex.getMessage()));
     }
 
@@ -145,6 +153,20 @@ public class GlobalExceptionHandler {
         log.error("接口不存在 | {} {}", ex.getHttpMethod(), ex.getRequestURL(), ex);
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(ApiResult.error(ErrorCode.NOT_FOUND.getCode(), ErrorCode.NOT_FOUND.getMessage()));
+    }
+
+    /**
+     * 缺少必需的请求头（{@link org.springframework.web.bind.MissingRequestHeaderException}，
+     * 如 {@code @RequestHeader} 必填头缺失）。
+     *
+     * @param ex 缺少请求头异常
+     * @return 400 Bad Request
+     */
+    @ExceptionHandler(MissingRequestHeaderException.class)
+    public ResponseEntity<ApiResult<Void>> handleMissingRequestHeader(MissingRequestHeaderException ex) {
+        log.error("缺少请求头 | {}", ex.getMessage(), ex);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResult.error(ErrorCode.BAD_REQUEST.getCode(), ex.getMessage()));
     }
 
     /**

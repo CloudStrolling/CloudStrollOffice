@@ -414,6 +414,17 @@ public class LoginServiceImpl implements LoginService {
                 if (type.isSameCategory(clientTypeEnum)) {
                     LoginUserDTO oldSession = loginSessionService.getSession(userId, type.getCode());
                     if (oldSession != null) {
+                        // 吊销旧 Token：将旧会话的 Access Token 签名加入黑名单（见 testcase TC-013 同端互斥）
+                        if (StringUtils.hasText(oldSession.getTokenSignature())) {
+                            try {
+                                loginSessionService.addToBlacklist(oldSession.getTokenSignature(),
+                                        refreshTokenExpiration);
+                                log.info("Mutual exclusion: blacklisted old token | userId={} | clientType={}",
+                                        userId, type.getCode());
+                            } catch (Exception e) {
+                                log.warn("Mutual exclusion: failed to blacklist old token | {}", e.getMessage());
+                            }
+                        }
                         loginSessionService.removeSession(userId, type.getCode());
                         log.info("Mutual exclusion: removed old session | userId={} | clientType={}",
                                 userId, type.getCode());
@@ -486,13 +497,15 @@ public class LoginServiceImpl implements LoginService {
     /**
      * 判断操作者是否为管理员。
      *
+     * <p>管理员角色编码：admin（兼容旧编码）与 SUPER_ADMIN（初始数据实际编码）。</p>
+     *
      * @param operator 操作者信息
      * @return 如果是管理员返回 true，否则 false
      */
     private boolean isAdmin(LoginUserDTO operator) {
         return operator.getRoles() != null
                 && operator.getRoles().stream()
-                .anyMatch(ADMIN_ROLE_CODE::equalsIgnoreCase);
+                .anyMatch(role -> "admin".equalsIgnoreCase(role) || "SUPER_ADMIN".equalsIgnoreCase(role));
     }
 
     /**

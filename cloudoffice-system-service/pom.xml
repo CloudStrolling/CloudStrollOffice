@@ -48,6 +48,12 @@
             <artifactId>spring-cloud-starter-alibaba-nacos-config</artifactId>
         </dependency>
 
+        <!-- Spring Cloud Bootstrap 配置引导（恢复 bootstrap.yml 加载，修复 No spring.config.import property has been defined） -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-bootstrap</artifactId>
+        </dependency>
+
         <!-- 公共模块 -->
         <dependency>
             <groupId>org.cloudstrolling</groupId>

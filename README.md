@@ -15,9 +15,11 @@
 
 项目采用 Maven 多模块架构，由认证服务（auth-service）、企业服务（biz-service）、系统服务（system-service）、API 网关（gateway）及公共模块（common）组成，为企业提供企业信息管理、人事管理、工作流审批、薪酬管理、统一认证授权等综合服务能力。
 
-当前版本 **v0.2.5** 完成**部署资产集中化**：新建统一的 `deploy` 目录作为所有最终构建产物（后端 jar 包、客户端安装文件/exe）与部署资产（env.json、env.example.json、全部 .sh/.ps1 部署运维脚本）的唯一落点；修改 Maven 各模块与 Flutter 客户端构建配置，使最终产物统一输出到 `deploy` 目录，中间产物（target 等）不进入 deploy；根目录 `scripts` 下仅保留 docker、sql、API-TEST、部署指南等非脚本内容。
+当前版本 **v0.2.6** 完成**部署与配置缺陷修复**（依据 `docs/cso-v0.2.5/regression-api-test.md` 记录的问题）：① **bootstrap 依赖修复**（ADR-014）——根 pom 与 gateway/auth/biz/system 四个服务模块 pom 统一引入 `spring-cloud-starter-bootstrap`，恢复 bootstrap.yml（Nacos discovery/config server-addr）在 Spring Boot 3.x 下的加载，消除 `No spring.config.import property has been defined`；② **RSA 密钥格式契约修复**（ADR-015）——`deploy-rsa-keygen.ps1` 输出与 `deploy/env.json` 注入的 `RSA_PUBLIC_KEY`/`RSA_PRIVATE_KEY` 统一为 DER 编码单行 Base64，与 Java 端 RsaKeyConfig 解码契约严格一致，消除网关 `RSA 公钥解析失败`；③ **SecurityConfig 白名单修复**（TASK-004）——permitAll 增补 login/register/refresh 三端点、注册全局异常处理器并映射 409/429/403 状态码等契约行为对齐。修复后 4 个服务全部正常启动，**API 回归测试全量跑通**：TC-001~051 全量 PASS=72、FAIL=0、SKIP=0（v0.0.1 基线接口契约 API-001~033 动态回归闭环 + v0.2.5 契约无回归复核），接口层零改动、客户端无需任何修改。
 
-上一版本 **v0.1.6** 在 v0.1.5 RBAC 权限体系基础上新增**用户认证增强**能力：多模式登录（用户名密码/手机验证码/手机+密码/OAuth）与多模式注册（用户名密码/手机验证码/OAuth）；两步注册机制（先注册后补全信息）；密码管理（修改密码/密码找回）；手机号变更（原手机可用→短信验证，原手机停用→邮箱验证）；验证码管理（生成/发送/校验/频率控制）。新增 2 张数据库表（OAuth 账号关联表、验证码记录表），用户表扩展 5 个字段，206 个单元测试全部通过。
+上一版本 **v0.2.5** 完成**部署资产集中化**：新建统一的 `deploy` 目录作为所有最终构建产物（后端 jar 包、客户端安装文件/exe）与部署资产（env.json、env.example.json、全部 .sh/.ps1 部署运维脚本）的唯一落点；修改 Maven 各模块与 Flutter 客户端构建配置，使最终产物统一输出到 `deploy` 目录，中间产物（target 等）不进入 deploy；根目录 `scripts` 下仅保留 docker、sql、API-TEST、部署指南等非脚本内容。
+
+再上一版本 **v0.1.6** 在 v0.1.5 RBAC 权限体系基础上新增**用户认证增强**能力：多模式登录（用户名密码/手机验证码/手机+密码/OAuth）与多模式注册（用户名密码/手机验证码/OAuth）；两步注册机制（先注册后补全信息）；密码管理（修改密码/密码找回）；手机号变更（原手机可用→短信验证，原手机停用→邮箱验证）；验证码管理（生成/发送/校验/频率控制）。新增 2 张数据库表（OAuth 账号关联表、验证码记录表），用户表扩展 5 个字段，206 个单元测试全部通过。
 
 ## 功能特性
 
@@ -46,6 +48,9 @@
 | 服务注册发现 | Nacos 2.3.0 统一管理，各服务启动后自动注册 |
 | 健康检查链路 | 所有业务服务提供 `/api/v1/{module}/health` 健康检查端点 |
 | 部署资产集中化 | `deploy` 目录统一存放最终产物（jar/客户端安装包）、环境配置与部署脚本，中间产物严格隔离（v0.2.5） |
+| bootstrap 配置引导 | 全项目 pom 统一引入 `spring-cloud-starter-bootstrap`，恢复 bootstrap.yml 在 Spring Boot 3.x 下的加载，打通 Nacos 配置引导链路（v0.2.6 / ADR-014） |
+| RSA 密钥契约统一 | `deploy-rsa-keygen.ps1` 输出与 `env.json` 注入值统一为 DER 编码单行 Base64，与 Java 端解码契约严格一致，消除网关公钥解析失败（v0.2.6 / ADR-015） |
+| API 回归闭环 | v0.0.1 基线接口回归（TC-001~045）全部动态执行通过，接口契约 API-001~033 静态+动态双重确认无回归（v0.2.6） |
 | Docker 部署 | 多阶段构建镜像 + Docker Compose 一键编排 8 个容器 |
 | 开发环境配置 | IDEA 运行配置、.editorconfig、Checkstyle、代码风格统一 |
 
@@ -189,6 +194,8 @@ v0.1.6 增量脚本在 v0.1.5 基础上新增以上 2 张表，并通过 ALTER T
 
 脚本还包含初始数据：默认租户 `DEFAULT`、超级管理员角色 `SUPER_ADMIN`、管理员用户 `admin`（密码 `admin123`）及基础权限数据。
 
+> **v0.2.6 数据库对齐说明：** 回归测试中发现数据库与代码/DBD 契约存在脱节（数据库按旧脚本初始化），已在运行环境按 `docs/cso-dbd.sql` 最新契约补齐（均为加列/改约束，未破坏既有数据与索引）：`t_auth_user` 补 `lock_reason` 列、`t_auth_login_log`/`t_auth_user_role`/`t_auth_role_permission` 补 `update_time`、`deleted` 列、`t_auth_user.password` 允许 NULL（PHONE_CODE/OAuth 注册无密码模式）、admin 密码修正为 admin123 的 BCrypt hash。后续版本建议同步历史初始化脚本（`scripts/sql/init-v0.2.0-full.sql` 等）。
+
 - `cloudstroll_office_biz` — 预留，仅建库不建表
 - `cloudstroll_office_system` — 预留，仅建库不建表
 
@@ -240,8 +247,8 @@ cd deploy/scripts
 | `REDIS_PORT` | `6379` | auth/gateway | Redis 端口 |
 | `REDIS_PASSWORD` | (空) | auth/gateway | Redis 密码 |
 | `REDIS_DATABASE` | `0` | auth/gateway | Redis 数据库编号 |
-| `RSA_PRIVATE_KEY` | (必填) | auth-service | RSA 私钥（Base64 编码），用于 JWT RS256 签名 |
-| `RSA_PUBLIC_KEY` | (必填) | auth/gateway | RSA 公钥（Base64 编码），用于 JWT RS256 验签 |
+| `RSA_PRIVATE_KEY` | (必填) | auth-service | RSA 私钥（DER 编码单行 Base64），用于 JWT RS256 签名 |
+| `RSA_PUBLIC_KEY` | (必填) | auth/gateway | RSA 公钥（DER 编码单行 Base64），用于 JWT RS256 验签 |
 | `VERIFICATION_CODE_MOCK` | `true` | auth-service | 验证码模拟模式（true=直接返回固定验证码，false=真实发送） |
 | `VERIFICATION_CODE_EXPIRE_SECONDS` | `300` | auth-service | 验证码过期时间（秒），默认 5 分钟 |
 | `VERIFICATION_CODE_SEND_INTERVAL` | `60` | auth-service | 验证码发送间隔（秒），默认 60 秒 |
@@ -249,18 +256,19 @@ cd deploy/scripts
 | `PASSWORD_MIN_LENGTH` | `8` | auth-service | 密码最小长度 |
 | `PASSWORD_MAX_LENGTH` | `64` | auth-service | 密码最大长度 |
 
-> **RSA 密钥对生成：** 生产环境使用 `deploy/scripts/deploy-rsa-keygen.sh`（或 .ps1）自动生成，或手动使用 OpenSSL 生成 RSA 2048 位密钥对：
+> **RSA 密钥对生成（v0.2.6 契约）：** 生产环境使用 `deploy/scripts/deploy-rsa-keygen.sh`（或 .ps1）自动生成。v0.2.6 起（ADR-015），脚本输出与 `env.json` 注入值统一为 **DER 编码单行 Base64**（无 PEM 头尾、无换行），与 Java 端 `Base64.getDecoder()` + `X509EncodedKeySpec`/`PKCS8EncodedKeySpec` 解码契约严格一致；手动生成时请按以下方式转换：
 > ```bash
-> # 生成私钥并转换为 PKCS#8 格式
-> openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -outform PEM -out private_key.pem
+> # 生成私钥并转换为 PKCS#8 DER 格式
+> openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -outform DER -out private_key.der
 >
-> # 提取公钥
-> openssl pkey -in private_key.pem -pubout -outform PEM -out public_key.pem
+> # 提取公钥（DER 格式）
+> openssl pkey -in private_key.der -pubout -outform DER -out public_key.der
 >
-> # 转换为 Base64（去掉 PEM 头尾和换行）
-> base64 -w0 private_key.pem > private_key_base64.txt
-> base64 -w0 public_key.pem > public_key_base64.txt
+> # 转换为单行 Base64
+> base64 -w0 private_key.der > private_key_base64.txt
+> base64 -w0 public_key.der > public_key_base64.txt
 > ```
+> 注意：**禁止**将含 PEM 头尾（`-----BEGIN/END-----`）或换行的多行 Base64 直接注入 `env.json`，否则网关启动报 `RSA 公钥解析失败`。
 
 ### 5. 编译项目
 
@@ -358,7 +366,7 @@ open http://localhost:9100/swagger-ui.html
 }
 ```
 
-### 8. 验证认证 API（v0.1.6 能力，v0.2.5 无新增接口）
+### 8. 验证认证 API（v0.1.6 能力，v0.2.5/v0.2.6 均无接口变更）
 
 ```bash
 # 注册新用户（用户名密码模式）
@@ -477,7 +485,7 @@ curl -s -X POST http://localhost:9000/api/v1/auth/logout \
   -H "Authorization: Bearer $TOKEN" | jq .
 ```
 
-## API 接口列表（v0.1.6 完整接口；v0.2.5 为工程目录调整，无新增接口）
+## API 接口列表（v0.1.6 完整接口；v0.2.5 为工程目录调整、v0.2.6 为配置/依赖修复，均无接口变更）
 
 ### 认证接口
 
@@ -586,6 +594,23 @@ mvn dependency:tree
 mvn clean compile -U
 ```
 
+### API 回归测试（v0.2.6 全量跑通）
+
+服务全部启动后，可执行接口回归脚本验证接口契约（v0.2.6 回归结果：TC-001~051 全量 PASS=72、FAIL=0、SKIP=0）：
+
+```bash
+# v0.0.1 基线接口契约回归（TC-001~045，需 Python 3 + requests，网关 9000 可达）
+python scripts/API-TEST/cso-api-test-v0.0.1.py http://localhost:9000
+
+# v0.2.5 契约无回归复核（TC-046~051，断言级）
+python scripts/API-TEST/cso-api-test-v0.2.5.py <项目根>
+
+# v0.2.6 版本级统一入口（TC-052~076，覆盖依赖/密钥/构建/契约断言）
+python scripts/API-TEST/cso-api-test-v0.2.6.py <项目根>
+```
+
+> 注意：`cso-api-test-v0.2.6.py` 中 TC-052-4/TC-054-4 为版本级 git 变更清单断言，在相关文件已提交入库后不再出现在工作区变更清单，该断言会按约定失效（已登记，非代码缺陷），不影响验收结论。
+
 ### 代码风格
 
 - 遵循《阿里巴巴 Java 开发手册》，配置了 `checkstyle.xml` 和 `.editorconfig`
@@ -654,20 +679,20 @@ CloudStrollOffice/
 │   ├── cloudoffice-system-service.jar   # 系统服务最终 jar 包
 │   ├── cloudoffice-gateway.jar          # 网关最终 jar 包
 │   ├── cloudoffice-flutter-app/         # 客户端构建产物（web/、windows/）
-│   ├── env.json / env.example.json      # 环境配置与模板
-│   └── scripts/                         # 部署运维脚本（.sh/.ps1，22 个）
+│   ├── env.json / env.example.json      # 环境配置与模板（RSA 密钥为 DER 单行 Base64，v0.2.6 契约）
+│   └── scripts/                         # 部署运维脚本（.sh/.ps1，13 组）
 │
 ├── docs/                           # 项目文档
 │   ├── project.md                  # 项目信息、编码规范、项目地图
 │   ├── sad.md                      # 系统架构设计文档
 │   ├── cso-urs.md / cso-prd.md / cso-api.md / cso-dbd.md / cso-dbd.sql / cso-lld.md / cso-testcase.md  # 主文档
-│   ├── cso-v0.2.5/                 # 版本目录（URS/PRD/API/DBD/LLD/Task/Testcase/Review/进度等）
+│   ├── cso-v0.2.6/                 # 版本目录（URS/PRD/API/DBD/LLD/Task/Testcase/Review/回归报告/进度等）
 │   └── deployment-guide.md         # 部署指南
 │
 └── scripts/                        # 脚本与模板（v0.2.5 后仅保留非 sh/ps1 内容）
     ├── sql/                        # 数据库初始化脚本（init.sql、auth-init-v0.1.5.sql 等）
     ├── docker/                     # Docker Compose 编排与 Dockerfile
-    ├── API-TEST/                   # 接口自动化测试脚本
+    ├── API-TEST/                   # 接口自动化测试脚本（cso-api-test-v0.0.1/v0.2.5/v0.2.6.py + 单元测试 ps1 脚本）
     └── deployment-guide.md         # 部署指南副本
 ```
 
@@ -704,6 +729,7 @@ CloudStrollOffice/
 
 | 版本 | 阶段 | 计划内容 |
 |------|------|---------|
+| v0.2.6 | 部署与配置缺陷修复 ✅ | 修复 v0.2.5 回归报告记录的 T-02 缺陷：5 个 pom 引入 spring-cloud-starter-bootstrap（ADR-014）、RSA 密钥统一 DER 单行 Base64 契约（ADR-015）、SecurityConfig 白名单增补（login/register/refresh）与全局异常处理器注册等契约行为对齐；4 服务全部正常启动，API 回归全量跑通（TC-001~051 PASS=72、FAIL=0、SKIP=0），接口契约 API-001~033 无回归 |
 | v0.2.5 | 部署资产集中化 ✅ | 新建 deploy 目录；后端 jar/客户端安装产物统一输出到 deploy；env.json 与 env.example.json 迁移；deploy/scripts 子目录建立；scripts 下全部 sh/ps1 迁移并适配路径；中间产物不入 deploy |
 | v0.1.6 | 用户认证增强 ✅ | 多模式登录（4种登录策略）+ 多模式注册（5种注册策略）+ 两步注册/账号补全 + 密码管理（修改/找回）+ 手机号变更 + 验证码管理（模拟/真实发送）+ 认证编排服务 AuthenticationService + 9 张数据表 + 234 个单元测试 |
 | v0.1.5 | 登录认证与权限管理 ✅ | RBAC 多租户权限模型（7 表）、6 种客户端混合登录、JWT RS256 双 Token、Redis 登录态管理、网关 AuthFilter 全局认证、登录日志审计、用户/角色/权限管理 API、351 个单元测试 |

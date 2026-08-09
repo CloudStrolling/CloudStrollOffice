@@ -51,6 +51,9 @@ auth:
     - /api/v1/auth/login
     - /api/v1/auth/register
     - /api/v1/auth/refresh
+    # 登出幂等：已登出（Token 在黑名单）时重复登出仍应可达（testcase TC-016），
+    # 认证服务 logout 自行解析 Authorization 头并幂等处理，故网关直接放行
+    - /api/v1/auth/logout
     - /api/v1/auth/health
     - /api/v1/auth/verification-code/send
     - /api/v1/auth/password/forgot/send-code

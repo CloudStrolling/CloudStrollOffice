@@ -145,7 +145,8 @@ public class RoleServiceImpl implements RoleService {
                         .eq(UserRoleEntity::getRoleId, roleId));
         if (userCount != null && userCount > 0) {
             log.warn("删除失败：角色已被分配给用户 | roleId={} | userCount={}", roleId, userCount);
-            throw new BusinessException(ErrorCode.BAD_REQUEST.getCode(), "角色已被分配给用户，无法删除");
+            // 契约：被引用角色删除返回 409 资源冲突（见 testcase TC-036）
+            throw new BusinessException(ErrorCode.CONFLICT.getCode(), "角色已被分配给用户，无法删除");
         }
 
         roleMapper.deleteById(roleId);
@@ -211,7 +212,8 @@ public class RoleServiceImpl implements RoleService {
         Long count = roleMapper.selectCount(queryWrapper);
         if (count != null && count > 0) {
             log.warn("角色编码已存在 | tenantId={} | roleCode={}", tenantId, roleCode);
-            throw new BusinessException(ErrorCode.BAD_REQUEST.getCode(), "角色编码已存在");
+            // 契约：角色编码重复返回 409 资源冲突（见 testcase TC-035）
+            throw new BusinessException(ErrorCode.CONFLICT.getCode(), "角色编码已存在");
         }
     }
 }

@@ -30,6 +30,12 @@
             <artifactId>spring-cloud-starter-alibaba-nacos-discovery</artifactId>
         </dependency>
 
+        <!-- Spring Cloud Bootstrap 配置引导（恢复 bootstrap.yml 加载，修复 No spring.config.import property has been defined） -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-bootstrap</artifactId>
+        </dependency>
+
         <!-- Spring Cloud LoadBalancer -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
@@ -71,10 +77,28 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!-- 公共模块 -->
+        <!-- 公共模块（网关为 Reactive WebFlux 应用，排除 common 传递引入的 Spring MVC/MyBatis 依赖：
+             spring-boot-starter-web（Servlet MVC）与 springdoc-openapi-starter-webmvc-ui（WebMvc 版 OpenAPI）
+             会导致 "Spring MVC found on classpath, which is incompatible with Spring Cloud Gateway"；
+             mybatis-plus-spring-boot3-starter 会激活 DataSource 自动配置，网关无数据库依赖
+             导致 "Failed to configure a DataSource" 启动失败） -->
         <dependency>
             <groupId>org.cloudstrolling</groupId>
             <artifactId>cloudoffice-common</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-starter-web</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.springdoc</groupId>
+                    <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.baomidou</groupId>
+                    <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <!-- 测试 -->

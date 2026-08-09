@@ -44,8 +44,8 @@ public class PhoneCodeLoginStrategy implements LoginStrategy {
         Assert.hasText(request.getPhone(), "phone must not be empty");
         Assert.hasText(request.getSmsCode(), "smsCode must not be empty");
 
-        // 2. 校验短信验证码
-        boolean codeValid = verificationCodeManager.verifyCode(request.getPhone(), request.getSmsCode());
+        // 2. 校验短信验证码（用途隔离：仅接受 LOGIN 用途验证码，见 testcase TC-022）
+        boolean codeValid = verificationCodeManager.verifyCode(request.getPhone(), request.getSmsCode(), "LOGIN");
         if (!codeValid) {
             log.warn("短信验证码校验失败 | phone={}", request.getPhone());
             throw new BusinessException(ErrorCode.SMS_CODE_INVALID);

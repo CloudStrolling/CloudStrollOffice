@@ -80,6 +80,16 @@
                 <scope>import</scope>
             </dependency>
 
+            <!-- Spring Cloud Bootstrap 配置引导（恢复 bootstrap.yml 在 Spring Boot 3.x 下的加载，修复 No spring.config.import property has been defined）
+                 版本 4.1.2 与 Spring Cloud 2023.0.1 BOM（spring-cloud-commons-dependencies 4.1.2）托管值严格一致；
+                 注意：Maven 中 dependencyManagement 显式声明会遮蔽 import BOM 的同坐标条目，故必须显式给出版本，
+                 否则子模块（依赖不写版本号）将报 version missing -->
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-starter-bootstrap</artifactId>
+                <version>4.1.2</version>
+            </dependency>
+
             <!-- MyBatis-Plus -->
             <dependency>
                 <groupId>com.baomidou</groupId>

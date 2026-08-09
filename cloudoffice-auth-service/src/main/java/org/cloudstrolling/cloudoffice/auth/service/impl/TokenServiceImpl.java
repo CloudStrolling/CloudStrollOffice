@@ -119,6 +119,13 @@ public class TokenServiceImpl implements TokenService {
         Long tenantId = claims.get("tenantId", Long.class);
         String tokenClientType = claims.get("clientType", String.class);
 
+        // 4.1 校验登录态会话存在（登出/被踢后刷新应拒绝，见 testcase TC-015）
+        LoginUserDTO session = loginSessionService.getSession(userId, tokenClientType);
+        if (session == null) {
+            log.warn("登录态不存在，刷新被拒 | userId={} | clientType={}", userId, tokenClientType);
+            throw new AuthException(ErrorCode.SESSION_KICKED_OUT);
+        }
+
         log.debug("Refreshing token | userId={} | tenantId={} | clientType={}",
                 userId, tenantId, tokenClientType);
 
@@ -171,6 +178,7 @@ public class TokenServiceImpl implements TokenService {
         // 12. 更新 Redis 登录态会话（先删除旧会话，再创建新会话）
         //     createSession 会自动覆盖旧值，此处先 remove 确保状态清除
         loginSessionService.removeSession(userId, tokenClientType);
+        loginUser.setTokenSignature(jwtUtils.getTokenSignature(newAccessToken));
         loginSessionService.createSession(userId, tokenClientType, loginUser, refreshTokenExpiration);
 
         // 13. 构建并返回 TokenPairDTO

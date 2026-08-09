@@ -93,7 +93,8 @@ public class UserServiceImpl implements UserService {
                 tenantId, request.getLoginName());
         if (existingUser != null) {
             log.warn("登录名已存在 | loginName={} | tenantId={}", request.getLoginName(), tenantId);
-            throw new BusinessException(ErrorCode.BAD_REQUEST.getCode(), "登录名已存在");
+            // 契约：重复注册返回 409 唯一性冲突（见 testcase TC-004 与 API 文档错误码表）
+            throw new BusinessException(ErrorCode.CONFLICT.getCode(), "登录名已存在");
         }
 
         // 3. BCrypt 密码加密

@@ -93,6 +93,11 @@ public class AuthenticationService {
      */
     @Transactional(rollbackFor = Exception.class)
     public TokenPairDTO authenticate(LoginRequest request) {
+        // 0. 校验客户端类型合法性（契约：无效 clientType 返回 400，见 testcase TC-010）
+        if (ClientTypeEnum.fromCode(request.getClientType()).isEmpty()) {
+            log.warn("无效的客户端类型 | clientType={}", request.getClientType());
+            throw new BusinessException(ErrorCode.CLIENT_TYPE_INVALID);
+        }
         // 1. 策略认证
         AuthResult authResult = loginStrategyFactory.getStrategy(request.getLoginMode())
                 .authenticate(request);
@@ -166,8 +171,9 @@ public class AuthenticationService {
         Optional<ClientTypeEnum> clientTypeOpt = ClientTypeEnum.fromCode(request.getClientType());
         clientTypeOpt.ifPresent(clientType -> processMutualExclusion(userId, clientType));
 
-        // 10. 写入 Redis 登录态会话
+        // 10. 写入 Redis 登录态会话（携带 Token 签名指纹，供同端互斥吊销）
         try {
+            loginUser.setTokenSignature(jwtUtils.getTokenSignature(accessToken));
             loginSessionService.createSession(userId, request.getClientType(),
                     loginUser, refreshTokenExpiration);
         } catch (Exception e) {
@@ -277,6 +283,17 @@ public class AuthenticationService {
                 if (type.isSameCategory(clientTypeEnum)) {
                     LoginUserDTO oldSession = loginSessionService.getSession(userId, type.getCode());
                     if (oldSession != null) {
+                        // 吊销旧 Token：将旧会话的 Access Token 签名加入黑名单（见 testcase TC-013 同端互斥）
+                        if (org.springframework.util.StringUtils.hasText(oldSession.getTokenSignature())) {
+                            try {
+                                loginSessionService.addToBlacklist(oldSession.getTokenSignature(),
+                                        refreshTokenExpiration);
+                                log.info("同端互斥：旧 Token 已加入黑名单 | userId={} | clientType={}",
+                                        userId, type.getCode());
+                            } catch (Exception e) {
+                                log.warn("同端互斥：旧 Token 加入黑名单失败 | {}", e.getMessage());
+                            }
+                        }
                         loginSessionService.removeSession(userId, type.getCode());
                         log.info("同端互斥：已清理旧会话 | userId={} | clientType={}",
                                 userId, type.getCode());
