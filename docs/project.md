@@ -44,7 +44,7 @@
 - 提交信息遵循 Conventional Commits 规范（feat:/fix:/docs:/refactor:/test:/chore:）。
 
 # 项目地图
-（由 impm-project-update 技能在 v0.2.6 通过扫描源码目录维护：impm_project_analyzer 扫描 174 个文件，另含 Flutter Dart 源码 58 个文件（扫描器不识别 .dart，由 SA 手动提取声明补全），合计 232 个文件。）
+（由 impm-project-update 技能在 v0.2.7 通过扫描源码目录维护：impm_project_analyzer 扫描 185 个文件（Java/Python/SQL/YAML）；deploy/scripts 下 .ps1/.sh 脚本 24 个（扫描器不识别 PowerShell/Bash，由 SA 手动提取补全），合计 209 个文件。v0.2.7 核心变化：deploy/scripts 部署脚本体系重构与 .gitignore 治理。）
 
 ## cloudoffice-common/ — 公共模块（JAR，无启动类）
 - `config/MyBatisPlusConfig.java` — MyBatis-Plus 自动填充处理器（insertFill/updateFill 元数据填充）
@@ -119,12 +119,37 @@
 - `lib/shared/` — `constants/AppConstants`、`widgets/`（CustomTextField、LoadingButton、PasswordField、PasswordStrengthIndicator、VerificationCodeField）
 - `test/` — 27 个测试文件（widget_test、各 config/core/features/shared 单元测试，含 StubAuthRepository、ApiClientSpy 等测试替身）
 
+## deploy/ — 部署工程目录（v0.2.7 重构，部署脚本体系核心）
+- `env.json` / `env.example.json` — 环境配置文件（Nacos 地址/安装目录、DB/Redis 主机端口口令与服务进程名、RSA 密钥、验证码/密码策略等；env.json 不入库，缺失时 load-env 提示复制模板）
+- `scripts/` — 部署脚本体系（.ps1 与 .sh 双平台版本，功能与契约一致），均基于 env.json 经 load-env 统一加载，输出分级（通过/警告/失败）与退出码约定 F-011：
+  - `load-env.ps1` / `load-env.sh` — 统一配置加载模块（F-001）：env.json 键值注入环境变量、键名白名单校验、缺失兜底退出
+  - `deploy-check-env.ps1` / `.sh` — 环境可用性检查与运行状态检测（F-002~F-006）：JDK（命令/JAVA_HOME/版本 21）、MariaDB/Redis（命令/系统服务/进程三重安装检测 + SELECT 1 / redis-cli ping）、Nacos（NACOS_HOME 检查 + HTTP 探测），只检查不启动
+  - `deploy-start-services.ps1` / `.sh` — 基础设施运行状态检查与一键启动（F-006/F-007）：未安装不启动并报失败、已运行幂等跳过、未运行按 MariaDB → Redis → Nacos 顺序自动启动（系统服务 → 可执行文件，Nacos 走 startup 脚本），启动后循环探测确认
+  - `deploy-start-all.ps1` / `.sh` — 后端服务按序一键启动（F-008）：前置校验（JDK + 4 个 jar + 关键环境变量）→ 按 gateway(9000) → auth(9100) → biz(9200) → system(9400) 顺序后台启动（java -Xms256m -Xmx512m，日志/PID 落 deploy/logs/）→ 每服务 HTTP 健康确认（可配置重试次数/间隔/超时）成功后再启动下一个，任一步失败即停
+  - `deploy-start-gateway.ps1` / `.sh`、`deploy-start-auth.ps1` / `.sh`、`deploy-start-biz.ps1` / `.sh`、`deploy-start-system.ps1` / `.sh` — 单服务启动脚本（F-009），行为与 deploy-start-all 中各服务一致（v0.2.7 重构，system 为新增）
+  - `deploy-db-init.ps1` / `.sh` — 数据库初始化（F-010，执行 scripts/sql 下建库脚本）
+  - `deploy-rsa-keygen.ps1` / `.sh` — RSA 密钥对生成（生成 PEM/DER/Base64 至 deploy/keys/，输出契约 v0.2.7 对齐）
+  - `build-backend.ps1` / `.sh` — 后端 Maven 一键构建；`build-client.ps1` / `.sh` — Flutter 客户端一键构建
+- `deploy.md` / `build.md` — 部署方案与编译方案文档（对应主文档 docs/{cso}-deploy.md 的版本化副本）
+- `logs/` — 运行日志与 PID 文件（*-start.log/.err、*.pid；不入库，.gitignore 已排除）
+- `keys/` — RSA 密钥产物（PEM/DER/Base64；敏感不入库）
+- `cloudoffice-*.jar` — 后端构建产物（gateway/auth/biz/system 4 个 jar；不入库）
+- `cloudoffice-flutter-app/` — 客户端构建产物（web/ 与 windows/ 发布包；不入库，仅保留 .gitkeep）
+- `surefire-reports/`、`test-output/`、`test-results/` — Maven 测试报告输出（不入库）
+
+## scripts/ — 工程辅助目录（v0.2.7 调整：部署脚本已迁移至 deploy/scripts）
+- `API-TEST/` — 接口测试脚本（cso-api-test-v0.0.1/v0.2.5/v0.2.6/v0.2.7.py、test_auth_api.py，版本回归接口测试）
+- `docker/docker-compose.yml` — 基础设施 Docker Compose 编排（MariaDB/Redis/Nacos）
+- `sql/` — 数据库脚本（auth-init-v0.1.5/v0.1.6.sql、init-v0.2.0-full.sql、init.sql）
+- `deployment-guide.md` — 部署指南（与 docs/deployment-guide.md 同步维护）
+
 ## 根目录关键文件与目录
 - `pom.xml` — Maven 父 POM（groupId: org.cloudstrolling，统一依赖管理）
 - `checkstyle.xml` / `.editorconfig` — 代码风格与规范配置
-- `env.json` / `env.example.json` — 环境变量模板（数据库、Redis、RSA 密钥等）
+- `.gitignore` — v0.2.7 治理：排除生成/测试/调试临时与中间文件（*.jar/*.log/*.err/*.pid、logs/、keys/、env.json、target/、surefire-reports/、test-output/、test-results/、deploy/cloudoffice-flutter-app/web|windows/*、work/、docs2/ 等，产物不入库仅保留 .gitkeep 占位）
+- `deploy/` — 部署工程目录（v0.2.7 起部署脚本与构建产物统一收纳，见上方 deploy/ 章节）
 - `keys/` — RSA 密钥对存放目录（敏感，不入库）
-- `scripts/` — 部署脚本（deploy-*.ps1/sh）、SQL 脚本（sql/）、Docker 编排（docker/）、API 测试脚本（API-TEST/）
+- `scripts/` — 工程辅助目录：API 测试（API-TEST/）、Docker 编排（docker/）、SQL 脚本（sql/）、部署指南（deployment-guide.md）；部署脚本已迁移至 deploy/scripts（v0.2.7）
 - `docs/` — 项目文档（project.md、sad.md、版本目录等）
 
 <!-- SPDX-License-Identifier: Apache-2.0 / Copyright 2026 jenemy8023 <jenemy8023@163.com> -->

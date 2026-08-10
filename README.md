@@ -15,11 +15,13 @@
 
 项目采用 Maven 多模块架构，由认证服务（auth-service）、企业服务（biz-service）、系统服务（system-service）、API 网关（gateway）及公共模块（common）组成，为企业提供企业信息管理、人事管理、工作流审批、薪酬管理、统一认证授权等综合服务能力。
 
-当前版本 **v0.2.6** 完成**部署与配置缺陷修复**（依据 `docs/cso-v0.2.5/regression-api-test.md` 记录的问题）：① **bootstrap 依赖修复**（ADR-014）——根 pom 与 gateway/auth/biz/system 四个服务模块 pom 统一引入 `spring-cloud-starter-bootstrap`，恢复 bootstrap.yml（Nacos discovery/config server-addr）在 Spring Boot 3.x 下的加载，消除 `No spring.config.import property has been defined`；② **RSA 密钥格式契约修复**（ADR-015）——`deploy-rsa-keygen.ps1` 输出与 `deploy/env.json` 注入的 `RSA_PUBLIC_KEY`/`RSA_PRIVATE_KEY` 统一为 DER 编码单行 Base64，与 Java 端 RsaKeyConfig 解码契约严格一致，消除网关 `RSA 公钥解析失败`；③ **SecurityConfig 白名单修复**（TASK-004）——permitAll 增补 login/register/refresh 三端点、注册全局异常处理器并映射 409/429/403 状态码等契约行为对齐。修复后 4 个服务全部正常启动，**API 回归测试全量跑通**：TC-001~051 全量 PASS=72、FAIL=0、SKIP=0（v0.0.1 基线接口契约 API-001~033 动态回归闭环 + v0.2.5 契约无回归复核），接口层零改动、客户端无需任何修改。
+当前版本 **v0.2.7** 完成**部署脚本体系重构与仓库清洁度治理**：① **部署脚本体系重构**（F-001~F-011）——系统性检查并重构 `deploy/scripts` 全部脚本（.ps1/.sh 双版本），全部脚本统一经 `load-env` 从 `deploy/env.json` 加载环境配置（消除脚本内硬编码环境地址）；`deploy-check-env` 完成 JDK/MariaDB/Redis/Nacos 四类环境的**可用性检查 + 运行状态检测**（命令/服务/进程三重安装检测 + SELECT 1 / redis-cli ping / HTTP 探测，输出通过/警告/失败分级与退出码约定）；`deploy-start-services` 对检测为未运行的 MariaDB/Redis/Nacos **自动一键启动**（系统服务优先 → 可执行文件/NACOS_HOME 启动脚本，启动后再次探测确认、不报假成功）；`deploy-start-all` 按 **gateway → auth → biz → system** 部署顺序**一键启动 4 个后端服务**（启动前校验 jar 与关键环境变量、逐服务健康确认、失败即停）；`deploy-rsa-keygen.sh` 与 .ps1 密钥输出契约对齐（DER 单行 Base64，ADR-015）；移除弃用脚本残留（deploy-env 等）。② **.gitignore 仓库清洁度治理**（F-012）——整体检查项目文件，将生成、测试、调试过程中的临时文件与中间文件（JVM 调试产物 *.hprof/dump、测试缓存 .pytest_cache/__pycache__、构建中间产物、工具残留等）在 `.gitignore` 中排除，`git status` 不再出现此类过程文件。
+
+上一版本 **v0.2.6** 完成**部署与配置缺陷修复**（依据 `docs/cso-v0.2.5/regression-api-test.md` 记录的问题）：① **bootstrap 依赖修复**（ADR-014）——根 pom 与 gateway/auth/biz/system 四个服务模块 pom 统一引入 `spring-cloud-starter-bootstrap`，恢复 bootstrap.yml（Nacos discovery/config server-addr）在 Spring Boot 3.x 下的加载，消除 `No spring.config.import property has been defined`；② **RSA 密钥格式契约修复**（ADR-015）——`deploy-rsa-keygen.ps1` 输出与 `deploy/env.json` 注入的 `RSA_PUBLIC_KEY`/`RSA_PRIVATE_KEY` 统一为 DER 编码单行 Base64，与 Java 端 RsaKeyConfig 解码契约严格一致，消除网关 `RSA 公钥解析失败`；③ **SecurityConfig 白名单修复**（TASK-004）——permitAll 增补 login/register/refresh 三端点、注册全局异常处理器并映射 409/429/403 状态码等契约行为对齐。修复后 4 个服务全部正常启动，**API 回归测试全量跑通**：TC-001~051 全量 PASS=72、FAIL=0、SKIP=0（v0.0.1 基线接口契约 API-001~033 动态回归闭环 + v0.2.5 契约无回归复核），接口层零改动、客户端无需任何修改。
 
 上一版本 **v0.2.5** 完成**部署资产集中化**：新建统一的 `deploy` 目录作为所有最终构建产物（后端 jar 包、客户端安装文件/exe）与部署资产（env.json、env.example.json、全部 .sh/.ps1 部署运维脚本）的唯一落点；修改 Maven 各模块与 Flutter 客户端构建配置，使最终产物统一输出到 `deploy` 目录，中间产物（target 等）不进入 deploy；根目录 `scripts` 下仅保留 docker、sql、API-TEST、部署指南等非脚本内容。
 
-再上一版本 **v0.1.6** 在 v0.1.5 RBAC 权限体系基础上新增**用户认证增强**能力：多模式登录（用户名密码/手机验证码/手机+密码/OAuth）与多模式注册（用户名密码/手机验证码/OAuth）；两步注册机制（先注册后补全信息）；密码管理（修改密码/密码找回）；手机号变更（原手机可用→短信验证，原手机停用→邮箱验证）；验证码管理（生成/发送/校验/频率控制）。新增 2 张数据库表（OAuth 账号关联表、验证码记录表），用户表扩展 5 个字段，206 个单元测试全部通过。
+更早版本 **v0.1.6** 在 v0.1.5 RBAC 权限体系基础上新增**用户认证增强**能力：多模式登录（用户名密码/手机验证码/手机+密码/OAuth）与多模式注册（用户名密码/手机验证码/OAuth）；两步注册机制（先注册后补全信息）；密码管理（修改密码/密码找回）；手机号变更（原手机可用→短信验证，原手机停用→邮箱验证）；验证码管理（生成/发送/校验/频率控制）。新增 2 张数据库表（OAuth 账号关联表、验证码记录表），用户表扩展 5 个字段，206 个单元测试全部通过。
 
 ## 功能特性
 
@@ -53,6 +55,11 @@
 | API 回归闭环 | v0.0.1 基线接口回归（TC-001~045）全部动态执行通过，接口契约 API-001~033 静态+动态双重确认无回归（v0.2.6） |
 | Docker 部署 | 多阶段构建镜像 + Docker Compose 一键编排 8 个容器 |
 | 开发环境配置 | IDEA 运行配置、.editorconfig、Checkstyle、代码风格统一 |
+| 环境可用性检查 | `deploy-check-env` 基于 env.json 完成 JDK/MariaDB/Redis/Nacos 可用性与运行状态检测，命令/服务/进程三重检测 + SELECT 1/ping/HTTP 探测，输出通过/警告/失败分级（v0.2.7 / F-002~F-006、F-010） |
+| 基础设施一键启动 | `deploy-start-services` 检测未运行的 MariaDB/Redis/Nacos 自动拉起（系统服务优先 → 可执行文件/NACOS_HOME 启动脚本），启动后探测确认不报假成功（v0.2.7 / F-007） |
+| 后端服务按序一键启动 | `deploy-start-all` 按 gateway → auth → biz → system 顺序一键启动 4 个后端服务，前置校验 + 逐服务健康确认 + 失败即停（v0.2.7 / F-008） |
+| 脚本契约统一 | 全部 .ps1/.sh 双平台对齐：load-env 统一配置加载（F-001）、输出分级与退出码约定（F-011）、RSA 密钥 DER 单行 Base64 契约一致（ADR-015） |
+| 仓库清洁度治理 | `.gitignore` 排除 JVM 调试产物、测试缓存、构建中间产物、工具残留等临时/中间文件，git status 不再出现生成/测试/调试过程文件（v0.2.7 / F-012） |
 
 ## 项目架构
 
@@ -224,9 +231,9 @@ docker compose -f scripts/docker/docker-compose.yml up -d nacos mariadb
 | 最终产物 | `deploy/` | 后端 jar 包（auth/biz/system/gateway）、客户端安装产物（cloudoffice-flutter-app/） |
 
 ```bash
-# 从模板生成环境配置
-cd deploy/scripts
-./deploy-env.sh          # 或 PowerShell: .\deploy-env.ps1
+# 从模板生成环境配置（deploy/scripts 下不再有环境模板生成脚本，直接复制模板即可）
+cp deploy/env.example.json deploy/env.json   # Linux/macOS
+# 或 PowerShell: Copy-Item deploy\env.example.json deploy\env.json
 ```
 
 各服务的配置文件位于各模块 `src/main/resources/` 目录下：
@@ -320,16 +327,23 @@ mvn spring-boot:run -pl cloudoffice-system-service
 docker compose -f scripts/docker/docker-compose.yml up -d --build
 ```
 
-**方式四：deploy/scripts 脚本启动（v0.2.5 起）**
+**方式四：deploy/scripts 脚本启动（v0.2.5 起；v0.2.7 重构为"检查 → 拉起 → 启动"三阶段流程）**
 
 ```bash
-# 在 deploy/scripts 下执行
-./deploy-start-services.sh    # 一键启动全部服务（或 .\deploy-start-services.ps1）
-./deploy-start-auth.sh        # 单独启动认证服务
-./deploy-start-biz.sh         # 单独启动企业服务
-./deploy-start-system.sh      # 单独启动系统服务
-./deploy-start-gateway.sh     # 单独启动网关
+# ① 环境可用性检查（JDK/MariaDB/Redis/Nacos 安装可用性 + 运行状态，v0.2.7）
+./deploy/scripts/deploy-check-env.sh          # Linux（Windows: .\deploy\scripts\deploy-check-env.ps1）
+
+# ② 基础设施一键启动（检测未运行的 MariaDB/Redis/Nacos 自动拉起，v0.2.7）
+./deploy/scripts/deploy-start-services.sh     # Linux（Windows: .\deploy\scripts\deploy-start-services.ps1）
+
+# ③ 后端服务按序一键启动（gateway → auth → biz → system，逐服务健康确认，v0.2.7）
+./deploy/scripts/deploy-start-all.sh          # Linux（Windows: .\deploy\scripts\deploy-start-all.ps1）
+
+# 单独启动某个服务（v0.2.7 单服务脚本保持可用）
+./deploy/scripts/deploy-start-gateway.sh      # 或 deploy-start-auth / deploy-start-biz / deploy-start-system
 ```
+
+> **v0.2.7 说明：** 全部脚本统一经 `deploy/scripts/load-env` 从 `deploy/env.json` 加载配置（脚本内无硬编码地址），输出统一分级（通过/警告/失败）与退出码约定（失败非零）；启动后端服务前请确认 jar 包已落位 `deploy/`、基础设施已就绪。
 
 ### 7. 验证部署
 
@@ -630,7 +644,7 @@ CloudStrollOffice/
 ├── opencode.json                   # OpenCode AI 开发工具配置
 ├── .editorconfig                   # 跨编辑器代码风格配置
 ├── checkstyle.xml                  # Checkstyle 规则配置
-├── .gitignore                      # Git 忽略规则
+├── .gitignore                      # Git 忽略规则（v0.2.7 治理生成/测试/调试临时与中间文件）
 │
 ├── cloudoffice-common/             # 公共模块（JAR 包，无启动类）
 │   └── src/main/java/org/cloudstrolling/cloudoffice/common/
@@ -680,13 +694,21 @@ CloudStrollOffice/
 │   ├── cloudoffice-gateway.jar          # 网关最终 jar 包
 │   ├── cloudoffice-flutter-app/         # 客户端构建产物（web/、windows/）
 │   ├── env.json / env.example.json      # 环境配置与模板（RSA 密钥为 DER 单行 Base64，v0.2.6 契约）
-│   └── scripts/                         # 部署运维脚本（.sh/.ps1，13 组）
+│   └── scripts/                         # 部署运维脚本（.sh/.ps1，v0.2.7 重构后 12 组）
+│       ├── load-env.ps1 / .sh           # 统一配置加载（env.json → 环境变量，F-001）
+│       ├── deploy-check-env.ps1 / .sh   # 环境可用性 + 运行状态检查（JDK/MariaDB/Redis/Nacos，F-002~F-006/F-010）
+│       ├── deploy-start-services.ps1 / .sh  # 基础设施检测与一键启动（F-006/F-007）
+│       ├── deploy-start-all.ps1 / .sh   # 后端服务按序一键启动总入口（F-008）
+│       ├── deploy-start-gateway.ps1 / .sh  # 单服务启动（gateway/auth/biz/system，F-009）
+│       ├── deploy-rsa-keygen.ps1 / .sh  # RSA 密钥对生成（DER 单行 Base64，ADR-015，F-011 对齐）
+│       ├── deploy-db-init.ps1 / .sh     # 数据库初始化
+│       └── build-backend / build-client.ps1 / .sh  # 一键编译（后端/客户端）
 │
 ├── docs/                           # 项目文档
 │   ├── project.md                  # 项目信息、编码规范、项目地图
 │   ├── sad.md                      # 系统架构设计文档
 │   ├── cso-urs.md / cso-prd.md / cso-api.md / cso-dbd.md / cso-dbd.sql / cso-lld.md / cso-testcase.md  # 主文档
-│   ├── cso-v0.2.6/                 # 版本目录（URS/PRD/API/DBD/LLD/Task/Testcase/Review/回归报告/进度等）
+│   ├── cso-v0.2.7/                 # 版本目录（URS/PRD/API/DBD/LLD/Task/Testcase/Review/回归报告/进度等）
 │   └── deployment-guide.md         # 部署指南
 │
 └── scripts/                        # 脚本与模板（v0.2.5 后仅保留非 sh/ps1 内容）
@@ -723,12 +745,13 @@ CloudStrollOffice/
                                 └──▶ [Nacos Cluster:8848] ──▶ [Nacos Cluster]
 ```
 
-部署资产统一位于 `deploy` 目录（v0.2.5 起）：最终 jar 包、客户端安装产物、env.json 环境配置与 `deploy/scripts` 部署脚本。详细编译与部署方案见 `deploy/build.md`、`deploy/deploy.md`（由 impm-deploy-update 技能维护）。
+部署资产统一位于 `deploy` 目录（v0.2.5 起）：最终 jar 包、客户端安装产物、env.json 环境配置与 `deploy/scripts` 部署脚本。v0.2.7 起部署脚本体系提供"环境可用性检查 → 基础设施一键启动 → 后端服务按序一键启动"三阶段能力。详细编译与部署方案见 `deploy/build.md`、`deploy/deploy.md`（由 impm-deploy-update 技能维护）。
 
 ## 版本规划
 
 | 版本 | 阶段 | 计划内容 |
 |------|------|---------|
+| v0.2.7 | 部署脚本体系重构与仓库清洁度治理 ✅ | 部署脚本重构（F-001~F-011）：load-env 统一配置加载、deploy-check-env 环境可用性+运行状态检查、deploy-start-services 基础设施一键启动、deploy-start-all 后端服务按序一键启动、.ps1/.sh 双平台契约对齐与输出分级/退出码约定、deploy-rsa-keygen.sh 契约修复；.gitignore 临时/中间文件治理（F-012） |
 | v0.2.6 | 部署与配置缺陷修复 ✅ | 修复 v0.2.5 回归报告记录的 T-02 缺陷：5 个 pom 引入 spring-cloud-starter-bootstrap（ADR-014）、RSA 密钥统一 DER 单行 Base64 契约（ADR-015）、SecurityConfig 白名单增补（login/register/refresh）与全局异常处理器注册等契约行为对齐；4 服务全部正常启动，API 回归全量跑通（TC-001~051 PASS=72、FAIL=0、SKIP=0），接口契约 API-001~033 无回归 |
 | v0.2.5 | 部署资产集中化 ✅ | 新建 deploy 目录；后端 jar/客户端安装产物统一输出到 deploy；env.json 与 env.example.json 迁移；deploy/scripts 子目录建立；scripts 下全部 sh/ps1 迁移并适配路径；中间产物不入 deploy |
 | v0.1.6 | 用户认证增强 ✅ | 多模式登录（4种登录策略）+ 多模式注册（5种注册策略）+ 两步注册/账号补全 + 密码管理（修改/找回）+ 手机号变更 + 验证码管理（模拟/真实发送）+ 认证编排服务 AuthenticationService + 9 张数据表 + 234 个单元测试 |

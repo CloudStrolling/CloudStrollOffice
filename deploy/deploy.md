@@ -2,21 +2,24 @@
 
 **项目名称**：云漫智企（CloudStrollOffice）
 **项目英文缩写**：cso
-**适用版本**：v0.2.6（部署与配置缺陷修复：bootstrap 依赖 + RSA 密钥契约 + 网关依赖排除）
+**适用版本**：v0.2.7（部署脚本体系重构与仓库清洁度治理：load-env 统一配置加载 + 环境检查/基础设施启动/后端一键启动 + .gitignore 治理）
 **文档位置**：deploy/deploy.md
-**最近更新**：2026-08-09
+**最近更新**：2026-08-10
 
 ## 1. 文档说明
 
-本文档说明云漫智企（CloudStrollOffice）v0.2.6 版本的部署方法与运维操作。
+本文档说明云漫智企（CloudStrollOffice）v0.2.7 版本的部署方法与运维操作。
 
 自 v0.2.5 起，项目执行"部署资产集中化"策略：**deploy 目录是部署资产的唯一落点**，交付与运维人员在 `deploy` 目录即可完成全部部署操作（jar 包、客户端产物、env 配置、部署脚本全部集中于此）。
 
-**v0.2.6 部署要点（本版本修复，见 docs/cso-v0.2.6/cso-prd-v0.2.6.md）**：
-1. 4 个服务模块已引入 `spring-cloud-starter-bootstrap`（ADR-014），bootstrap.yml（Nacos 引导）恢复加载，消除启动报错 `No spring.config.import property has been defined`；
-2. RSA 密钥统一为 **DER 编码单行 Base64** 契约（ADR-015，deploy-rsa-keygen.ps1 已更新），消除网关启动报错 `RSA 公钥解析失败`；
-3. 网关 jar 已排除 common 传递的 MVC/MyBatis 依赖（避免 WebFlux 兼容与 DataSource 自动配置问题）；
-4. 4 个服务 jar（deploy/ 下）已按本版本重建并启动验证通过，API 测试全量跑通（TC-001~051 PASS=72、FAIL=0）。
+**v0.2.7 部署要点（本版本脚本体系重构，见 docs/cso-v0.2.7/cso-prd-v0.2.7.md）**：
+1. 全部脚本统一经 `load-env.ps1` / `load-env.sh` 从 `deploy/env.json` 加载配置（F-001），脚本内无硬编码环境地址与凭据；
+2. 部署前检查：`deploy-check-env`（F-002~F-005/F-010）基于 env.json 检查 JDK/MariaDB/Redis/Nacos 可用性与运行状态（F-006），输出通过/警告/失败分级；
+3. 基础设施一键启动：`deploy-start-services`（F-007）检测未运行的 MariaDB/Redis/Nacos 并自动启动（MariaDB → Redis → Nacos），启动后探测确认，不报假成功；
+4. 后端服务一键启动：`deploy-start-all`（F-008）按 **gateway（9000）→ auth（9100）→ biz（9200）→ system（9400）** 顺序启动 4 个 Java 服务，每服务健康确认成功后再启动下一个；
+5. 单服务启动脚本（F-009）：`deploy-start-gateway/auth/biz/system` 支持按需单独启动，行为与一键启动一致；
+6. RSA 密钥脚本契约对齐（F-011）：`deploy-rsa-keygen.sh` 与 `.ps1` 均输出 DER 编码单行 Base64（公钥 X.509 / 私钥 PKCS#8），弃用脚本残留已移除；
+7. 仓库治理（F-012）：生成、测试、调试临时/中间文件已由 `.gitignore` 排除，`git status` 不再出现过程文件。
 
 ## 2. 部署架构
 
@@ -48,62 +51,65 @@
 
 ```
 deploy/
-├── cloudoffice-gateway.jar           # 后端最终可执行 jar（v0.2.5 起统一落点；v0.2.6 已重建）
+├── cloudoffice-gateway.jar           # 后端最终可执行 jar（v0.2.5 起统一落点）
 ├── cloudoffice-auth-service.jar
 ├── cloudoffice-biz-service.jar
 ├── cloudoffice-system-service.jar
-├── env.json                          # 实际环境配置（从 env.example.json 复制填写）
+├── env.json                          # 实际环境配置（从 env.example.json 复制填写；不入库）
 ├── env.example.json                  # 环境配置模板
-├── keys/                             # RSA 密钥对（首次部署生成）
+├── keys/                             # RSA 密钥对（首次部署生成；不入库）
 │   ├── private_key.pem               # PEM 私钥（审计用，不注入）
 │   ├── public_key.pem                # PEM 公钥（审计用，不注入）
 │   ├── private_key.der               # DER 二进制私钥（PKCS#8）
 │   ├── public_key.der                # DER 二进制公钥（X.509）
 │   ├── private_key_base64.txt        # DER 单行 Base64 私钥（env.json 注入值）
 │   └── public_key_base64.txt         # DER 单行 Base64 公钥（env.json 注入值）
+├── logs/                             # 服务启动日志与 PID（运行时生成；不入库）
 ├── cloudoffice-flutter-app/          # 客户端最终产物（web/、windows/）
 ├── build.md                          # 编译方案（本文档同目录）
 ├── deploy.md                         # 部署方案（本文档）
-└── scripts/                          # 部署运维脚本（全部 .sh/.ps1）
-    ├── build-backend.ps1 / .sh       # 一键后端编译
-    ├── build-client.ps1 / .sh        # 一键客户端编译
-    ├── deploy-check-env.ps1 / .sh    # 部署前置检查
-    ├── deploy-db-init.ps1 / .sh      # 数据库初始化
-    ├── deploy-env.ps1 / .sh          # 环境注入（已弃用，兼容保留）
-    ├── deploy-env-template.ps1 / .sh # 环境模板生成
-    ├── deploy-rsa-keygen.ps1 / .sh   # RSA 密钥对生成（v0.2.6 起 .ps1 输出 DER 单行 Base64）
-    ├── deploy-start-services.ps1 / .sh # 基础设施检测与启动（MariaDB/Redis/Nacos）
-    ├── deploy-start-gateway.ps1 / .sh  # 启动网关
-    ├── deploy-start-auth.ps1 / .sh     # 启动认证服务
-    ├── deploy-start-biz.ps1 / .sh      # 启动企业服务
-    ├── deploy-start-system.ps1 / .sh   # 启动系统服务
-    └── load-env.ps1 / .sh              # 加载 env.json 为环境变量
+└── scripts/                          # 部署运维脚本（全部 .sh/.ps1，v0.2.7 重构）
+    ├── load-env.ps1 / .sh            # 统一配置加载模块（F-001：env.json → 环境变量）
+    ├── deploy-check-env.ps1 / .sh    # 环境可用性 + 运行状态检查（F-002~F-006/F-010）
+    ├── deploy-start-services.ps1 / .sh # 基础设施检测与一键启动（F-007，MariaDB→Redis→Nacos）
+    ├── deploy-start-all.ps1 / .sh      # 后端服务按序一键启动总入口（F-008，gateway→auth→biz→system）
+    ├── deploy-start-gateway.ps1 / .sh  # 单服务启动：网关（F-009）
+    ├── deploy-start-auth.ps1 / .sh     # 单服务启动：认证服务（F-009）
+    ├── deploy-start-biz.ps1 / .sh      # 单服务启动：企业服务（F-009）
+    ├── deploy-start-system.ps1 / .sh   # 单服务启动：系统服务（F-009）
+    ├── deploy-rsa-keygen.ps1 / .sh     # RSA 密钥对生成（F-011，DER 单行 Base64 契约）
+    ├── deploy-db-init.ps1 / .sh        # 数据库初始化
+    ├── build-backend.ps1 / .sh         # 一键后端编译
+    └── build-client.ps1 / .sh          # 一键客户端编译
 ```
 
 ## 5. 部署步骤
 
 ### 5.1 准备部署资产
 
-1. 获取编译产物：按 deploy/build.md 执行后端 `mvn clean package -DskipTests` 与客户端 `build-release.ps1`，确认 jar 位于 `deploy/`、客户端产物位于 `deploy/cloudoffice-flutter-app/`。v0.2.6 的 4 个服务 jar 已重建并验证，可直接使用 deploy/ 下现有 jar。
+1. 获取编译产物：按 deploy/build.md 执行后端 `mvn clean package -DskipTests` 与客户端 `build-release.ps1`，确认 jar 位于 `deploy/`、客户端产物位于 `deploy/cloudoffice-flutter-app/`。
 2. 确认部署主机已安装 JDK 21、MariaDB、Redis、Nacos（见第 3 节）。
 
 ### 5.2 环境配置（env.json）
 
+全部脚本（v0.2.7 起）统一经 `load-env` 从 `deploy/env.json` 加载配置（F-001），**脚本内不硬编码环境地址与凭据**：
+
 ```powershell
 # 复制模板并填写实际值（数据库口令、RSA 密钥等）
 Copy-Item deploy\env.example.json deploy\env.json
-# 编辑 deploy\env.json，填写 DB_PASSWORD、RSA_PRIVATE_KEY、RSA_PUBLIC_KEY 等
+# 编辑 deploy\env.json，填写 NACOS_ADDR/NACOS_HOME、DB_HOST/DB_PORT/DB_USERNAME/DB_PASSWORD、
+# REDIS_HOST/REDIS_PORT/REDIS_PASSWORD、RSA_PRIVATE_KEY、RSA_PUBLIC_KEY 等
 ```
 
-配置项说明见第 6 节。**严禁将含真实口令的 env.json 提交到 git**。
+配置项说明见第 6 节。**严禁将含真实口令的 env.json 提交到 git**（`.gitignore` 已排除 `env.json` 与 `keys/`）。
 
 ### 5.3 生成 RSA 密钥对（首次部署必做）
 
-**v0.2.6 契约（ADR-015）**：env.json 注入的 `RSA_PRIVATE_KEY` / `RSA_PUBLIC_KEY` 必须是 **DER 编码单行 Base64**——
+**密钥契约（ADR-015，v0.2.6 确立；v0.2.7 起 .ps1 与 .sh 双平台对齐，F-011）**：env.json 注入的 `RSA_PRIVATE_KEY` / `RSA_PUBLIC_KEY` 必须是 **DER 编码单行 Base64**——
 - 公钥 = X.509 SubjectPublicKeyInfo 的 DER 二进制转单行 Base64（无 `-----BEGIN/END-----` 头尾、无换行）；
 - 私钥 = PKCS#8 PrivateKeyInfo 的 DER 二进制转单行 Base64（同上）。
 
-该格式与 Java 端 `Base64.getDecoder()` + `X509EncodedKeySpec` / `PKCS8EncodedKeySpec` 解码契约严格一致；**严禁使用 PEM 文件整体 Base64（多行、含 BEGIN/END 标记）注入**，否则网关启动报 `RSA 公钥解析失败`（历史缺陷 T-02，v0.2.6 已修复）。
+该格式与 Java 端 `Base64.getDecoder()` + `X509EncodedKeySpec` / `PKCS8EncodedKeySpec` 解码契约严格一致；**严禁使用 PEM 文件整体 Base64（多行、含 BEGIN/END 标记）注入**，否则网关启动报 `RSA 公钥解析失败`（历史缺陷 T-02，v0.2.6 修复；v0.2.7 将 .sh 对齐同一契约）。
 
 Windows 环境执行：
 
@@ -111,45 +117,58 @@ Windows 环境执行：
 .\deploy\scripts\deploy-rsa-keygen.ps1
 ```
 
-脚本（v0.2.6 已更新）输出到 `deploy/keys/`：
+Linux 环境执行：
+
+```bash
+./deploy/scripts/deploy-rsa-keygen.sh
+```
+
+脚本输出到 `deploy/keys/`（.ps1/.sh 一致）：
 - `private_key.pem` / `public_key.pem`：PEM 格式审计副本（**不用于注入**）；
-- `private_key.der` / `public_key.der`：DER 二进制（私钥经 `openssl pkcs8 -topk8 -nocrypt` 显式输出 PKCS#8，避免部分发行版默认 PKCS#1 导致 Java 端 `algid parse error`）；
+- `private_key.der` / `public_key.der`：DER 二进制（私钥经 `openssl pkcs8 -topk8 -nocrypt` 显式输出 PKCS#8）；
 - `private_key_base64.txt` / `public_key_base64.txt`：**DER 单行 Base64，env.json 注入值来源**（脚本内置契约自校验：无 PEM 头尾、无换行、严格 Base64 可解码、DER 结构为 PKCS#8/X.509）。
 
 将两个 `*_base64.txt` 内容分别填入 `deploy/env.json` 的 `RSA_PRIVATE_KEY` 与 `RSA_PUBLIC_KEY`，并同步 Nacos 配置。密钥变更后旧令牌全部失效，属预期行为。**私钥不写入日志、不提交 git**。
 
-> Linux 环境注意：`deploy-rsa-keygen.sh` 为 v0.2.6 未更新的历史脚本，其对 PEM 文件整体做 Base64（含 BEGIN/END 头尾），**与 DER 单行 Base64 契约不一致**；Linux 部署建议在 Windows 端用 deploy-rsa-keygen.ps1 生成后拷贝 `*_base64.txt` 密钥值，或将 .sh 与 .ps1 对齐（列入后续版本待办）。
-
 ### 5.4 数据库初始化
 
-前置条件：MariaDB 已启动且可连接。
+前置条件：MariaDB 已启动且可连接（可由 5.5 步骤先拉起）。
 
 ```powershell
 .\deploy\scripts\deploy-db-init.ps1
 ```
 
-脚本从 env.json 读取数据库连接信息，执行 `scripts/sql/` 下初始化 SQL（auth-init-v0.1.5.sql、auth-init-v0.1.6.sql 等），创建认证库 `cloudstroll_office_auth` 及表结构与初始数据。
+脚本从 env.json 读取数据库连接信息（经 load-env，口令经 MYSQL_PWD 传递不出现于命令行），执行 `scripts/sql/` 下初始化 SQL（auth-init-v0.1.5.sql、auth-init-v0.1.6.sql 等），创建认证库 `cloudstroll_office_auth` 及表结构与初始数据。
 
 ### 5.5 启动基础设施（MariaDB / Redis / Nacos）
 
+v0.2.7 起基础设施管理与后端服务启动职责分离（F-006/F-007/F-008），分两个脚本执行：
+
 ```powershell
+# 步骤一：环境检查（可选，仅检查不启动；输出通过/警告/失败分级，F-002~F-006/F-010）
+.\deploy\scripts\deploy-check-env.ps1
+
+# 步骤二：基础设施运行状态检测与一键启动（F-006/F-007）
 .\deploy\scripts\deploy-start-services.ps1
 ```
 
-脚本功能：加载 env.json → 三重检测（命令/服务/进程）MariaDB、Redis、Nacos 安装状态 → 检测运行状态，未运行则自动启动 → 输出检测结果。
+`deploy-start-services` 脚本功能：加载 env.json → 三重检测（命令/服务/进程）MariaDB、Redis、Nacos 安装状态 → 检测运行状态 → 未运行则按 **MariaDB → Redis → Nacos** 顺序自动启动（系统服务优先，其次可执行文件 / NACOS_HOME startup 脚本）→ 启动后循环探测确认（不报假成功）→ 输出分级汇总。JDK 仅检查可用性，不执行启动。
 
 ### 5.6 启动后端服务
 
-按依赖顺序逐个启动（或使用各自启动脚本）：
+**推荐一键启动（F-008）**：按部署顺序 gateway → auth → biz → system 逐个启动 4 个服务，前置校验（JDK + 4 个 jar + 关键环境变量）+ 每服务健康确认（成功后再启动下一个，失败即停）：
 
 ```powershell
-# 启动网关（统一入口，建议最先启动）
-.\deploy\scripts\deploy-start-gateway.ps1
+.\deploy\scripts\deploy-start-all.ps1
+```
 
-# 启动业务服务（各自独立窗口）
-.\deploy\scripts\deploy-start-auth.ps1
-.\deploy\scripts\deploy-start-biz.ps1
-.\deploy\scripts\deploy-start-system.ps1
+**单服务启动（F-009）**：按需单独启动（行为与一键启动中对应服务一致，均后台运行、日志落位 deploy/logs/）：
+
+```powershell
+.\deploy\scripts\deploy-start-gateway.ps1   # 网关（统一入口，建议最先启动）
+.\deploy\scripts\deploy-start-auth.ps1      # 认证服务
+.\deploy\scripts\deploy-start-biz.ps1       # 企业服务
+.\deploy\scripts\deploy-start-system.ps1    # 系统服务
 ```
 
 也可直接执行：
@@ -160,9 +179,9 @@ java -Xms256m -Xmx512m -jar deploy\cloudoffice-auth-service.jar
 # ... 其余服务同理
 ```
 
-Linux 环境使用对应 .sh 脚本（如 `./deploy/scripts/deploy-start-gateway.sh`）。
+Linux 环境使用对应 .sh 脚本（如 `./deploy/scripts/deploy-start-all.sh`、`./deploy/scripts/deploy-start-gateway.sh`）。
 
-**v0.2.6 启动验证**：4 个服务（9000/9100/9200/9400）已按本版本配置全部启动成功并注册到 Nacos，启动日志不再出现 `No spring.config.import property has been defined` 与 `RSA 公钥解析失败`（见 docs/cso-v0.2.6/regression-api-test.md §3）。
+**部署顺序契约**：gateway（9000）→ auth（9100）→ biz（9200）→ system（9400），由 deploy-start-all 脚本数组顺序保证；单服务启动亦按此顺序执行（依赖：服务经 Nacos 注册发现，基础设施须先就绪）。
 
 ### 5.7 部署客户端
 
@@ -171,6 +190,8 @@ Linux 环境使用对应 .sh 脚本（如 `./deploy/scripts/deploy-start-gateway
 **Windows 客户端**：将 `deploy/cloudoffice-flutter-app/windows/` 目录拷贝到目标机器，运行 `cloudoffice_flutter_app.exe` 即可。
 
 ## 6. 配置说明（deploy/env.json）
+
+**deploy/env.json 是全部部署脚本（v0.2.7 起，F-001）的唯一配置源**：脚本经 `load-env.ps1` / `load-env.sh` 统一加载，脚本内不硬编码环境地址与凭据；缺失或非法时明确报错并拒绝执行。env.json 与 env.example.json 的差异（键名、契约）见模板注释与脚本契约校验。
 
 | 配置项 | 说明 | 示例 |
 | --- | --- | --- |
@@ -195,35 +216,43 @@ Linux 环境使用对应 .sh 脚本（如 `./deploy/scripts/deploy-start-gateway
 
 | 操作 | 命令 |
 | --- | --- |
-| 前置检查 | `.\deploy\scripts\deploy-check-env.ps1` |
-| 基础设施检测与启动 | `.\deploy\scripts\deploy-start-services.ps1` |
+| 前置检查（可用性 + 运行状态） | `.\deploy\scripts\deploy-check-env.ps1` |
+| 基础设施检测与一键启动 | `.\deploy\scripts\deploy-start-services.ps1` |
+| 后端服务按序一键启动（gateway→auth→biz→system） | `.\deploy\scripts\deploy-start-all.ps1` |
 | 启动网关 | `.\deploy\scripts\deploy-start-gateway.ps1` |
 | 启动认证服务 | `.\deploy\scripts\deploy-start-auth.ps1` |
 | 启动企业服务 | `.\deploy\scripts\deploy-start-biz.ps1` |
 | 启动系统服务 | `.\deploy\scripts\deploy-start-system.ps1` |
 | 数据库初始化 | `.\deploy\scripts\deploy-db-init.ps1` |
-| RSA 密钥生成 | `.\deploy\scripts\deploy-rsa-keygen.ps1`（v0.2.6 起输出 DER 单行 Base64） |
+| RSA 密钥生成（.ps1/.sh 契约一致） | `.\deploy\scripts\deploy-rsa-keygen.ps1` |
 | 加载环境变量 | `. .\deploy\scripts\load-env.ps1` |
-| 停止服务 | 对应启动窗口 Ctrl+C；或停止 java 进程（`Stop-Process -Name java` 需甄别进程） |
+| 停止服务 | 对应启动窗口 Ctrl+C；或停止 java 进程（`Stop-Process -Name java` 需甄别进程）；一键启动场景可查 `deploy/logs/{module}.pid` 定位进程 |
 
 Linux 环境将命令替换为 `./deploy/scripts/*.sh` 即可。
+
+**典型部署链路（一条命令拉起整个后端环境）**：
+```powershell
+.\deploy\scripts\deploy-start-services.ps1   # 1. 基础设施检测与一键启动（MariaDB/Redis/Nacos）
+.\deploy\scripts\deploy-start-all.ps1        # 2. 后端服务按序一键启动（gateway→auth→biz→system）
+```
 
 ## 8. 健康检查
 
 | 检查项 | 方式 | 预期 |
 | --- | --- | --- |
+| 环境检查（一键） | `.\deploy\scripts\deploy-check-env.ps1` | 输出通过/警告/失败分级汇总：JDK/MariaDB/Redis/Nacos 可用性与运行状态 |
 | 网关存活 | 访问 http://<主机>:9000/ | 返回网关响应（如 404/401 均说明服务在运行） |
 | 各服务注册 | Nacos 控制台 http://<主机>:8848/nacos/ 服务列表 | gateway/auth/biz/system 均在线 |
 | 认证接口 | POST http://<主机>:9000/（客户端实际调用路径） | 返回正常业务响应 |
 | 数据库连通 | 服务日志无数据库连接异常 | 正常 |
-| 服务健康检查接口 | GET http://<主机>:9000/api/v1/auth/health（经网关，带 Token） | 返回服务名/状态/版本/时间戳，状态正常（v0.2.6 回归 TC-045/TC-046-3 已验证） |
+| 服务健康检查接口 | GET http://<主机>:9000/api/v1/auth/health（经网关，带 Token） | 返回服务名/状态/版本/时间戳，状态正常 |
 | Web 客户端 | 浏览器访问 Web 站点 | 页面可打开、可登录 |
 
-**v0.2.6 验证结论**：接口回归全量跑通——cso-api-test-v0.0.1.py（TC-001~045）PASS=45、FAIL=0；cso-api-test-v0.2.5.py（TC-046~051）PASS=27、FAIL=0；详见 docs/cso-v0.2.6/regression-api-test.md。
+**v0.2.7 验证结论**：脚本体系重构后 .ps1/.sh 双平台契约与退出码约定全部通过自校验（见 docs/cso-v0.2.7/cso-script-contract-verification-v0.2.7.md）；v0.2.6 接口回归 TC-001~051 全量 PASS=72、FAIL=0 无回归。
 
 ## 9. 日志查看
 
-- 各服务日志输出至启动窗口（PowerShell/终端标准输出）。
+- 后端服务后台启动（deploy-start-all / deploy-start-*）日志落位 **`deploy/logs/`**：`{module}-start.log`（标准输出）、`{module}-start.err`（错误）、`{module}.pid`（进程 PID）。
 - 应用日志目录：项目根目录 `logs/`（如 access_log.2026-08-09.log）。
 - Nacos、MariaDB、Redis 日志查看各自安装目录下日志文件。
 
@@ -245,17 +274,26 @@ Linux 环境将命令替换为 `./deploy/scripts/*.sh` 即可。
 | 问题 | 原因 | 处理 |
 | --- | --- | --- |
 | 服务启动报 Nacos 连接失败 | Nacos 未启动或 NACOS_ADDR 错误 | 先执行 deploy-start-services.ps1 启动基础设施，核对 env.json |
-| 服务启动报 `No spring.config.import property has been defined` | 模块 pom 缺少 `spring-cloud-starter-bootstrap`，bootstrap.yml 未加载（v0.0.1 基线遗留，v0.2.6 已修复） | 确认 4 个服务模块 pom 已引入该依赖并重新构建 jar；升级到 v0.2.6 jar |
-| 网关启动报 `RSA 公钥解析失败` | env.json 密钥为 PEM 整体 Base64（多行、含 BEGIN/END），与 DER 单行 Base64 契约不符（v0.2.6 已修复） | 用 deploy-rsa-keygen.ps1 重新生成密钥，取 `deploy/keys/*_base64.txt` 单行值注入 env.json，同步 Nacos，重启服务 |
+| 脚本报 env.json 缺失或关键配置缺失 | deploy/env.json 未创建或关键项未填 | 复制 `deploy\env.example.json` 为 `deploy\env.json` 并填写 NACOS_ADDR/NACOS_HOME/DB_*/REDIS_* 等关键项（缺失项逐个列出，仅提示键名） |
+| deploy-check-env 输出失败项 | JDK 版本非 21 / MariaDB 不可连接 / Redis ping 不通 / Nacos 未运行 | 按失败项提示处理（安装 JDK 21 并配置 JAVA_HOME、检查 DB_*/REDIS_* 配置、执行 deploy-start-services 拉起基础设施），处理后重新检查 |
+| deploy-start-services 启动超时 | 服务启动慢或需管理员权限 | 等待数秒重试；提示权限问题时以管理员身份运行；查看各服务日志定位（Nacos 见 Nacos logs/start.out） |
+| deploy-start-all 提示 jar 缺失 | 未构建或 jar 未落位 deploy/ | 执行 `.\deploy\scripts\build-backend.ps1` 构建，确认 deploy/ 下 4 个 jar 存在 |
+| 一键启动提示端口被占用 | 9000/9100/9200/9400 端口被占用 | `netstat -ano | findstr 9000` 定位占用进程，释放端口后重试 |
+| 服务启动报 `No spring.config.import property has been defined` | 模块 pom 缺少 `spring-cloud-starter-bootstrap`，bootstrap.yml 未加载（v0.0.1 基线遗留，v0.2.6 已修复） | 确认 4 个服务模块 pom 已引入该依赖并重新构建 jar；升级到 v0.2.6+ jar |
+| 网关启动报 `RSA 公钥解析失败` | env.json 密钥为 PEM 整体 Base64（多行、含 BEGIN/END），与 DER 单行 Base64 契约不符 | 用 deploy-rsa-keygen.ps1（或 .sh）重新生成密钥，取 `deploy/keys/*_base64.txt` 单行值注入 env.json，同步 Nacos，重启服务 |
 | 网关启动报 "Spring MVC found on classpath" / "Failed to configure a DataSource" | 网关 jar 未排除 common 传递的 MVC/MyBatis 依赖（v0.2.6 已修复） | 使用 v0.2.6 重建的 cloudoffice-gateway.jar；自行构建时确认 gateway pom 已排除 spring-boot-starter-web / springdoc-openapi-starter-webmvc-ui / mybatis-plus-spring-boot3-starter |
 | 登录报令牌校验失败 | RSA 密钥与 Nacos 配置不一致 | 重新生成密钥并同步 Nacos 配置，重启服务 |
 | 客户端无法访问接口 | Web 部署未走网关地址 | 确认客户端配置的 API 地址指向网关 9000 端口 |
 | env.json 未生效 | 修改后未重启服务 | 修改 env.json 后需重启对应服务 |
-| Linux 下用 deploy-rsa-keygen.sh 生成的密钥网关解析失败 | .sh 为 v0.2.6 未更新的历史脚本，输出 PEM 整体 Base64，与 DER 单行 Base64 契约不符 | 在 Windows 端用 deploy-rsa-keygen.ps1 生成后拷贝 `*_base64.txt` 值，或将 .sh 与 .ps1 契约对齐（后续版本待办） |
+| Linux 下用 deploy-rsa-keygen.sh 生成的密钥网关解析失败 | v0.2.6 及以前 .sh 输出 PEM 整体 Base64，与 DER 单行 Base64 契约不符 | 升级到 v0.2.7 的 deploy-rsa-keygen.sh（已与 .ps1 契约对齐，输出 DER 单行 Base64）；重新生成密钥并同步 Nacos |
+| git status 出现临时/中间文件 | .gitignore 未覆盖新类型过程文件 | 按 F-012 治理要求补充排除规则（JVM 调试产物、测试缓存、工具残留等），保持分区注释清晰 |
 
 ## 12. 参考
 
 - 编译方案：deploy/build.md
+- 产品需求文档 v0.2.7：docs/cso-v0.2.7/cso-prd-v0.2.7.md（F-001 load-env 统一加载 / F-007 基础设施一键启动 / F-008 后端按序一键启动 / F-011 脚本契约 / F-012 .gitignore 治理）
+- 脚本问题清单 v0.2.7：docs/cso-v0.2.7/cso-deploy-scripts-issue-list-v0.2.7.md（重构前问题盘点与修复闭环）
+- 脚本契约总体验证 v0.2.7：docs/cso-v0.2.7/cso-script-contract-verification-v0.2.7.md（.ps1/.sh 双平台契约自校验结果）
 - 产品需求文档 v0.2.6：docs/cso-v0.2.6/cso-prd-v0.2.6.md（F-001 bootstrap 依赖 / F-002 RSA 密钥契约 / F-003 服务启动验证 / F-004 基线回归闭环 / F-005 契约无回归）
 - 接口回归报告 v0.2.6：docs/cso-v0.2.6/regression-api-test.md（TC-001~051 全量 PASS=72、FAIL=0，T-02 闭环）
 - 产品需求文档 v0.2.5：docs/cso-v0.2.5/cso-prd-v0.2.5.md（F-001 ~ F-007 部署资产集中化需求）

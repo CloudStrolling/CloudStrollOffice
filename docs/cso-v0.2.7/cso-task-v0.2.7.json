@@ -1,0 +1,207 @@
+{
+    "projectName": "cso",
+    "version": "0.2.7",
+    "sequence": 1,
+    "tasks": [
+        {
+            "id": "TASK-001",
+            "title": "梳理 deploy/scripts 现有脚本与 .gitignore 现状并输出问题清单",
+            "description": "检查 deploy/scripts 目录全部 .ps1/.sh 脚本与项目根目录 .gitignore，识别历史遗留问题：硬编码默认地址（192.168.1.100 等）、弃用脚本残留（deploy-env.ps1 / deploy-env-template.ps1）、deploy-rsa-keygen.sh 与 .ps1 密钥输出契约不一致、可用性检查与运行状态检查能力分散、输出格式与退出码约定不统一、缺少一键启动总入口等，输出问题清单作为后续重构依据（对应 PRD 1.1 背景与 ADR-016）。",
+            "taskType": "common",
+            "userStoryId": "US-004",
+            "apiId": "",
+            "upstreamTaskIds": [],
+            "downstreamTaskIds": [
+                "TASK-002",
+                "TASK-003",
+                "TASK-004",
+                "TASK-005",
+                "TASK-007"
+            ],
+            "priority": "P0",
+            "status": "已完成",
+            "testMethod": "对照 PRD 第 1.1 节背景与现有脚本逐项核对，输出问题清单文档；grep 检查硬编码地址与弃用脚本残留",
+            "acceptanceCriteria": "输出问题清单，覆盖：硬编码默认地址、弃用脚本残留、RSA 密钥输出契约不一致、可用性/运行状态检查能力分散、输出与退出码不统一、缺一键启动总入口；清单可作为后续任务重构依据"
+        },
+        {
+            "id": "TASK-002",
+            "title": "实现 load-env.ps1 / load-env.sh 统一配置加载模块",
+            "description": "新增 load-env.ps1 与 load-env.sh 双平台脚本，从 deploy/env.json 统一加载环境配置（NACOS_ADDR/NACOS_HOME/DB_HOST/DB_PORT/DB_USERNAME/DB_PASSWORD/DB_SERVICE_NAME/DB_PROCESS_NAME/REDIS_HOST/REDIS_PORT/REDIS_PASSWORD/REDIS_DATABASE/REDIS_SERVICE_NAME/REDIS_PROCESS_NAME/RSA_PRIVATE_KEY/RSA_PUBLIC_KEY 等）为会话环境变量；env.json 不存在时输出错误提示（复制 env.example.json 并填写配置）并以非零码退出；关键配置缺失时逐个列出缺失项并退出；脚本内不硬编码环境地址与凭据；保留 SPDX-License-Identifier（Apache-2.0）版权头与简体中文注释（F-001）。",
+            "taskType": "common",
+            "userStoryId": "US-001",
+            "apiId": "",
+            "upstreamTaskIds": [
+                "TASK-001"
+            ],
+            "downstreamTaskIds": [
+                "TASK-003",
+                "TASK-004",
+                "TASK-005",
+                "TASK-006"
+            ],
+            "priority": "P0",
+            "status": "已完成",
+            "testMethod": "PowerShell 语法解析 + Bash 语法校验（bash -n）；env.json 存在/缺失/关键配置缺失三场景行为验证与退出码核对",
+            "acceptanceCriteria": "load-env.ps1/.sh 能从 deploy/env.json 加载全部键值对为环境变量；env.json 缺失时提示复制 env.example.json 并以非零码退出；关键配置缺失时逐个列出缺失项并退出非零；脚本内无硬编码地址与凭据"
+        },
+        {
+            "id": "TASK-003",
+            "title": "重构 deploy-check-env.ps1 / .sh 环境可用性检查与运行状态检测",
+            "description": "重构 deploy-check-env.ps1 与 deploy-check-env.sh：基于 load-env 加载的 env.json 配置（去除硬编码默认地址），实现 JDK（java 命令可执行 + JAVA_HOME 有效 + 版本 21）、MariaDB（命令/系统服务/进程三重检测 + SELECT 1，口令掩码不打印明文）、Redis（三重检测 + redis-cli ping 返回 PONG）、Nacos（NACOS_HOME/bin/startup.cmd|sh 存在 + HTTP 探测 http://NACOS_ADDR/nacos/ 含 Nacos）可用性检查；输出运行状态检测（进程/系统服务/TCP 端口/HTTP，JDK 复用可用性结论视为就绪）；Nacos 已安装未启动计'警告（未运行）'而非未安装；输出通过/警告/失败分级汇总与退出码约定（失败非零）；移除 Maven/Git 版本等无关检查项或降为可选信息（F-002~F-006、F-010）。",
+            "taskType": "common",
+            "userStoryId": "US-001",
+            "apiId": "",
+            "upstreamTaskIds": [
+                "TASK-001",
+                "TASK-002"
+            ],
+            "downstreamTaskIds": [
+                "TASK-008",
+                "TASK-010"
+            ],
+            "priority": "P0",
+            "status": "已完成",
+            "testMethod": ".ps1/.sh 语法校验；JDK/MariaDB/Redis/Nacos 各环境通过/失败/警告场景与退出码验证；源码硬编码地址检查；口令掩码输出检查",
+            "acceptanceCriteria": "deploy-check-env.ps1/.sh 基于 env.json 完成 JDK/MariaDB/Redis/Nacos 可用性检查并输出运行状态；环境缺失时输出'失败'与处理提示并以非零码退出；env.json 缺失或关键配置不完整时输出明确错误提示退出非零；Nacos 已安装未启动计'警告（未运行）'；输出分级与退出码符合 F-011 规范；无硬编码默认地址；口令不打印明文"
+        },
+        {
+            "id": "TASK-004",
+            "title": "重构 deploy-start-services.ps1 / .sh 基础设施运行状态检查与一键启动",
+            "description": "重构 deploy-start-services.ps1 与 deploy-start-services.sh：加载 env.json 并检测 MariaDB/Redis/Nacos 运行状态；对未运行且已安装的服务按 MariaDB → Redis → Nacos 顺序自动启动（启动方式优先级：系统服务 Start-Service / systemctl → 可执行文件 mysqld/mariadbd/redis-server → Nacos 执行 NACOS_HOME/bin/startup.cmd 或 startup.sh）；每次启动后再次探测确认（进程/TCP/ping/HTTP），不报假成功，启动超时或失败输出警告/失败并给出处理建议；未安装服务不尝试启动，输出'未安装，请先安装'并计入失败；JDK 仅检查可用性不执行启动；已运行服务幂等跳过输出'已运行'；口令掩码不打印明文（F-006、F-007）。",
+            "taskType": "common",
+            "userStoryId": "US-002",
+            "apiId": "",
+            "upstreamTaskIds": [
+                "TASK-001",
+                "TASK-002"
+            ],
+            "downstreamTaskIds": [
+                "TASK-008",
+                "TASK-010"
+            ],
+            "priority": "P0",
+            "status": "已完成",
+            "testMethod": ".ps1/.sh 语法校验；未运行/已运行/未安装三场景启动与探测确认验证；启动超时与权限边界处理验证；口令掩码输出检查",
+            "acceptanceCriteria": "deploy-start-services.ps1/.sh 检测到未运行的 MariaDB/Redis/Nacos 时自动启动并再次探测确认，输出'通过'；未安装服务不尝试启动并输出'未安装，请先安装'计入失败；JDK 不执行启动仅输出可用性结论；已运行服务幂等跳过；启动超时输出警告不报假成功；日志不泄露 DB_PASSWORD/REDIS_PASSWORD 明文"
+        },
+        {
+            "id": "TASK-005",
+            "title": "新增 deploy-start-all.ps1 / .sh 后端服务按序一键启动",
+            "description": "新增 deploy-start-all.ps1 与 deploy-start-all.sh：加载 env.json 后校验 4 个 jar 包存在（deploy/cloudoffice-gateway.jar、cloudoffice-auth-service.jar、cloudoffice-biz-service.jar、cloudoffice-system-service.jar）与关键环境变量就绪（NACOS_ADDR、RSA_PUBLIC_KEY（gateway/auth）、RSA_PRIVATE_KEY（auth）、DB_PASSWORD（auth/biz/system）等）；按 gateway(9000) → auth(9100) → biz(9200) → system(9400) 顺序以 java -Xms256m -Xmx512m -jar <jar> 启动各服务（Windows Start-Process 独立窗口/后台、Linux nohup 后台并记录 PID 或日志文件）；每个服务启动后健康确认（HTTP 探测 http://localhost:{port}/api/v1/{module}/health 或端口探测，可配置等待重试次数与单次超时），确认成功后再启动下一个；任一步骤失败失败即停并输出明确错误提示（如端口被占用提示检查 9000/9100/9200/9400）；输出 4 个服务启动结果与健康状态汇总（F-008）。",
+            "taskType": "common",
+            "userStoryId": "US-003",
+            "apiId": "",
+            "upstreamTaskIds": [
+                "TASK-001",
+                "TASK-002"
+            ],
+            "downstreamTaskIds": [
+                "TASK-006",
+                "TASK-008",
+                "TASK-010"
+            ],
+            "priority": "P0",
+            "status": "已完成",
+            "testMethod": ".ps1/.sh 语法校验；jar 缺失/关键变量缺失前置校验失败场景验证；顺序启动与逐服务健康确认验证；失败即停场景验证",
+            "acceptanceCriteria": "deploy-start-all.ps1/.sh 按 gateway→auth→biz→system 顺序一键启动 4 个后端服务并逐服务健康确认后再启动下一个；jar 或关键变量缺失时输出缺失项与处理提示，以非零码退出且不启动任何服务；任一步骤失败时停止后续启动并输出明确错误提示；全部成功输出 4 服务启动结果与健康状态汇总，退出码 0"
+        },
+        {
+            "id": "TASK-006",
+            "title": "重构单服务启动脚本 deploy-start-gateway/auth/biz/system",
+            "description": "重构 deploy-start-gateway、deploy-start-auth、deploy-start-biz、deploy-start-system 共 8 个单服务脚本（.ps1/.sh）：加载 env.json，校验本服务所需关键变量（gateway/auth 校验 NACOS_ADDR、RSA_PUBLIC_KEY，auth 另需 RSA_PRIVATE_KEY；biz/system 校验 NACOS_ADDR、DB_PASSWORD，biz 使用 DB_USER 与 auth 使用 DB_USERNAME 的差异保持现状一致）与对应 jar 存在后，以 java -Xms256m -Xmx512m -jar <jar> 启动；行为与 deploy-start-all 中对应服务启动逻辑一致；输出分级（通过/警告/失败）与退出码约定符合 F-011 规范（F-009）。",
+            "taskType": "common",
+            "userStoryId": "US-003",
+            "apiId": "",
+            "upstreamTaskIds": [
+                "TASK-002",
+                "TASK-005"
+            ],
+            "downstreamTaskIds": [
+                "TASK-008",
+                "TASK-010"
+            ],
+            "priority": "P1",
+            "status": "已完成",
+            "testMethod": ".ps1/.sh 语法校验；4 个服务各场景（关键变量缺失/jar 缺失/启动成功）行为验证，与 start-all 对应逻辑一致性核对",
+            "acceptanceCriteria": "4 个单服务脚本各自独立可运行；校验本服务关键变量与 jar 存在后启动对应服务；行为与 deploy-start-all 对应服务启动逻辑一致；输出分级与退出码符合 F-011 规范"
+        },
+        {
+            "id": "TASK-007",
+            "title": "对齐 deploy-rsa-keygen.ps1 / .sh RSA 密钥输出契约",
+            "description": "检查并重构 deploy-rsa-keygen.ps1 与 deploy-rsa-keygen.sh，使双平台输出契约一致：均输出 DER 编码单行 Base64（公钥 X.509 SubjectPublicKeyInfo / 私钥 PKCS#8 PrivateKeyInfo，无 PEM 头尾、无换行），与 Java 端 Base64.getDecoder() + X509EncodedKeySpec/PKCS8EncodedKeySpec 解码契约一致（ADR-015，v0.2.6 确立契约）；修复 .sh 当前输出 PEM 文件整体 Base64 的问题为与 .ps1 一致的 DER 单行 Base64；提供契约自校验（输出不含 BEGIN/END 标记、不含换行、可被严格 Base64 解码、公钥私钥成对）（F-011）。",
+            "taskType": "common",
+            "userStoryId": "US-004",
+            "apiId": "",
+            "upstreamTaskIds": [
+                "TASK-001"
+            ],
+            "downstreamTaskIds": [
+                "TASK-008",
+                "TASK-010"
+            ],
+            "priority": "P0",
+            "status": "已完成",
+            "testMethod": "双平台运行密钥生成，契约自校验（无 PEM 头尾、无换行、可严格 Base64 解码、公钥私钥配对）；与 Java 端解码契约静态核对",
+            "acceptanceCriteria": "deploy-rsa-keygen.ps1/.sh 输出契约一致（DER 单行 Base64，公钥 X.509 / 私钥 PKCS#8，无 PEM 头尾、无换行）；与 Java 端解码契约一致（ADR-015 不破坏）；通过契约自校验"
+        },
+        {
+            "id": "TASK-008",
+            "title": "清理弃用脚本残留并同步引用关系",
+            "description": "删除或明确弃用 deploy/scripts 下弃用残留脚本（deploy-env.ps1、deploy-env-template.ps1 等）；检查全部脚本与文档对弃用脚本的引用关系并同步更新，避免加载路径失效；确保移除后 deploy/scripts 目录仅保留能力矩阵所需脚本（load-env、deploy-check-env、deploy-start-services、deploy-start-all、deploy-start-gateway/auth/biz/system、deploy-rsa-keygen），.ps1 与 .sh 同名脚本行为一致（F-011、ADR-016）。",
+            "taskType": "common",
+            "userStoryId": "US-004",
+            "apiId": "",
+            "upstreamTaskIds": [
+                "TASK-001",
+                "TASK-002",
+                "TASK-003",
+                "TASK-004",
+                "TASK-005",
+                "TASK-006",
+                "TASK-007"
+            ],
+            "downstreamTaskIds": [
+                "TASK-010"
+            ],
+            "priority": "P1",
+            "status": "已完成",
+            "testMethod": "目录核对（弃用脚本已移除）；全量脚本与文档引用关系检查（grep deploy-env 确认无残留引用）",
+            "acceptanceCriteria": "deploy/scripts 目录无弃用脚本残留（deploy-env.ps1 / deploy-env-template.ps1 已移除或明确弃用）；其余脚本与文档对弃用脚本的引用已同步更新，加载路径不失效；目录仅保留能力矩阵所需脚本"
+        },
+        {
+            "id": "TASK-009",
+            "title": "治理 .gitignore 排除生成/测试/调试临时与中间文件",
+            "description": "整体检查项目根目录文件与子目录，识别生成、测试、调试过程中的临时文件与中间文件，在 .gitignore 中按现有分区风格新增排除规则：JVM/应用调试产物（*.hprof、hs_err_pid*.log、堆转储、dump 目录）、测试产物与缓存（__pycache__/.pytest_cache 补充、surefire-reports、接口测试中间文件如 token 缓存/临时报告）、构建过程中间产物（.flattened-pom.xml、*.lastUpdated、maven-status/、dependency-reduced-pom.xml 等）、工具残留（*.saz、*.chls、*.har、API 调试会话文件等）；规则带路径前缀或精确模式，不得误伤 env.example.json、.gitkeep、pom.xml、bootstrap.yml、源码与文档等应入库文件；治理后执行 git status 验证临时/中间文件不再出现在待提交清单（F-012）。",
+            "taskType": "common",
+            "userStoryId": "US-005",
+            "apiId": "",
+            "upstreamTaskIds": [],
+            "downstreamTaskIds": [],
+            "priority": "P0",
+            "status": "已完成",
+            "testMethod": "git status 验证（无生成/测试/调试过程文件）；应入库文件复核（env.example.json、.gitkeep、pom.xml、bootstrap.yml、源码与文档未缺失、未被误伤）",
+            "acceptanceCriteria": ".gitignore 新增规则覆盖 JVM 调试产物、测试缓存、构建中间产物、工具残留等类型；git status 不再出现生成、测试、调试过程文件；不误伤应入库文件（env.example.json、.gitkeep、pom.xml、bootstrap.yml、源码与文档）"
+        },
+        {
+            "id": "TASK-010",
+            "title": "全量脚本契约与双平台行为总体验证",
+            "description": "对 deploy/scripts 全部 .ps1/.sh 脚本执行语法校验（PowerShell 语法解析 / bash -n）与契约自校验；核对输出分级（通过/警告/失败）与退出码约定（失败非零）双平台一致；核对全部脚本均经 load-env 从 deploy/env.json 加载配置、无硬编码默认地址与凭据；核对密钥输出契约（ADR-015）未破坏；核对弃用脚本无残留；输出验证报告并对照 PRD 第 7 章 8 条验收标准逐条核对（F-011、US-004）。",
+            "taskType": "common",
+            "userStoryId": "US-004",
+            "apiId": "",
+            "upstreamTaskIds": [
+                "TASK-003",
+                "TASK-004",
+                "TASK-005",
+                "TASK-006",
+                "TASK-007",
+                "TASK-008"
+            ],
+            "downstreamTaskIds": [],
+            "priority": "P1",
+            "status": "已完成",
+            "testMethod": "全部脚本语法校验（.ps1 PowerShell 解析 / .sh bash -n）；契约自校验（密钥格式、输出分级、退出码、无硬编码地址）；对照 PRD 第 7 章验收标准逐条核对并输出验证报告",
+            "acceptanceCriteria": "全部 .ps1/.sh 脚本通过语法与契约自校验；输出分级（通过/警告/失败）与退出码约定（失败非零）双平台一致；无硬编码环境地址与凭据；密钥契约 ADR-015 未破坏；弃用脚本无残留"
+        }
+    ]
+}

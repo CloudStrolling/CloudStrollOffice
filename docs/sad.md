@@ -1,8 +1,8 @@
 # 系统架构设计文档（SAD）
 
 **项目名称**：云漫智企（CloudStrollOffice）
-**版本号**：0.2.6
-**日期**：2026-08-09
+**版本号**：0.2.7
+**日期**：2026-08-10
 **编写人**：SA
 
 ## 1. 设计目标与约束
@@ -14,6 +14,7 @@
 - **G-A4 多租户数据隔离**：基于 RBAC（用户-角色-权限）模型实现多租户数据空间隔离，租户内用户名唯一、租户间数据不可见。
 - **G-A5 多端一致体验**：Flutter 客户端（Web + Windows 双平台）与后端共用同一套 API 契约（ApiResult 统一响应体、29 个统一错误码），Token 安全存储、网关地址可配置。
 - **G-A6 部署资产集中化**：以根目录 `deploy` 为全部最终构建产物（后端微服务 jar 包、客户端安装文件/exe）与部署资产（env.json/env.example.json、deploy/scripts 下 .sh/.ps1 部署运维脚本）的唯一落点，实现"产物集中、纯净交付、迁移无损"；构建中间产物（target 目录、编译临时文件、测试产物）一律不进入 deploy。
+- **G-A7 部署运维自动化**：以 `deploy/env.json` 为唯一配置源，重构 `deploy/scripts` 全部脚本（.ps1/.sh 双平台），形成"环境可用性检查（deploy-check-env）→ 基础设施运行状态检查与一键启动（deploy-start-services）→ 后端服务按序一键启动（deploy-start-all，gateway→auth→biz→system）→ 单服务启动（deploy-start-{svc}）"的脚本能力矩阵，统一经 load-env 加载配置、输出分级（通过/警告/失败）与退出码约定，实现"一条命令完成整个后端环境拉起"；同时治理 `.gitignore`，排除生成、测试、调试过程中的临时/中间文件，保持仓库整洁可审计（v0.2.7）。
 
 ### 1.2 设计约束
 - **技术约束**：后端统一 Java 21 + Spring Boot 3.2.5 + Spring Cloud 2023.0.1 + Spring Cloud Alibaba 2023.0.1.0；客户端统一 Flutter（Dart 3，SDK ^3.12.2）；ORM 统一 MyBatis-Plus 3.5.6；禁止引入与现有技术栈重复的第三方框架。gateway/auth/biz/system 四个服务模块必须引入 `spring-cloud-starter-bootstrap`（Spring Cloud 2023.0.1 配置引导依赖），保证 bootstrap.yml（含 Nacos discovery/config server-addr）在 Spring Boot 3.x 下正常加载，Nacos 配置/注册引导链路不得断裂（v0.2.6 修复 v0.0.1 基线遗留缺陷）。
@@ -21,6 +22,7 @@
 - **安全约束**：密码一律 BCrypt 加密存储，日志禁止输出密码与 Token；JWT 私钥仅存在于 auth-service（签名），公钥存在于 gateway 与 auth-service（验签）；密钥通过环境变量注入，禁止硬编码。RSA 密钥格式统一为 **DER 编码单行 Base64**（无 PEM 头尾标记、无换行）：deploy-rsa-keygen.ps1 生成/env.json 注入的 `RSA_PUBLIC_KEY`、`RSA_PRIVATE_KEY` 必须与 Java 端 `Base64.getDecoder()` + `X509EncodedKeySpec`/`PKCS8EncodedKeySpec` 解码契约严格一致，严禁将多行 PEM 整体 Base64（含 BEGIN/END 标记与 \r\n）直接注入 env.json（v0.2.6 修复 v0.0.1 基线遗留缺陷）。
 - **资源约束**：基础中间件（MariaDB 10.6 / Redis 7.2 / Nacos 2.3）通过 Docker Compose 一键编排（8 个容器）；开发环境验证码采用模拟模式，生产切换真实通道。
 - **部署资产约束**：最终构建产物（后端各服务 jar 包、客户端安装文件/exe）统一输出至根目录 `deploy` 目录；环境配置 `env.json`/`env.example.json` 与部署运维脚本（`deploy/scripts` 下的 .sh/.ps1）集中存放于 deploy 下；构建中间产物（target 目录、编译临时文件、测试产物）禁止进入 deploy；迁移后脚本内环境配置/密钥/产物路径引用必须同步适配，保证部署功能不因路径变化失效。
+- **脚本体系约束（v0.2.7 起）**：全部部署脚本统一通过 `load-env.ps1`/`load-env.sh` 从 `deploy/env.json` 加载配置，脚本内不得硬编码环境地址与凭据；脚本能力按"可用性检查（deploy-check-env）→ 基础设施一键启动（deploy-start-services）→ 后端服务按序一键启动（deploy-start-all）→ 单服务启动（deploy-start-gateway/auth/biz/system）"划分，.ps1 与 .sh 双平台行为一致；输出统一分级（通过/警告/失败）、退出码约定（失败非零）；RSA 密钥格式契约（ADR-015，DER 编码单行 Base64）在脚本重构中不得破坏。
 - **合规约束**：接口统一 ApiResult 响应结构，错误码统一 29 个，全局异常处理不泄露堆栈信息；登录失败不泄露具体原因，避免账号枚举。
 
 ## 2. 技术栈选型及理由
@@ -198,7 +200,7 @@ flowchart TB
         JAR["后端最终 jar 包<br/>gateway/auth/biz/system"]
         CLI["客户端安装产物<br/>安装文件 / exe"]
         ENVF["env.json / env.example.json"]
-        SCR["deploy/scripts<br/>.sh / .ps1 部署运维脚本"]
+        SCR["deploy/scripts 脚本体系（v0.2.7）<br/>load-env（统一配置加载）<br/>deploy-check-env（可用性检查）<br/>deploy-start-services（基础设施一键启动）<br/>deploy-start-all（后端按序一键启动）<br/>deploy-start-{gateway/auth/biz/system}（单服务启动）<br/>deploy-rsa-keygen（RSA 密钥，DER 单行 Base64 契约）<br/>.sh / .ps1 双平台"]
     end
     G -->|"mvn package 最终产物"| JAR
     A -->|"mvn package 最终产物"| JAR
@@ -211,6 +213,8 @@ flowchart TB
 部署说明：后端各服务以 Docker 容器部署于同一桥接网络，容器间通过服务名通信；端口映射：Nacos 8848、MariaDB 3306、Redis 6379、网关 9000、认证服务 9100、业务服务 9200、系统服务 9400；RSA 密钥与数据库/中间件连接信息通过 `.env` 环境变量注入，生产环境应使用密钥管理服务托管。各服务已引入 `spring-cloud-starter-bootstrap`，启动时 bootstrap.yml（Nacos discovery/config server-addr）先于 application.yml 加载，完成 Nacos 配置引导与注册；`RSA_PUBLIC_KEY`/`RSA_PRIVATE_KEY` 一律为 DER 编码单行 Base64（由 deploy-rsa-keygen.ps1 生成），与 Java 端 RsaKeyConfig 解码契约一致（v0.2.6 修复项）。
 
 部署资产说明（v0.2.5 起）：根目录 `deploy` 为最终构建产物与部署资产的唯一落点——Maven 各模块 package 生成的最终 jar 包与 Flutter 客户端构建生成的安装文件/exe 均输出到 `deploy` 目录；`env.json`/`env.example.json` 环境配置与 `deploy/scripts` 下全部 .sh/.ps1 部署运维脚本集中存放；构建中间产物（target 目录、编译临时文件、测试产物等）禁止进入 deploy；`deploy/scripts` 脚本内部对 env.json、密钥文件（keys）、jar 包等路径引用随迁移同步适配。
+
+脚本体系说明（v0.2.7 起）：`deploy/scripts` 全部脚本基于 `deploy/env.json`（经 `load-env.ps1`/`load-env.sh` 统一加载）实现配置驱动，脚本内无硬编码环境地址与凭据；能力划分为三层——`deploy-check-env`（JDK 命令/JAVA_HOME/版本 21、MariaDB 命令/服务/进程 + SELECT 1、Redis 命令/服务/进程 + ping、Nacos NACOS_HOME/startup 脚本 + HTTP 探测的可用性检查与运行状态检测）、`deploy-start-services`（检测未运行的 MariaDB/Redis/Nacos 并自动启动、启动后再次探测确认）、`deploy-start-all`（校验 jar 包与关键环境变量后按 gateway→auth→biz→system 顺序启动 4 个后端服务并逐服务健康确认）；单服务启动脚本（deploy-start-gateway/auth/biz/system）与一键启动对应逻辑一致；`.ps1` 与 `.sh` 双平台行为对齐，输出分级（通过/警告/失败）与退出码约定统一（失败非零），RSA 密钥契约保持 ADR-015（DER 单行 Base64）不破坏。
 
 ## 7. 安全架构
 
@@ -299,5 +303,6 @@ flowchart LR
 | ADR-013 | 构建产物与部署资产集中化 | 新建根目录 `deploy` 作为全部最终构建产物唯一落点（后端 jar 包、客户端安装文件/exe）；`env.json`/`env.example.json` 迁移至 deploy；scripts 下全部 .sh/.ps1 迁移至 `deploy/scripts` 并同步适配路径引用；构建中间产物禁止进入 deploy | 产物集中、纯净交付、迁移无损；发布/交付人员单目录收集全部可交付资产；源代码与运行/部署资产清晰分离，部署运维入口统一 | 2026-08-09 |
 | ADR-014 | bootstrap 配置引导依赖 | 四个服务模块（gateway/auth/biz/system）统一引入 `spring-cloud-starter-bootstrap`，恢复 bootstrap.yml（含 Nacos discovery/config server-addr）在 Spring Boot 3.x 下的加载，打通 Nacos 配置引导链路 | Spring Boot 3.x 默认不加载 bootstrap.yml，全项目 pom 缺该依赖导致 auth/biz/system 启动报 `No spring.config.import property has been defined`、Nacos 引导断裂（v0.0.1 基线遗留缺陷 T-02，v0.2.6 修复）；引入依赖为最小改动且不改变接口契约 | 2026-08-09 |
 | ADR-015 | RSA 密钥格式契约 | 统一 RSA 密钥格式为 DER 编码单行 Base64：deploy-rsa-keygen.ps1 输出/env.json 注入的 `RSA_PUBLIC_KEY`/`RSA_PRIVATE_KEY` 与 Java 端 `Base64.getDecoder()` + `X509EncodedKeySpec`（公钥）/`PKCS8EncodedKeySpec`（私钥）解码逻辑严格一致；禁止多行 PEM 整体 Base64 直接注入 | 原 env.json 注入 PEM 整体 Base64（多行、含 BEGIN/END）与 Java 严格解码契约不匹配，网关启动报 `RSA 公钥解析失败`（v0.0.1 基线遗留缺陷 T-02，v0.2.6 修复）；统一脚本输出契约可消除配置歧义，Java 端无需兼容代码、运行时代码零改动 | 2026-08-09 |
+| ADR-016 | 部署脚本体系重构与配置驱动 | v0.2.7 系统性重构 `deploy/scripts` 全部脚本：以 `deploy/env.json` 为唯一配置源（`load-env.ps1`/`.sh` 统一加载，脚本不硬编码地址与凭据）；能力划分为可用性检查（deploy-check-env）、基础设施一键启动（deploy-start-services）、后端服务按序一键启动（deploy-start-all）与单服务启动（deploy-start-{svc}）四类；.ps1 与 .sh 双平台行为对齐，输出分级（通过/警告/失败）与退出码约定（失败非零）统一；删除弃用脚本残留（deploy-env 等），`.sh` 与 `.ps1` 密钥输出契约对齐（不破坏 ADR-015）；同时治理 `.gitignore` 排除生成/测试/调试临时与中间文件 | 消除历史遗留的脚本契约不一致（deploy-rsa-keygen.sh 与 .ps1 输出不一致、deploy-env 弃用残留、硬编码默认地址）与人工逐服务启动的低效；配置驱动使脚本无感变更、双平台可预期、结果可核对；仅涉及部署运维层，不改变后端架构、接口契约与数据库设计 | 2026-08-10 |
 
 <!-- SPDX-License-Identifier: Apache-2.0 / Copyright 2026 jenemy8023 <jenemy8023@163.com> -->

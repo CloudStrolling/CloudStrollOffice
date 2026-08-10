@@ -2,7 +2,7 @@
 
 本项目基于 impm（iterative project management）软件工程流程，由 1 个主控 Agent（PM）与 12 个 subagent 协作完成瀑布式开发。所有 Agent 定义位于 `.opencode/agents/` 目录，技能定义位于 `.opencode/skills/` 目录。
 
-**当前版本 v0.2.6（部署与配置缺陷修复）**：依据 `docs/cso-v0.2.5/regression-api-test.md` 记录的问题完成修复——5 个 pom 引入 `spring-cloud-starter-bootstrap`（ADR-014）、RSA 密钥统一 DER 单行 Base64 契约（ADR-015）、SecurityConfig 白名单增补（login/register/refresh）与全局异常处理器注册等契约行为对齐；4 个服务全部正常启动，**API 回归测试全量跑通**（TC-001~051 PASS=72、FAIL=0、SKIP=0），接口契约 API-001~033 无回归，客户端零改动。
+**当前版本 v0.2.7（部署脚本体系重构与仓库清洁度治理）**：系统性检查并重构 `deploy/scripts` 全部脚本（.ps1/.sh 双版本）——全部脚本统一经 `load-env` 从 `deploy/env.json` 加载配置（F-001，消除硬编码地址）；`deploy-check-env` 完成 JDK/MariaDB/Redis/Nacos 四类环境**可用性检查 + 运行状态检测**（命令/服务/进程三重检测 + SELECT 1/ping/HTTP 探测，F-002~F-006/F-010）；`deploy-start-services` 检测并一键启动未运行的基础设施（F-007，启动后探测确认不报假成功）；`deploy-start-all` 按 gateway → auth → biz → system 顺序**一键启动 4 个后端服务**（F-008，前置校验 + 逐服务健康确认 + 失败即停）；单服务启动脚本保持可用（F-009）；.ps1/.sh 双平台契约对齐、输出分级与退出码约定统一（F-011）；`.gitignore` 排除生成/测试/调试过程的临时与中间文件（F-012）。
 
 ## 一、Agent 角色一览
 
@@ -73,9 +73,9 @@
 | 项目主文档 | `docs/project.md`（基本信息、编码规范、项目地图） | SA |
 | 系统架构设计 | `docs/sad.md` | SA |
 | 主文档（URS/PRD/API/DBD/LLD/Testcase） | `docs/cso-urs.md`、`docs/cso-prd.md`、`docs/cso-api.md`、`docs/cso-dbd.md`、`docs/cso-dbd.sql`、`docs/cso-lld.md`、`docs/cso-testcase.md` | 各角色编写，DW 合并 |
-| 版本目录 | `docs/cso-v{版本号}/`（URS/PRD/DBD/API/LLD/Task/Testcase/Review/回归报告/进度等），最新 `docs/cso-v0.2.6/` | 各角色 |
+| 版本目录 | `docs/cso-v{版本号}/`（URS/PRD/DBD/API/LLD/Task/Testcase/Review/回归报告/进度等），最新 `docs/cso-v0.2.7/` | 各角色 |
 | 项目根 README | `readme.md`（项目介绍、快速开始、目录结构、命令说明） | DW |
 | Agent 说明 | `agent.md`（本文件） | DW |
-| 编译部署文档 | `deploy/build.md`、`deploy/deploy.md` | DW |
+| 编译部署文档 | `deploy/build.md`、`deploy/deploy.md`（配套 `deploy/scripts/` 12 组部署运维脚本，v0.2.7 重构：load-env / deploy-check-env / deploy-start-services / deploy-start-all / deploy-start-{gateway,auth,biz,system} / deploy-rsa-keygen / deploy-db-init / build-backend / build-client） | DW |
 
 <!-- SPDX-License-Identifier: Apache-2.0 / Copyright 2026 jenemy8023 <jenemy8023@163.com> -->

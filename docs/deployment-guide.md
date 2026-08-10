@@ -246,10 +246,10 @@ v0.1.6+ 使用 RS256 非对称签名算法，必须先生成 RSA 2048 位密钥�
 
 ```bash
 # Linux/macOS
-./scripts/deploy-rsa-keygen.sh
+./deploy/scripts/deploy-rsa-keygen.sh
 
 # Windows PowerShell
-.\scripts\deploy-rsa-keygen.ps1
+.\deploy\scripts\deploy-rsa-keygen.ps1
 ```
 
 **手动生成步骤：**
@@ -302,16 +302,16 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...
 # 配置 env.json（详见 2.2 节）
 
 # 启动服务脚本会自动加载 env.json
-./scripts/deploy-start-gateway.sh
+./deploy/scripts/deploy-start-gateway.sh
 
 # 如需在当前 Shell 手动加载环境变量
-source scripts/load-env.sh
+source deploy/deploy/scripts/load-env.sh
 
 # 验证
 echo $NACOS_ADDR
 ```
 
-> 自动加载依赖 jq 或 python3。详见 `scripts/load-env.sh`。
+> 自动加载依赖 jq 或 python3。详见 `deploy/scripts/load-env.sh`。
 
 #### 方式二：Windows PowerShell（推荐，使用 env.json）
 
@@ -319,10 +319,10 @@ echo $NACOS_ADDR
 # 配置 env.json（详见 2.2 节）
 
 # 启动服务脚本会自动加载 env.json
-.\scripts\deploy-start-gateway.ps1
+.\deploy\scripts\deploy-start-gateway.ps1
 
 # 如需在当前会话手动加载环境变量
-. .\scripts\load-env.ps1
+. .\deploy\scripts\load-env.ps1
 
 # 验证
 $env:NACOS_ADDR
@@ -352,10 +352,10 @@ export RSA_PRIVATE_KEY='<RSA_PRIVATE_KEY>'
 
 ```bash
 # Linux/macOS - 使用环境变量中的数据库连接参数
-./scripts/deploy-db-init.sh
+./deploy/scripts/deploy-db-init.sh
 
 # Windows PowerShell
-.\scripts\deploy-db-init.ps1
+.\deploy\scripts\deploy-db-init.ps1
 ```
 
 **手动执行（分步）：**
@@ -624,12 +624,12 @@ mvn clean test surefire-report:report
 
 ```bash
 # Linux/macOS（会自动加载 env.json）
-./scripts/deploy-start-gateway.sh
+./deploy/scripts/deploy-start-gateway.sh
 ```
 
 ```powershell
 # Windows PowerShell（会自动加载 env.json）
-.\scripts\deploy-start-gateway.ps1
+.\deploy\scripts\deploy-start-gateway.ps1
 ```
 
 **手动启动（不依赖 env.json）：**
@@ -690,12 +690,12 @@ curl -s http://localhost:9000/actuator/health
 
 ```bash
 # Linux/macOS（会自动加载 env.json）
-./scripts/deploy-start-auth.sh
+./deploy/scripts/deploy-start-auth.sh
 ```
 
 ```powershell
 # Windows PowerShell（会自动加载 env.json）
-.\scripts\deploy-start-auth.ps1
+.\deploy\scripts\deploy-start-auth.ps1
 ```
 
 **手动启动（不依赖 env.json）：**
@@ -773,12 +773,12 @@ curl -s http://localhost:9100/api/v1/auth/health
 
 ```bash
 # Linux/macOS（会自动加载 env.json）
-./scripts/deploy-start-biz.sh
+./deploy/scripts/deploy-start-biz.sh
 ```
 
 ```powershell
 # Windows PowerShell（会自动加载 env.json）
-.\scripts\deploy-start-biz.ps1
+.\deploy\scripts\deploy-start-biz.ps1
 ```
 
 **手动启动（不依赖 env.json）：**
@@ -835,12 +835,12 @@ curl -s http://localhost:9200/api/v1/biz/health
 
 ```bash
 # Linux/macOS（会自动加载 env.json）
-./scripts/deploy-start-system.sh
+./deploy/scripts/deploy-start-system.sh
 ```
 
 ```powershell
 # Windows PowerShell（会自动加载 env.json）
-.\scripts\deploy-start-system.ps1
+.\deploy\scripts\deploy-start-system.ps1
 ```
 
 **手动启动（不依赖 env.json）：**
@@ -1026,7 +1026,7 @@ kill -15 $(jps -l | grep cloudoffice-gateway | awk '{print $1}')
 sleep 5
 
 # 3. 重新启动（会自动加载 env.json）
-./scripts/deploy-start-gateway.sh
+./deploy/scripts/deploy-start-gateway.sh
 ```
 
 #### 6.2.2 场景二：代码修改后重启
@@ -1042,7 +1042,7 @@ kill -15 $(jps -l | grep cloudoffice-auth-service | awk '{print $1}')
 sleep 5
 
 # 4. 重新启动
-./scripts/deploy-start-auth.sh
+./deploy/scripts/deploy-start-auth.sh
 ```
 
 #### 6.2.3 场景三：全量重启
@@ -1058,11 +1058,11 @@ sleep 10
 mvn clean package -DskipTests
 
 # 4. 按顺序启动（各脚本会自动加载 env.json）
-./scripts/deploy-start-gateway.sh &
+./deploy/scripts/deploy-start-gateway.sh &
 sleep 15        # 等待 Gateway 完全启动
-./scripts/deploy-start-auth.sh &
-./scripts/deploy-start-biz.sh &
-./scripts/deploy-start-system.sh &
+./deploy/scripts/deploy-start-auth.sh &
+./deploy/scripts/deploy-start-biz.sh &
+./deploy/scripts/deploy-start-system.sh &
 
 # 6. 验证全链路
 echo "等待服务全部启动（30 秒）..."
@@ -1525,14 +1525,15 @@ Windows 构建为原生可执行文件，将 `build/windows/runner/Release/` 目
 
 ## 附录 A：部署脚本清单
 
-以下脚本位于 `scripts/` 目录下，用于辅助部署：
+以下脚本位于 `deploy/scripts/` 目录下，用于辅助部署：
 
 | 脚本文件名 | 用途 | Linux/macOS | Windows |
 |-----------|------|-------------|---------|
 | `deploy-check-env.*` | 前置环境检查 | `deploy-check-env.sh` | `deploy-check-env.ps1` |
 | `env.example.json` | 环境变量配置模板（JSON） | 项目根目录 | 项目根目录 |
 | `load-env.*` | 从 env.json 加载环境变量 | `load-env.sh` | `load-env.ps1` |
-| `deploy-env-template.*` | 环境变量模板（已弃用） | `deploy-env-template.sh` | `deploy-env-template.ps1` |
+| `deploy-start-services.*` | 基础设施检测与一键启动（MariaDB/Redis/Nacos） | `deploy-start-services.sh` | `deploy-start-services.ps1` |
+| `deploy-start-all.*` | 后端服务按序一键启动总入口（gateway→auth→biz→system） | `deploy-start-all.sh` | `deploy-start-all.ps1` |
 | `deploy-rsa-keygen.*` | RSA 密钥对生成 | `deploy-rsa-keygen.sh` | `deploy-rsa-keygen.ps1` |
 | `deploy-db-init.*` | 数据库初始化 | `deploy-db-init.sh` | `deploy-db-init.ps1` |
 | `deploy-start-gateway.*` | 启动 Gateway | `deploy-start-gateway.sh` | `deploy-start-gateway.ps1` |
@@ -1544,10 +1545,10 @@ Windows 构建为原生可执行文件，将 `build/windows/runner/Release/` 目
 
 ```bash
 # 1. 检查环境
-./scripts/deploy-check-env.sh
+./deploy/scripts/deploy-check-env.sh
 
 # 2. 生成 RSA 密钥对
-./scripts/deploy-rsa-keygen.sh
+./deploy/scripts/deploy-rsa-keygen.sh
 
 # 3. 配置环境变量
 cp env.example.json env.json
@@ -1555,16 +1556,16 @@ cp env.example.json env.json
 vim env.json
 
 # 4. 初始化数据库
-./scripts/deploy-db-init.sh
+./deploy/scripts/deploy-db-init.sh
 
 # 5. 编译打包
 mvn clean package -DskipTests
 
 # 6. 按顺序启动服务（脚本自动加载 env.json）
-./scripts/deploy-start-gateway.sh
-./scripts/deploy-start-auth.sh
-./scripts/deploy-start-biz.sh
-./scripts/deploy-start-system.sh
+./deploy/scripts/deploy-start-gateway.sh
+./deploy/scripts/deploy-start-auth.sh
+./deploy/scripts/deploy-start-biz.sh
+./deploy/scripts/deploy-start-system.sh
 
 # 7. 编译并部署 Flutter 前端（参见第 11 章详细说明）
 cd cloudoffice-flutter-app
@@ -1581,3 +1582,5 @@ cd ..
 > - 本文档适用于 CloudStrollOffice v0.2.0（Flutter 前端 + 认证服务增强）
 > - 后续版本将补充 Kubernetes 部署、CI/CD 流程、生产环境安全加固等内容
 > - 如有问题请联系项目维护者或提交 GitHub Issue
+
+<!-- SPDX-License-Identifier: Apache-2.0 / Copyright 2026 jenemy8023 <jenemy8023@163.com> -->

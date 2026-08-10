@@ -2,13 +2,13 @@
 
 **项目名称**：云漫智企（CloudStrollOffice）
 **项目英文缩写**：cso
-**适用版本**：v0.2.6（部署与配置缺陷修复：bootstrap 依赖 + RSA 密钥契约 + 网关依赖排除）
+**适用版本**：v0.2.7（部署脚本体系重构与仓库清洁度治理：load-env 统一配置加载 + 检查/启动/一键总入口脚本 + .gitignore 治理）
 **文档位置**：deploy/build.md
-**最近更新**：2026-08-09
+**最近更新**：2026-08-10
 
 ## 1. 文档说明
 
-本文档说明云漫智企（CloudStrollOffice）v0.2.6 版本全部最终产物的编译方法与步骤。
+本文档说明云漫智企（CloudStrollOffice）v0.2.7 版本全部最终产物的编译方法与步骤。
 
 自 v0.2.5 起，项目执行"部署资产集中化"策略：**deploy 目录是所有最终构建产物的唯一落点**（对应 PRD F-001 ~ F-007）：
 - 后端微服务 jar 包 → `deploy/`（cloudoffice-gateway.jar、cloudoffice-auth-service.jar、cloudoffice-biz-service.jar、cloudoffice-system-service.jar）
@@ -16,9 +16,22 @@
 - 环境配置 → `deploy/env.json`、`deploy/env.example.json`
 - 编译/部署脚本 → `deploy/scripts/`
 
-**中间产物（各模块 target 目录、客户端 build 缓存、测试产物等）严禁进入 deploy 目录**（AC-4）。
+**中间产物（各模块 target 目录、客户端 build 缓存、测试产物等）严禁进入 deploy 目录**（AC-4）；生成、测试、调试过程临时/中间文件由根目录 `.gitignore` 统一排除（F-012，v0.2.7 治理）。
 
-### 1.1 v0.2.6 版本编译相关变更（ADR-014 / ADR-015 / 网关依赖排除）
+### 1.1 v0.2.7 版本编译/部署脚本相关变更（F-001 ~ F-012 脚本体系重构）
+
+| 变更项 | 内容 | 说明 |
+| --- | --- | --- |
+| load-env 统一配置加载（F-001） | 新增 `load-env.ps1` / `load-env.sh` 作为全部脚本的统一配置加载模块，从 `deploy/env.json` 读取键值对并注入会话环境变量；env.json 缺失或关键配置缺失时输出明确提示并以非零码退出 | 脚本内不再硬编码环境地址与凭据，配置变更只改 env.json（v0.2.7 评审 S-05 修复：键名白名单合法性校验；PS 5.1 Count 数组化修复） |
+| 环境可用性检查（F-002~F-005/F-010） | `deploy-check-env.ps1` / `.sh` 重构：基于 env.json 检查 JDK（命令 + JAVA_HOME + 版本 21）、MariaDB（命令/服务/进程三重检测 + SELECT 1）、Redis（三重检测 + redis-cli ping PONG）、Nacos（NACOS_HOME/startup 脚本 + HTTP 探测），并输出运行状态（F-006） | 去除历史硬编码默认地址（192.168.1.100 等）；输出统一分级（通过/警告/失败）与退出码约定（F-011）；仅检查不启动 |
+| 基础设施一键启动（F-007） | `deploy-start-services.ps1` / `.sh`：检测 MariaDB/Redis/Nacos 运行状态，未运行则按 MariaDB → Redis → Nacos 顺序自动启动（系统服务优先，其次可执行文件 / NACOS_HOME startup 脚本），启动后循环探测确认，不报假成功 | JDK 仅检查可用性不执行启动；未安装不尝试启动并计入失败；口令经 MYSQL_PWD / REDISCLI_AUTH 传递不出现明文 |
+| 后端服务按序一键启动（F-008） | `deploy-start-all.ps1` / `.sh`：前置校验（JDK + 4 个 jar + 关键环境变量）后按 gateway（9000）→ auth（9100）→ biz（9200）→ system（9400）顺序后台启动，每服务健康确认成功后再启动下一个，失败即停 | 日志落位 `deploy/logs/{module}-start.log/.err`，PID 记录 `deploy/logs/{module}.pid`；端口 9000/9100/9200/9400 被占用有明确提示 |
+| 单服务启动（F-009） | `deploy-start-gateway/auth/biz/system.ps1` / `.sh` 重构：与一键启动中对应服务逻辑一致，支持按需单独启动 | 校验各自关键环境变量（gateway/auth：NACOS_ADDR、RSA_PUBLIC_KEY，auth 另需 RSA_PRIVATE_KEY；biz/system：NACOS_ADDR、DB_PASSWORD） |
+| RSA 密钥契约对齐（F-011） | `deploy-rsa-keygen.sh` 与 `.ps1` 输出契约对齐：均为 DER 编码单行 Base64（公钥 X.509 / 私钥 PKCS#8，无 PEM 头尾、无换行，含契约自校验） | 消除 v0.2.6 遗留的 .sh 与 .ps1 契约不一致（历史缺陷，v0.2.7 已闭环）；弃用脚本残留（deploy-env.ps1 / deploy-env-template.ps1）已移除 |
+| .gitignore 治理（F-012） | 根目录 `.gitignore` 补充生成/测试/调试临时与中间文件排除规则（JVM 堆转储与崩溃日志、测试报告与缓存、API 测试中间文件、工具残留等） | 治理后 `git status` 不再出现过程文件；不误伤 env.example.json、.gitkeep、源码与文档（带路径前缀/精确模式） |
+| 编译产物 | 编译命令与产物不变：后端 `mvn clean package -DskipTests`、客户端 `build-release.ps1`；4 个服务 jar 经 antrun 自动落位 deploy/ | v0.2.7 无编译链路变更，jar 构建方式与 v0.2.6 一致 |
+
+### 1.2 v0.2.6 版本编译相关变更（ADR-014 / ADR-015 / 网关依赖排除）
 
 | 变更项 | 内容 | 说明 |
 | --- | --- | --- |
@@ -134,7 +147,7 @@ flutter build web --release       # Web 部署包
 
 ## 6. 便捷编译脚本（deploy/scripts/）
 
-自 v0.2.5 起，`deploy/scripts/` 提供一键编译入口（与本文档命令等价）：
+自 v0.2.5 起，`deploy/scripts/` 提供一键编译入口（与本文档命令等价）；v0.2.7 完成脚本体系重构，全部脚本统一经 `load-env` 从 `deploy/env.json` 加载配置（F-001），输出分级与退出码约定统一（F-011）：
 
 | 脚本 | 说明 |
 | --- | --- |
@@ -148,6 +161,8 @@ flutter build web --release       # Web 部署包
 .\deploy\scripts\build-client.ps1             # 构建 Windows + Web
 .\deploy\scripts\build-client.ps1 -Platform web
 ```
+
+> 部署运维脚本（环境检查 deploy-check-env、基础设施启动 deploy-start-services、后端服务一键启动 deploy-start-all、单服务启动 deploy-start-gateway/auth/biz/system、RSA 密钥生成 deploy-rsa-keygen、数据库初始化 deploy-db-init）的用法见 `deploy/deploy.md`。
 
 ## 7. 常见问题与处理
 
@@ -167,8 +182,11 @@ flutter build web --release       # Web 部署包
 ## 8. 参考
 
 - 部署方案：deploy/deploy.md
+- 产品需求文档 v0.2.7：docs/cso-v0.2.7/cso-prd-v0.2.7.md（F-001 load-env 统一加载 / F-010 前置检查整合 / F-011 脚本契约与输出规范 / F-012 .gitignore 治理）
+- 脚本问题清单 v0.2.7：docs/cso-v0.2.7/cso-deploy-scripts-issue-list-v0.2.7.md（重构前问题盘点）
+- 脚本契约总体验证 v0.2.7：docs/cso-v0.2.7/cso-script-contract-verification-v0.2.7.md（.ps1/.sh 双平台契约自校验）
 - 产品需求文档 v0.2.6：docs/cso-v0.2.6/cso-prd-v0.2.6.md（F-001 bootstrap 依赖 / F-002 RSA 密钥契约 / F-003 服务启动验证）
 - 接口回归报告 v0.2.6：docs/cso-v0.2.6/regression-api-test.md（TC-001~051 全量 PASS=72、FAIL=0）
-- 接口回归报告 v0.2.5：docs/cso-v0.2.5/regression-api-test.md（历史阻塞根因：bootstrap 依赖缺失 + RSA 密钥格式契约不匹配，本版本已闭环）
+- 接口回归报告 v0.2.5：docs/cso-v0.2.5/regression-api-test.md（历史阻塞根因：bootstrap 依赖缺失 + RSA 密钥格式契约不匹配，v0.2.6 已闭环）
 
 <!-- SPDX-License-Identifier: Apache-2.0 / Copyright 2026 jenemy8023 <jenemy8023@163.com> -->

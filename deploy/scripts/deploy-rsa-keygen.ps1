@@ -1,10 +1,12 @@
-﻿<#
+﻿# SPDX-License-Identifier: Apache-2.0 / Copyright 2026 jenemy8023 <jenemy8023@163.com>
+<#
 .SYNOPSIS
    云漫智企 (CloudStrollOffice) RSA 密钥对生成脚本 (Windows)
 .DESCRIPTION
    生成 RSA 2048 位密钥对，输出 DER 编码单行 Base64
    契约：公钥 = X.509 SubjectPublicKeyInfo DER 单行 Base64；私钥 = PKCS#8 PrivateKeyInfo DER 单行 Base64
         无 -----BEGIN/END----- 头尾标记、无换行符，与 Java 端 Base64.getDecoder() + X509EncodedKeySpec/PKCS8EncodedKeySpec 解码契约严格一致
+   版本: v0.2.7
 .PARAMETER OutputDir
    输出目录 (默认: deploy\keys)
 .EXAMPLE

@@ -1,0 +1,71 @@
+-- ============================================================
+-- CloudStrollOffice（云漫智企）数据库脚本（DBD 配套 SQL）
+-- 版本：v0.2.7（部署脚本体系重构与仓库清洁度治理版本）
+-- 生成日期：2026-08-10
+-- 数据库：MariaDB 10.6 LTS（兼容 MySQL 5.7+）
+--
+-- 变更说明：
+--   v0.2.7 为"部署脚本体系重构与仓库清洁度治理"工程版本
+--   （需求来源：检查并重构 deploy\scripts 目录下所有脚本，
+--   实现基于 deploy/env.json 的环境可用性检查、基础设施运行
+--   状态检查与一键启动、后端服务按序一键启动三大能力，并在
+--   .gitignore 中排除生成/测试/调试过程中的临时与中间文件）：
+--     - F-001 新增 load-env.ps1 / load-env.sh，全部脚本统一从
+--       deploy/env.json 加载配置（NACOS_*/DB_*/REDIS_*/RSA_*）；
+--     - F-002~F-005 deploy-check-env 基于 env.json 检查 JDK/
+--       MariaDB/Redis/Nacos 可用性（命令/服务/进程 + 连接探测）；
+--     - F-006~F-007 deploy-start-services 检测未运行的 MariaDB/
+--       Redis/Nacos 并自动启动、启动后再次探测确认；
+--     - F-008~F-009 deploy-start-all 按 gateway→auth→biz→system
+--       顺序一键启动 4 个后端服务并逐服务健康确认；
+--     - F-010~F-011 去除硬编码默认地址、输出分级与退出码统一、
+--       RSA 密钥契约对齐（DER 单行 Base64，ADR-015）、删除弃用脚本；
+--     - F-012 .gitignore 补充临时/中间文件排除规则。
+--   以上均为部署运维层脚本重构与仓库治理（PRD v0.2.7 第 6 章
+--   数据需求：不新增业务数据表、不修改既有表结构），本版本
+--   【无数据库结构变更】：
+--     - 无建库/删库
+--     - 无建表/改表/删表
+--     - 无索引增删改
+--     - 无视图/存储过程/触发器变更
+--     - 无初始化数据变更
+--
+-- 数据库初始化请使用全量基线脚本（与主文档 docs/cso-dbd.sql 一致）：
+--   docs/cso-dbd.sql（全量可重复执行，INSERT IGNORE 幂等）
+--   scripts/sql/init-v0.2.0-full.sql（部署脚本引用的初始化脚本副本）
+--
+-- 本版本数据库相关改动仅涉及部署脚本对数据库/Redis/Nacos 连接参数
+-- 的读取方式（统一经 load-env 从 deploy/env.json 加载），参数值与
+-- 数据库连接目标不变，SQL 语句本身无任何变更。
+-- ============================================================
+
+-- ============================================================
+-- 本版本无可执行 SQL 变更（v0.2.7）
+-- ============================================================
+-- 如需初始化数据库，请执行 docs/cso-dbd.sql（或 scripts/sql/init-v0.2.0-full.sql）。
+
+-- ============================================================
+-- 附：v0.2.7 版本数据库对象清单（沿用 v0.0.1 基线，仅列名供核对）
+-- ============================================================
+-- 数据库：
+--   cloudstroll_office_auth（认证库，9 张业务表）
+--   cloudstroll_office_biz（预留库）
+--   cloudstroll_office_system（预留库）
+--
+-- 业务表（9 张）：
+--   t_auth_tenant / t_auth_user / t_auth_role / t_auth_permission
+--   t_auth_user_role / t_auth_role_permission / t_auth_login_log
+--   t_auth_oauth_account / t_auth_verification_code
+--
+-- 索引（含主键）：
+--   主键索引 9 个；唯一索引 7 个（uk_tenant_code / uk_user_login_name /
+--   uk_role_code / uk_perm_code / uk_user_role / uk_role_perm / uk_provider_openid）
+--   普通索引 9 个（idx_register_mode / idx_status / idx_parent_id /
+--   idx_role_id / idx_perm_id / idx_log_user_time / idx_log_tenant_time /
+--   idx_user_id / idx_target_purpose / idx_expire_time）
+--
+-- 视图 / 存储过程 / 触发器：无
+-- ============================================================
+
+-- 说明：本脚本仅为版本变更说明，无实际可执行语句；数据库初始化请使用
+--       docs/cso-dbd.sql（全量基线脚本）。

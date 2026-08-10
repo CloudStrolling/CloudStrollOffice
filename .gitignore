@@ -233,6 +233,36 @@ gradle-app.setting
 *.jar
 *.war
 
+# ===================== JVM / 调试产物 =====================
+# 堆转储与 JVM 崩溃日志（jmap/hprof 堆转储、HotSpot 致命错误日志与崩溃重放文件）
+*.hprof
+hs_err_pid*.log
+replay_pid*
+heapdump.*
+*.dmp
+# 调试转储目录与文件（dump/ 全局排除；项目内无 dump 源码目录，已核实）
+dump/
+*.dump
+# Derby 嵌入式数据库调试日志（与已有 *.log 规则双保险）
+derby.log
+
+# ===================== 构建 / 测试中间产物 =====================
+# Maven 插件级独立中间产物（target/ 已覆盖常规产物，以下为 target/ 之外的兜底预防）
+# Flatten 插件扁平化 POM（*.flattened-pom.xml）、依赖解析失败标记（*.lastUpdated）
+*.flattened-pom.xml
+*.lastUpdated
+# Shade 插件简化 POM（官方默认生成在模块根目录 ${basedir}，必须忽略）
+dependency-reduced-pom.xml
+# Compiler 插件增量编译状态（maven-status/，兜底预防）
+maven-status/
+# 测试报告目录（target 之外独立输出时兜底，均带尾斜杠只匹配目录）
+surefire-reports/
+test-output/
+test-results/
+# API 接口测试中间文件（精确模式；scripts/API-TEST 下 .py/.ps1 为应入库测试脚本，禁止整目录忽略）
+scripts/API-TEST/*.tmp
+scripts/API-TEST/*.token.json
+
 # ===================== C/C++ / CMake =====================
 cmake-build-*/
 cmake-build-debug/
@@ -290,6 +320,10 @@ deploy/cloudoffice-flutter-app/windows/*
 *.log
 logs/
 log/
+# 部署与调试过程临时/中间文件（进程 PID、错误日志、调试工作区）
+*.err
+*.pid
+work/
 # 数据库
 *.db
 *.sqlite
@@ -305,6 +339,16 @@ temp/
 # 备份文件
 *.bak
 *.backup
+
+# ===================== 工具残留 =====================
+# API 调试 / 抓包工具会话文件（Fiddler *.saz、Charles *.chls、HTTP Archive *.har）
+*.saz
+*.chls
+*.har
+# 编辑器 / 终端会话与历史、调试跟踪输出（项目内无同名源码扩展名，已核实）
+*.history
+*.session
+*.trace
 
 # ===================== 环境密钥 =====================
 .env
