@@ -2,23 +2,32 @@
 
 **项目名称**：云漫智企（CloudStrollOffice）
 **项目英文缩写**：cso
-**适用版本**：v0.2.7（部署脚本体系重构与仓库清洁度治理：load-env 统一配置加载 + 检查/启动/一键总入口脚本 + .gitignore 治理）
+**适用版本**：v0.2.8（cloudoffice-common 服务化改造与通用配置管理接口先行：common 独立部署、Nacos 注册、健康检查、配置查询接口、编译/部署脚本与文档更新）
 **文档位置**：deploy/build.md
-**最近更新**：2026-08-10
+**最近更新**：2026-08-13
 
 ## 1. 文档说明
 
-本文档说明云漫智企（CloudStrollOffice）v0.2.7 版本全部最终产物的编译方法与步骤。
+本文档说明云漫智企（CloudStrollOffice）v0.2.8 版本全部最终产物的编译方法与步骤。
 
 自 v0.2.5 起，项目执行"部署资产集中化"策略：**deploy 目录是所有最终构建产物的唯一落点**（对应 PRD F-001 ~ F-007）：
-- 后端微服务 jar 包 → `deploy/`（cloudoffice-gateway.jar、cloudoffice-auth-service.jar、cloudoffice-biz-service.jar、cloudoffice-system-service.jar）
+- 后端微服务 jar 包 → `deploy/`（cloudoffice-common.jar、cloudoffice-gateway.jar、cloudoffice-auth-service.jar、cloudoffice-biz-service.jar、cloudoffice-system-service.jar，共 5 个，v0.2.8 新增 common）
 - 客户端产物 → `deploy/cloudoffice-flutter-app/`（web/、windows/）
 - 环境配置 → `deploy/env.json`、`deploy/env.example.json`
 - 编译/部署脚本 → `deploy/scripts/`
 
 **中间产物（各模块 target 目录、客户端 build 缓存、测试产物等）严禁进入 deploy 目录**（AC-4）；生成、测试、调试过程临时/中间文件由根目录 `.gitignore` 统一排除（F-012，v0.2.7 治理）。
 
-### 1.1 v0.2.7 版本编译/部署脚本相关变更（F-001 ~ F-012 脚本体系重构）
+### 1.1 v0.2.8 版本编译相关变更（common 服务化产物纳入，F-001/F-002/F-007）
+
+| 变更项 | 内容 | 说明 |
+| --- | --- | --- |
+| common 服务化产物（F-001/F-002） | cloudoffice-common 从纯公共 jar 模块升级为可独立部署的 Spring Boot 微服务（端口 9300，服务名 `cloudoffice-common`），提供健康检查端点 `/api/v1/common/health` 与通用配置管理查询接口 `/api/v1/common/config`、`/api/v1/common/config/{serviceName}` | 新增启动类 `CommonApplication`、bootstrap.yml（Nacos discovery/config）、application.yml（端口/SpringDoc 分组 common）；新增依赖 spring-cloud-starter-bootstrap（与 v0.2.6 ADR-014 一致）、nacos-discovery/config、MariaDB 驱动（runtime optional）、Redis（optional）、SpringDoc 等 |
+| 可执行 jar 双产物机制 | common 模块 pom 配置 `spring-boot-maven-plugin` 的 `classifier=exec`：可执行 fat jar 以 `cloudoffice-common-*-exec.jar` 产出并由 antrun 复制为 `deploy/cloudoffice-common.jar`；主 artifact 仍为普通瘦 jar | 保证下游服务（gateway/auth/biz/system）对 common 的 Maven 依赖不被破坏，同时 common 自身可独立部署运行；antrun 仅复制单个 `-exec.jar`，不递归复制 target（AC-4） |
+| 编译脚本纳入 common（F-007） | `build-backend.ps1` / `.sh` 将 common 纳入编译产物输出范围：构建后校验 `deploy` 下 5 个服务 jar（cloudoffice-common/gateway/auth/biz/system）必须齐全 | 任一 jar 缺失输出缺失项并以非零码退出；编译命令不变（`mvn clean package -DskipTests`），antrun 自动落位 5 个 jar |
+| 编译命令与产物 | 编译命令与产物不变：后端 `mvn clean package -DskipTests`；产物新增 `deploy/cloudoffice-common.jar`（9300），共 5 个服务 jar | v0.2.8 无编译链路整体变更，common 模块按服务化双产物机制构建 |
+
+### 1.2 v0.2.7 版本编译/部署脚本相关变更（F-001 ~ F-012 脚本体系重构）
 
 | 变更项 | 内容 | 说明 |
 | --- | --- | --- |
@@ -31,7 +40,7 @@
 | .gitignore 治理（F-012） | 根目录 `.gitignore` 补充生成/测试/调试临时与中间文件排除规则（JVM 堆转储与崩溃日志、测试报告与缓存、API 测试中间文件、工具残留等） | 治理后 `git status` 不再出现过程文件；不误伤 env.example.json、.gitkeep、源码与文档（带路径前缀/精确模式） |
 | 编译产物 | 编译命令与产物不变：后端 `mvn clean package -DskipTests`、客户端 `build-release.ps1`；4 个服务 jar 经 antrun 自动落位 deploy/ | v0.2.7 无编译链路变更，jar 构建方式与 v0.2.6 一致 |
 
-### 1.2 v0.2.6 版本编译相关变更（ADR-014 / ADR-015 / 网关依赖排除）
+### 1.3 v0.2.6 版本编译相关变更（ADR-014 / ADR-015 / 网关依赖排除）
 
 | 变更项 | 内容 | 说明 |
 | --- | --- | --- |
@@ -56,7 +65,8 @@
 
 Maven 构建时自动从中央仓库下载依赖，无需手动安装。如网络受限，可在 `~/.m2/settings.xml` 中配置阿里云镜像加速。
 
-本版本新增 `spring-cloud-starter-bootstrap` 依赖（版本由根 pom dependencyManagement 统一托管为 4.1.2），构建时自动下载，无需额外处理。
+- v0.2.6 起新增 `spring-cloud-starter-bootstrap` 依赖（版本由根 pom dependencyManagement 统一托管为 4.1.2），构建时自动下载，无需额外处理。
+- v0.2.8 起 cloudoffice-common 模块新增服务化依赖：`spring-cloud-starter-alibaba-nacos-discovery`、`spring-cloud-starter-alibaba-nacos-config`、`spring-cloud-starter-bootstrap`、MariaDB 驱动（`mariadb-java-client`，runtime + optional）、`spring-boot-starter-data-redis`（optional）与 `commons-pool2`（optional）、SpringDoc OpenAPI 等。其中 optional 依赖仅 common 服务自身运行时使用，**不向 gateway/auth/biz/system 依赖方传递**，不影响下游编译；全部依赖由 Maven 构建时自动下载。
 
 ### 3.2 客户端依赖（Flutter）
 
@@ -80,7 +90,8 @@ mvn clean package -DskipTests
 
 说明：
 - 依次构建 5 个模块：cloudoffice-common、cloudoffice-gateway、cloudoffice-auth-service、cloudoffice-biz-service、cloudoffice-system-service。
-- package 阶段，四个服务模块通过 `maven-antrun-plugin` 将**最终可执行 jar 复制至 deploy 目录**（仅复制单个最终 jar 文件，不递归复制 target，保证中间产物不进入 deploy）。
+- package 阶段，五个服务模块通过 `maven-antrun-plugin` 将**最终可执行 jar 复制至 deploy 目录**（仅复制单个最终 jar 文件，不递归复制 target，保证中间产物不进入 deploy）。
+- cloudoffice-common 采用"双产物"机制（v0.2.8）：主 artifact 仍为普通瘦 jar（供 gateway/auth/biz/system 以 Maven 依赖引用），`spring-boot-maven-plugin` 以 `classifier=exec` 额外产出可执行 fat jar（`cloudoffice-common-0.0.1-SNAPSHOT-exec.jar`），antrun 将该 `-exec.jar` 复制为 `deploy/cloudoffice-common.jar` 供独立部署。
 - `-DskipTests` 可选：跳过测试加速构建；执行完整测试请去掉该参数。
 - 构建输出目录由根 pom.xml 属性 `deployDir=${maven.multiModuleProjectDirectory}/deploy` 统一指定。
 - 单独构建单个服务（依赖 common 时须先 install common 或使用 `-pl 模块 -am` 连带构建）：
@@ -92,6 +103,7 @@ mvn clean package -DskipTests
 
 | 产物 | 落点 | 默认端口 | 说明 |
 | --- | --- | --- | --- |
+| cloudoffice-common.jar | deploy/ | 9300 | 公共服务（公共模块 + 通用配置管理，v0.2.8 服务化：健康检查、通用配置查询接口、SpringDoc 分组 common） |
 | cloudoffice-gateway.jar | deploy/ | 9000 | API 网关（统一入口，Reactive WebFlux） |
 | cloudoffice-auth-service.jar | deploy/ | 9100 | 认证服务 |
 | cloudoffice-biz-service.jar | deploy/ | 9200 | 企业服务 |
@@ -100,7 +112,7 @@ mvn clean package -DskipTests
 ### 4.3 中间产物控制
 
 - 各模块 `target/` 目录为构建中间产物，保留在模块目录内，**不进入 deploy**。
-- antrun 插件仅复制 `${project.build.directory}/${project.build.finalName}.jar` 单个最终文件（各模块 pom.xml 中 `copy-final-jar-to-deploy` 执行段）。
+- antrun 插件仅复制 `${project.build.directory}/${project.build.finalName}.jar` 单个最终文件（gateway/auth/biz/system 各模块 pom.xml 中 `copy-final-jar-to-deploy` 执行段）；common 模块额外复制 `${project.build.finalName}-exec.jar`（spring-boot repackage 产物）为 `cloudoffice-common.jar`。
 
 ## 5. 客户端编译（Flutter）
 
@@ -151,7 +163,7 @@ flutter build web --release       # Web 部署包
 
 | 脚本 | 说明 |
 | --- | --- |
-| build-backend.ps1 / build-backend.sh | 一键构建后端全部模块，jar 自动落位 deploy/ |
+| build-backend.ps1 / build-backend.sh | 一键构建后端全部模块，5 个服务 jar（含 cloudoffice-common.jar，v0.2.8）自动落位 deploy/，构建后校验 5 个 jar 齐全 |
 | build-client.ps1 / build-client.sh | 一键构建客户端（Windows+Web 或指定平台），产物落位 deploy/cloudoffice-flutter-app/ |
 
 用法示例（PowerShell）：
@@ -162,7 +174,7 @@ flutter build web --release       # Web 部署包
 .\deploy\scripts\build-client.ps1 -Platform web
 ```
 
-> 部署运维脚本（环境检查 deploy-check-env、基础设施启动 deploy-start-services、后端服务一键启动 deploy-start-all、单服务启动 deploy-start-gateway/auth/biz/system、RSA 密钥生成 deploy-rsa-keygen、数据库初始化 deploy-db-init）的用法见 `deploy/deploy.md`。
+> 部署运维脚本（环境检查 deploy-check-env、基础设施启动 deploy-start-services、后端服务一键启动 deploy-start-all、单服务启动 deploy-start-common/gateway/auth/biz/system、单服务停止 deploy-stop-common、RSA 密钥生成 deploy-rsa-keygen、数据库初始化 deploy-db-init）的用法见 `deploy/deploy.md`。
 
 ## 7. 常见问题与处理
 
@@ -177,11 +189,15 @@ flutter build web --release       # Web 部署包
 | 网关启动报 "Failed to configure a DataSource" | common 传递引入 MyBatis-Plus 激活 DataSource 自动配置（网关无数据库） | 确认 gateway pom 已排除 `mybatis-plus-spring-boot3-starter` |
 | Windows 构建失败（MSVC 相关报错） | 缺少 Visual Studio C++ 工具链 | 安装 VS 2022 并勾选"使用 C++ 的桌面开发"工作负载 |
 | 构建成功但 deploy 下没有 jar | 某模块编译失败或未执行 package | 查看 Maven 输出修复后重新 `mvn clean package` |
+| 构建成功但 deploy 下缺少 cloudoffice-common.jar | common 模块编译失败、未执行 package，或 spring-boot-maven-plugin 未产出 `-exec.jar` | 确认 cloudoffice-common/pom.xml 已配置 `classifier=exec`（spring-boot-maven-plugin）与 antrun `copy-final-jar-to-deploy` 执行段；重新 `mvn clean package` |
+| build-backend 构建后校验报 5 个 jar 不齐全 | 某服务模块产物未落位 deploy/ | 按脚本输出缺失项检查对应模块构建是否成功；common 缺失时检查 `-exec.jar` 复制配置 |
 | deploy 目录出现 target/build 中间目录 | 手工整目录复制了构建输出 | 删除误复制内容，改用 antrun / build-release 脚本方式 |
 
 ## 8. 参考
 
 - 部署方案：deploy/deploy.md
+- 产品需求文档 v0.2.8：docs/cso-v0.2.8/cso-prd-v0.2.8.md（F-001/F-002 common 服务化 / F-003~F-005 通用配置管理接口 / F-006 网关路由 / F-007 编译脚本纳入 common / F-008 启动顺序含 common / F-009 停止顺序含 common / F-010 deploy.md / F-011 readme / F-012 env.json）
+- 系统架构设计 v0.2.8：docs/sad.md（ADR-017 common 服务化、ADR-018 通用配置管理接口先行、ADR-019 部署顺序含 common）
 - 产品需求文档 v0.2.7：docs/cso-v0.2.7/cso-prd-v0.2.7.md（F-001 load-env 统一加载 / F-010 前置检查整合 / F-011 脚本契约与输出规范 / F-012 .gitignore 治理）
 - 脚本问题清单 v0.2.7：docs/cso-v0.2.7/cso-deploy-scripts-issue-list-v0.2.7.md（重构前问题盘点）
 - 脚本契约总体验证 v0.2.7：docs/cso-v0.2.7/cso-script-contract-verification-v0.2.7.md（.ps1/.sh 双平台契约自校验）

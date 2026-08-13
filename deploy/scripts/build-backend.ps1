@@ -2,9 +2,10 @@
 .SYNOPSIS
   云漫智企 (CloudStrollOffice) 后端一键编译脚本 (Windows/PowerShell)
 .DESCRIPTION
-  在项目根目录执行 Maven 多模块 clean package，构建 gateway/auth/biz/system 四个服务，
-  最终可执行 jar 由各模块 maven-antrun-plugin 自动复制至 deploy 目录（唯一落点）。
-  中间产物（各模块 target/）不进入 deploy（对应 PRD F-002/F-004，验收 AC-2/AC-4）。
+  在项目根目录执行 Maven 多模块 clean package，构建 common/gateway/auth/biz/system
+  五个服务，最终可执行 jar 由各模块 maven-antrun-plugin 自动复制至 deploy 目录（唯一落点）。
+  中间产物（各模块 target/）不进入 deploy（对应 PRD F-002/F-004/F-007，验收 AC-2/AC-4；
+  v0.2.8 新增 cloudoffice-common 服务化产物输出）。
 .EXAMPLE
   .\deploy\scripts\build-backend.ps1                 # 编译并跳过测试（默认）
   .\deploy\scripts\build-backend.ps1 -RunTests       # 编译并执行测试
@@ -50,8 +51,8 @@ if ($LASTEXITCODE -ne 0) {
   exit 1
 }
 
-# ========== 校验最终产物落位 deploy（4 个服务 jar 必须齐全） ==========
-$Jars = @("cloudoffice-gateway.jar", "cloudoffice-auth-service.jar",
+# ========== 校验最终产物落位 deploy（5 个服务 jar 必须齐全，v0.2.8 新增 common） ==========
+$Jars = @("cloudoffice-common.jar", "cloudoffice-gateway.jar", "cloudoffice-auth-service.jar",
           "cloudoffice-biz-service.jar", "cloudoffice-system-service.jar")
 $missing = $Jars | Where-Object { -not (Test-Path (Join-Path $DeployDir $_)) }
 if ($missing) {
@@ -62,6 +63,6 @@ if ($missing) {
 
 Write-Host ""
 Write-Host "=============================================="
-Write-Host "  后端编译完成，全部 jar 已输出至 deploy"
+Write-Host "  后端编译完成，5 个服务 jar 已输出至 deploy"
 $Jars | ForEach-Object { Write-Host "    deploy\$_" }
 Write-Host "=============================================="

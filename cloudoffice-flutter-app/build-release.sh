@@ -19,6 +19,10 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"                        # 项目根
 DEPLOY_DIR="$PROJECT_DIR/deploy"                              # 最终产物统一落点
 CLIENT_DEPLOY_DIR="$DEPLOY_DIR/cloudoffice-flutter-app"       # 客户端产物子目录
 
+# ========== 切换工作目录到客户端工程根（flutter 命令需在工程根执行） ==========
+# 本脚本以子进程方式被调用（build-client.sh 等），cd 不会影响调用方目录
+cd "$SCRIPT_DIR"
+
 # ========== 平台检测：Windows 原生构建需 Windows 环境（Git Bash/MSYS2/Cygwin） ==========
 case "$(uname -s)" in
   MINGW*|MSYS*|CYGWIN*) IS_WINDOWS=1 ;;

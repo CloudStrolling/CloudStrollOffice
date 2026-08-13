@@ -1,0 +1,189 @@
+{
+    "projectName": "cso",
+    "version": "0.2.8",
+    "sequence": 1,
+    "tasks": [
+        {
+            "id": "TASK-001",
+            "title": "通用配置库与配置表初始化（cloudstroll_office_common + t_common_config + 种子数据）",
+            "description": "执行 DBD v0.2.8 SQL：新建数据库 cloudstroll_office_common，新建通用配置表 t_common_config（含主键 id、service_name/config_group/config_key/config_value/data_type/description/sensitive/status 及审计字段），建立 uk_service_group_key 唯一索引、idx_service_name 与 idx_config_group 普通索引，并 INSERT IGNORE 插入 17 条种子数据覆盖 gateway/auth-service/biz-service/system-service/common 五个微服务的基础运行时配置（验证码策略/密码策略/Token 有效期/会话/网关白名单/CORS/限流/配置缓存 TTL 与脱敏掩码等）。仅新增库表与数据，不修改 cloudstroll_office_auth 既有 9 张表。",
+            "taskType": "backend",
+            "userStoryId": "US-002",
+            "apiId": "",
+            "upstreamTaskIds": [],
+            "downstreamTaskIds": [
+                "TASK-004"
+            ],
+            "priority": "P0",
+            "status": "已完成",
+            "testMethod": "单元测试 + 接口测试",
+            "acceptanceCriteria": "数据库 cloudstroll_office_common 创建成功；t_common_config 表结构与索引（uk_service_group_key/idx_service_name/idx_config_group）与 DBD 5.2.1/6.2 一致；17 条种子数据幂等插入（重复执行不报错）；不修改 cloudstroll_office_auth 既有表。"
+        },
+        {
+            "id": "TASK-002",
+            "title": "cloudoffice-common 服务化改造（启动类/bootstrap.yml/application.yml/依赖）",
+            "description": "将 cloudoffice-common 从纯公共 jar 模块升级为可独立部署的 Spring Boot 微服务：新增 CommonApplication 启动类（org.cloudstrolling.cloudoffice.common 包，@SpringBootApplication + main），新增 bootstrap.yml（spring.application.name=cloudoffice-common，Nacos discovery/config server-addr 从环境变量 NACOS_ADDR 读取），新增 application.yml（server.port=${COMMON_PORT:9300}、SpringDoc 分组 common），pom.xml 引入 spring-cloud-starter-bootstrap 及 Spring Boot/Web/Nacos 注册依赖；保留公共 jar 模块能力（ApiResult/PageResult/异常体系/枚举常量），确保 gateway/auth/biz/system 对 common 的 Maven 依赖关系不被破坏。",
+            "taskType": "common",
+            "userStoryId": "US-001",
+            "apiId": "",
+            "upstreamTaskIds": [],
+            "downstreamTaskIds": [
+                "TASK-003",
+                "TASK-004",
+                "TASK-006"
+            ],
+            "priority": "P0",
+            "status": "已完成",
+            "testMethod": "单元测试 + 接口测试",
+            "acceptanceCriteria": "common 可独立启动并注册到 Nacos（服务名 cloudoffice-common，端口 9300）；bootstrap.yml 经 spring-cloud-starter-bootstrap 正常引导 Nacos；gateway/auth/biz/system 依赖 common 公共模块编译与运行不受影响。"
+        },
+        {
+            "id": "TASK-003",
+            "title": "common 健康检查端点与 API 服务（HealthController + SpringDoc）",
+            "description": "在 cloudoffice-common 中实现健康检查端点 GET /api/v1/common/health（API-034），返回统一 ApiResult 响应体（code=200、data 含服务名 cloudoffice-common、状态 UP、版本与时间戳）；配置 SpringDoc OpenAPI 文档分组 common，可通过 Swagger UI 在线查看与调试 common 服务接口；全部接口统一 ApiResult 响应与全局异常处理器兜底，不泄露堆栈。",
+            "taskType": "common",
+            "userStoryId": "US-001",
+            "apiId": "API-034",
+            "upstreamTaskIds": [
+                "TASK-002"
+            ],
+            "downstreamTaskIds": [
+                "TASK-007"
+            ],
+            "priority": "P0",
+            "status": "已完成",
+            "testMethod": "接口测试",
+            "acceptanceCriteria": "GET /api/v1/common/health 返回 200 与统一 ApiResult（含服务名/状态 UP/版本/时间戳）；SpringDoc 文档分组 common 可在线访问；响应体格式与 auth/biz/system 健康检查端点一致。"
+        },
+        {
+            "id": "TASK-004",
+            "title": "通用配置管理查询接口（ConfigController/ConfigService/ConfigCacheManager/ConfigMapper）",
+            "description": "在 cloudoffice-common 中实现通用配置管理查询接口：GET /api/v1/common/config（API-035，按 serviceName/group/key 过滤 + page/pageSize 分页）与 GET /api/v1/common/config/{serviceName}（API-036，按微服务名称查询不分页）。ConfigService 封装\"缓存优先（Redis，命中≤50ms）→ 未命中回源数据库 t_common_config 并回填缓存（TTL 300s）→ 敏感配置脱敏\"核心编排；ConfigCacheManager 管理以 serviceName 为粒度的缓存读写与失效；ConfigMapper 提供按条件/按服务名查询；serviceName 合法性校验（gateway/auth-service/biz-service/system-service/common，非法返回 400）；sensitive=1 配置项脱敏为掩码（默认 ****，可由 common 配置 sensitive-mask 覆盖）。仅实现查询，接口层 RESTful 与数据层预留 POST/PUT/DELETE 扩展点（不实现写入）。",
+            "taskType": "common",
+            "userStoryId": "US-002",
+            "apiId": "API-035,API-036",
+            "upstreamTaskIds": [
+                "TASK-001",
+                "TASK-002"
+            ],
+            "downstreamTaskIds": [
+                "TASK-007"
+            ],
+            "priority": "P0",
+            "status": "已完成",
+            "testMethod": "单元测试 + 接口测试",
+            "acceptanceCriteria": "API-035/API-036 支持按服务名/分组/键过滤与分页查询，返回统一 ApiResult；缓存命中≤50ms、未命中回源回填；敏感配置脱敏不暴露明文；serviceName 非法返回 400、结果为空返回 200 空列表、存储异常返回 500；不实现任何写入接口。"
+        },
+        {
+            "id": "TASK-005",
+            "title": "网关路由与白名单扩展（/api/v1/common/** 路由）",
+            "description": "在 cloudoffice-gateway 路由配置中新增 /api/v1/common/** → lb://cloudoffice-common（Nacos 服务发现负载均衡）路由规则；将 /api/v1/common/health 加入网关 AuthFilter 白名单（无 Token 放行，与 auth/biz/system 健康检查端点一致）；/api/v1/common/config 与 /api/v1/common/config/{serviceName} 保持非白名单（需经 AuthFilter 认证）。不影响既有 gateway/auth/biz/system 路由与白名单规则。",
+            "taskType": "backend",
+            "userStoryId": "US-002",
+            "apiId": "",
+            "upstreamTaskIds": [],
+            "downstreamTaskIds": [
+                "TASK-007"
+            ],
+            "priority": "P0",
+            "status": "已完成",
+            "testMethod": "接口测试",
+            "acceptanceCriteria": "/api/v1/common/** 经网关转发至 common 服务；/api/v1/common/health 白名单放行（无 Token 返回 200）；/api/v1/common/config 需认证（无 Token 返回 401/403）；既有路由不受影响。"
+        },
+        {
+            "id": "TASK-006",
+            "title": "编译脚本更新（build-backend 纳入 common 产物）",
+            "description": "更新 build-backend 编译脚本（.ps1/.sh 双平台），在编译目标中新增 cloudoffice-common 模块，执行 mvn package 后生成可执行 jar（cloudoffice-common.jar）输出到 deploy 目录；遵循 v0.2.7 脚本体系约定（load-env 统一加载 env.json、输出分级通过/警告/失败、退出码失败非零、双平台行为一致）；不影响现有 gateway/auth/biz/system 编译产物输出。",
+            "taskType": "common",
+            "userStoryId": "US-005",
+            "apiId": "",
+            "upstreamTaskIds": [
+                "TASK-002"
+            ],
+            "downstreamTaskIds": [
+                "TASK-007",
+                "TASK-008"
+            ],
+            "priority": "P0",
+            "status": "已完成",
+            "testMethod": "编译脚本验证",
+            "acceptanceCriteria": "执行 build-backend 后 deploy 目录存在 cloudoffice-common 可执行 jar；现有 gateway/auth/biz/system 产物输出不受影响；双平台行为一致、失败退出码非零。"
+        },
+        {
+            "id": "TASK-007",
+            "title": "部署启动脚本更新（deploy-start-all 含 common 居首 + deploy-start-common）",
+            "description": "更新 deploy-start-all 脚本（.ps1/.sh），服务启动顺序固定为 common → gateway → auth → biz → system（common 在所有后端服务中最先启动）；新增 deploy-start-common 单服务启动脚本；启动前校验 5 个 jar（含 cloudoffice-common.jar）与关键环境变量（NACOS_ADDR、COMMON_PORT、RSA_PUBLIC_KEY、RSA_PRIVATE_KEY、DB_PASSWORD 等）；启动命令 java -Xms256m -Xmx512m -jar <jar>；common 启动后经 GET /api/v1/common/health 健康确认成功后再启动 gateway；失败即停（默认策略），输出启动结果与健康状态汇总；遵循 v0.2.7 脚本体系约定。",
+            "taskType": "common",
+            "userStoryId": "US-003",
+            "apiId": "",
+            "upstreamTaskIds": [
+                "TASK-003",
+                "TASK-004",
+                "TASK-005",
+                "TASK-006"
+            ],
+            "downstreamTaskIds": [
+                "TASK-009",
+                "TASK-010"
+            ],
+            "priority": "P0",
+            "status": "已完成",
+            "testMethod": "部署脚本验证",
+            "acceptanceCriteria": "deploy-start-all 按 common→gateway→auth→biz→system 顺序启动，common 最先启动且健康确认后再启动 gateway；common 启动失败时失败即停、gateway 及之后服务不启动；jar/变量缺失时输出缺失项并以非零码退出；双平台行为一致。"
+        },
+        {
+            "id": "TASK-008",
+            "title": "部署停止脚本更新（deploy-stop-all 含 common 居末 + deploy-stop-common）",
+            "description": "更新 deploy-stop-all 脚本（.ps1/.sh），服务停止顺序固定为 system → biz → auth → gateway → common（common 在所有后端服务中最后停止）；新增 deploy-stop-common 单服务停止脚本；按 PID/进程名终止对应 Java 进程；某服务进程不存在时跳过并输出\"未运行\"提示、不影响其他服务停止；输出停止结果汇总；遵循 v0.2.7 脚本体系约定。",
+            "taskType": "common",
+            "userStoryId": "US-004",
+            "apiId": "",
+            "upstreamTaskIds": [
+                "TASK-006"
+            ],
+            "downstreamTaskIds": [
+                "TASK-010"
+            ],
+            "priority": "P0",
+            "status": "已完成",
+            "testMethod": "部署脚本验证",
+            "acceptanceCriteria": "deploy-stop-all 按 system→biz→auth→gateway→common 逆序停止，common 最后停止；全部停止成功输出汇总并退出码 0；某服务未运行时跳过并提示、不影响其他服务；双平台行为一致。"
+        },
+        {
+            "id": "TASK-009",
+            "title": "环境配置更新（env.json / env.example.json 新增 COMMON_PORT）",
+            "description": "更新 deploy/env.json 与 deploy/env.example.json，新增 cloudoffice-common 相关环境配置项（COMMON_PORT，建议值 9300，供 common 服务 application.yml 与部署脚本读取）；env.example.json 提供示例值与注释说明，env.json 填入实际值；不影响现有 gateway/auth/biz/system 配置项；保持 env.json 不入库、env.example.json 入库的现有策略。",
+            "taskType": "common",
+            "userStoryId": "US-003",
+            "apiId": "",
+            "upstreamTaskIds": [
+                "TASK-007"
+            ],
+            "downstreamTaskIds": [
+                "TASK-010"
+            ],
+            "priority": "P0",
+            "status": "已完成",
+            "testMethod": "配置校验",
+            "acceptanceCriteria": "env.json 与 env.example.json 均新增 COMMON_PORT（示例值与实际值正确）；现有 gateway/auth/biz/system 配置项不受影响；env.json 不入库、env.example.json 入库策略保持。"
+        },
+        {
+            "id": "TASK-010",
+            "title": "部署文档与 readme 更新（deploy.md / readme.md）",
+            "description": "更新 deploy/deploy.md 与 readme.md：deploy.md 端口映射表新增 cloudoffice-common（9300）、启动顺序更新为 common→gateway→auth→biz→system、停止顺序更新为 system→biz→auth→gateway→common、健康检查端点新增 /api/v1/common/health、环境变量补充 COMMON_PORT 等；readme.md 项目介绍补充 common 服务化说明、功能清单新增通用配置管理功能介绍、端口映射与部署说明同步更新；仅追加/更新 common 相关部分，不删除或覆盖现有 gateway/auth/biz/system 内容。",
+            "taskType": "common",
+            "userStoryId": "US-006",
+            "apiId": "",
+            "upstreamTaskIds": [
+                "TASK-007",
+                "TASK-008",
+                "TASK-009"
+            ],
+            "downstreamTaskIds": [],
+            "priority": "P1",
+            "status": "已完成",
+            "testMethod": "文档校验",
+            "acceptanceCriteria": "deploy.md 含 common 端口/启动顺序/停止顺序/健康检查端点/环境变量说明；readme.md 含 common 服务化说明与通用配置管理功能介绍；现有 gateway/auth/biz/system 内容未被删除或覆盖。"
+        }
+    ]
+}

@@ -89,4 +89,35 @@ class JsonUtilsTest {
 
         assertEquals("\"\"", result);
     }
+
+    @Test
+    @DisplayName("parseArray(String, Class) 应反序列化为指定类型的 List")
+    void parseArray_withStringArray_shouldReturnTypedList() {
+        String json = "[\"a\",\"b\",\"c\"]";
+
+        java.util.List<String> result = JsonUtils.parseArray(json, String.class);
+
+        assertNotNull(result, "反序列化结果不应为 null");
+        assertEquals(3, result.size(), "列表应包含 3 个元素");
+        assertEquals("a", result.get(0), "第一个元素应为 a");
+        assertEquals("c", result.get(2), "第三个元素应为 c");
+    }
+
+    @Test
+    @DisplayName("parseArray(null, Class) 应返回空列表")
+    void parseArray_withNull_shouldReturnEmptyList() {
+        java.util.List<String> result = JsonUtils.parseArray(null, String.class);
+
+        assertNotNull(result, "null 输入应返回空列表而非 null");
+        assertTrue(result.isEmpty(), "空输入应返回空列表");
+    }
+
+    @Test
+    @DisplayName("parseArray(empty, Class) 应返回空列表")
+    void parseArray_withEmpty_shouldReturnEmptyList() {
+        java.util.List<String> result = JsonUtils.parseArray("", String.class);
+
+        assertNotNull(result, "空字符串输入应返回空列表而非 null");
+        assertTrue(result.isEmpty(), "空字符串应返回空列表");
+    }
 }

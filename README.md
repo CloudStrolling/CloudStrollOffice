@@ -15,7 +15,11 @@
 
 项目采用 Maven 多模块架构，由认证服务（auth-service）、企业服务（biz-service）、系统服务（system-service）、API 网关（gateway）及公共模块（common）组成，为企业提供企业信息管理、人事管理、工作流审批、薪酬管理、统一认证授权等综合服务能力。
 
-当前版本 **v0.2.7** 完成**部署脚本体系重构与仓库清洁度治理**：① **部署脚本体系重构**（F-001~F-011）——系统性检查并重构 `deploy/scripts` 全部脚本（.ps1/.sh 双版本），全部脚本统一经 `load-env` 从 `deploy/env.json` 加载环境配置（消除脚本内硬编码环境地址）；`deploy-check-env` 完成 JDK/MariaDB/Redis/Nacos 四类环境的**可用性检查 + 运行状态检测**（命令/服务/进程三重安装检测 + SELECT 1 / redis-cli ping / HTTP 探测，输出通过/警告/失败分级与退出码约定）；`deploy-start-services` 对检测为未运行的 MariaDB/Redis/Nacos **自动一键启动**（系统服务优先 → 可执行文件/NACOS_HOME 启动脚本，启动后再次探测确认、不报假成功）；`deploy-start-all` 按 **gateway → auth → biz → system** 部署顺序**一键启动 4 个后端服务**（启动前校验 jar 与关键环境变量、逐服务健康确认、失败即停）；`deploy-rsa-keygen.sh` 与 .ps1 密钥输出契约对齐（DER 单行 Base64，ADR-015）；移除弃用脚本残留（deploy-env 等）。② **.gitignore 仓库清洁度治理**（F-012）——整体检查项目文件，将生成、测试、调试过程中的临时文件与中间文件（JVM 调试产物 *.hprof/dump、测试缓存 .pytest_cache/__pycache__、构建中间产物、工具残留等）在 `.gitignore` 中排除，`git status` 不再出现此类过程文件。
+自 **v0.2.8** 起，cloudoffice-common 从纯公共 jar 模块升级为**可独立部署的 Spring Boot 微服务**（端口 9300），具备 Nacos 服务注册、健康检查端点、SpringDoc OpenAPI 文档等与其他微服务同等的能力，同时提供**通用配置管理查询接口**，统一管理 gateway/auth/biz/system/common 五个微服务在不同业务场景下的运行时配置（启动环境变量除外）。
+
+当前版本 **v0.2.8** 完成 **cloudoffice-common 服务化改造与通用配置管理接口先行**：① **common 服务化**（F-001/F-002）——cloudoffice-common 从纯公共 jar 模块升级为可独立部署的 Spring Boot 微服务（端口 9300，jar `cloudoffice-common.jar`），注册到 Nacos（服务名 `cloudoffice-common`），提供健康检查端点 `/api/v1/common/health` 与 SpringDoc OpenAPI 文档（分组 common），网关新增 `/api/v1/common/**` 路由规则；② **通用配置管理接口**（F-003~F-005）——新增 `GET /api/v1/common/config`、`GET /api/v1/common/config/{serviceName}` 查询接口，统一管理 gateway/auth/biz/system/common 五个微服务的运行时配置（启动环境变量除外），敏感配置项脱敏，接口经网关 AuthFilter 认证，本版本仅交付查询接口、增删改与后端管理界面在后续版本迭代；③ **部署体系适配**（F-006~F-012）——`build-backend` 编译脚本将 common 纳入产物输出（5 个 jar），`deploy-start-all` 启动顺序更新为 **common → gateway → auth → biz → system**（common 最先启动且健康确认后再启动 gateway），`deploy-stop-all` 停止顺序更新为 **system → biz → auth → gateway → common**（common 最后停止），`env.json`/`env.example.json` 新增 `COMMON_PORT`，deploy.md 与 readme.md 同步更新。
+
+上一版本 **v0.2.7** 完成**部署脚本体系重构与仓库清洁度治理**：① **部署脚本体系重构**（F-001~F-011）——系统性检查并重构 `deploy/scripts` 全部脚本（.ps1/.sh 双版本），全部脚本统一经 `load-env` 从 `deploy/env.json` 加载环境配置（消除脚本内硬编码环境地址）；`deploy-check-env` 完成 JDK/MariaDB/Redis/Nacos 四类环境的**可用性检查 + 运行状态检测**（命令/服务/进程三重安装检测 + SELECT 1 / redis-cli ping / HTTP 探测，输出通过/警告/失败分级与退出码约定）；`deploy-start-services` 对检测为未运行的 MariaDB/Redis/Nacos **自动一键启动**（系统服务优先 → 可执行文件/NACOS_HOME 启动脚本，启动后再次探测确认、不报假成功）；`deploy-start-all` 按 **gateway → auth → biz → system** 部署顺序**一键启动 4 个后端服务**（启动前校验 jar 与关键环境变量、逐服务健康确认、失败即停）；`deploy-rsa-keygen.sh` 与 .ps1 密钥输出契约对齐（DER 单行 Base64，ADR-015）；移除弃用脚本残留（deploy-env 等）。② **.gitignore 仓库清洁度治理**（F-012）——整体检查项目文件，将生成、测试、调试过程中的临时文件与中间文件（JVM 调试产物 *.hprof/dump、测试缓存 .pytest_cache/__pycache__、构建中间产物、工具残留等）在 `.gitignore` 中排除，`git status` 不再出现此类过程文件。
 
 上一版本 **v0.2.6** 完成**部署与配置缺陷修复**（依据 `docs/cso-v0.2.5/regression-api-test.md` 记录的问题）：① **bootstrap 依赖修复**（ADR-014）——根 pom 与 gateway/auth/biz/system 四个服务模块 pom 统一引入 `spring-cloud-starter-bootstrap`，恢复 bootstrap.yml（Nacos discovery/config server-addr）在 Spring Boot 3.x 下的加载，消除 `No spring.config.import property has been defined`；② **RSA 密钥格式契约修复**（ADR-015）——`deploy-rsa-keygen.ps1` 输出与 `deploy/env.json` 注入的 `RSA_PUBLIC_KEY`/`RSA_PRIVATE_KEY` 统一为 DER 编码单行 Base64，与 Java 端 RsaKeyConfig 解码契约严格一致，消除网关 `RSA 公钥解析失败`；③ **SecurityConfig 白名单修复**（TASK-004）——permitAll 增补 login/register/refresh 三端点、注册全局异常处理器并映射 409/429/403 状态码等契约行为对齐。修复后 4 个服务全部正常启动，**API 回归测试全量跑通**：TC-001~051 全量 PASS=72、FAIL=0、SKIP=0（v0.0.1 基线接口契约 API-001~033 动态回归闭环 + v0.2.5 契约无回归复核），接口层零改动、客户端无需任何修改。
 
@@ -28,6 +32,8 @@
 | 特性 | 说明 |
 |------|------|
 | 微服务架构 | 5 个 Maven 模块，服务间解耦，独立开发、测试和部署 |
+| common 服务化 | cloudoffice-common 升级为可独立部署微服务（9300），Nacos 注册 + 健康检查 + SpringDoc，与 gateway/auth/biz/system 能力对齐（v0.2.8 / F-001、F-002） |
+| 通用配置管理 | 统一管理 gateway/auth/biz/system/common 五个微服务运行时配置，支持按服务名/分组/键查询，敏感配置脱敏，接口先行预留增删改扩展（v0.2.8 / F-003~F-005） |
 | RBAC 权限模型 | 用户-角色-权限三层关联，支持多租户数据隔离 |
 | 多租户隔离 | 租户独立数据空间，用户名在租户内唯一，租户间数据不可见 |
 | 多端混合登录 | 支持 6 种客户端类型（Windows/Ubuntu/H5/Android/iOS/WeChatMini）同端互斥、多端共存 |
@@ -57,7 +63,8 @@
 | 开发环境配置 | IDEA 运行配置、.editorconfig、Checkstyle、代码风格统一 |
 | 环境可用性检查 | `deploy-check-env` 基于 env.json 完成 JDK/MariaDB/Redis/Nacos 可用性与运行状态检测，命令/服务/进程三重检测 + SELECT 1/ping/HTTP 探测，输出通过/警告/失败分级（v0.2.7 / F-002~F-006、F-010） |
 | 基础设施一键启动 | `deploy-start-services` 检测未运行的 MariaDB/Redis/Nacos 自动拉起（系统服务优先 → 可执行文件/NACOS_HOME 启动脚本），启动后探测确认不报假成功（v0.2.7 / F-007） |
-| 后端服务按序一键启动 | `deploy-start-all` 按 gateway → auth → biz → system 顺序一键启动 4 个后端服务，前置校验 + 逐服务健康确认 + 失败即停（v0.2.7 / F-008） |
+| 后端服务按序一键启动 | `deploy-start-all` 按 common → gateway → auth → biz → system 顺序一键启动 5 个后端服务（common 最先启动且健康确认后再启动 gateway），前置校验 + 逐服务健康确认 + 失败即停（v0.2.7 / F-008；v0.2.8 扩展 common） |
+| 后端服务一键停止 | `deploy-stop-all` 按 system → biz → auth → gateway → common 逆序一键停止 5 个后端服务，common 最后停止（v0.2.8 / F-009） |
 | 脚本契约统一 | 全部 .ps1/.sh 双平台对齐：load-env 统一配置加载（F-001）、输出分级与退出码约定（F-011）、RSA 密钥 DER 单行 Base64 契约一致（ADR-015） |
 | 仓库清洁度治理 | `.gitignore` 排除 JVM 调试产物、测试缓存、构建中间产物、工具残留等临时/中间文件，git status 不再出现生成/测试/调试过程文件（v0.2.7 / F-012） |
 
@@ -81,20 +88,19 @@
 │        RS256 公钥验签 │ Redis 黑名单/登录态/状态校验 │ Header 透传            │
 └────────────────────────────────────────────────────────────────────────────┘
                                     │
-           ┌────────────────────────┼────────────────────────┐
-           ▼                        ▼                        ▼
-┌────────────────────────┐ ┌────────────────┐ ┌────────────────────┐
-│   认证服务 (v0.1.6)     │ │   企业服务       │ │   系统服务          │
-│  auth-service (9100)   │ │ biz-service     │ │ system-service     │
-│                        │ │  (9200)         │ │  (9400)            │
-│  ⭐ 4种登录策略(SP工厂)   │ │  企业信息管理    │ │  系统配置 │ 日志     │
-│  ⭐ 5种注册策略(SP工厂)   │ │  人事管理       │ │  监控 │ 定时任务    │
-│  ⭐ 两步注册/账号补全     │ │  v0.1.0 骨架     │ │  v0.1.4 完成搭建    │
-│  ⭐ 密码管理/密码找回     │ │                 │ │                    │
-│  ⭐ 手机号变更           │ │                 │ │                    │
-│  ⭐ 验证码管理/频率控制   │ │                 │ │                    │
-│  ⭐ 认证编排(AuthenticationService)│ │                 │ │                    │
-└────────────────────────┘ └────────────────┘ └────────────────────┘
+           ┌────────────────────┬────────────────────┬────────────────────┬────────────────────┐
+           ▼                    ▼                    ▼                    ▼
+┌────────────────────┐ ┌────────────────────┐ ┌────────────────────┐ ┌────────────────────┐
+│   公共服务 (v0.2.8) │ │   认证服务 (v0.1.6) │ │   企业服务          │ │   系统服务          │
+│ cloudoffice-common │ │  auth-service(9100)│ │  biz-service(9200) │ │ system-service(9400)│
+│       (9300)       │ │  ⭐ 4种登录策略     │ │  企业信息管理       │ │  系统配置 │ 日志     │
+│  通用配置管理接口    │ │  ⭐ 5种注册策略     │ │  人事管理          │ │  监控 │ 定时任务    │
+│  健康检查/SpringDoc │ │  ⭐ 两步注册/补全   │ │  v0.1.0 骨架        │ │  v0.1.4 完成搭建    │
+│  公共类/工具/异常    │ │  ⭐ 密码管理/找回   │ │                    │ │                    │
+│                    │ │  ⭐ 手机号变更      │ │                    │ │                    │
+│                    │ │  ⭐ 验证码管理      │ │                    │ │                    │
+│                    │ │  ⭐ 认证编排        │ │                    │ │                    │
+└────────────────────┘ └────────────────────┘ └────────────────────┘ └────────────────────┘
                                     │
            ┌────────────────────────┼────────────────────────┐
            ▼                        ▼                        ▼
@@ -141,7 +147,7 @@
 
 | 模块 | 端口 | 依赖 | 功能描述 |
 |------|------|------|---------|
-| `cloudoffice-common` | - | 无 | 公共模块：统一响应体 `ApiResult<T>`、分页响应 `PageResult<T>`、异常体系（`BaseException`/`BusinessException`/`AuthException`）、全局异常处理器 `GlobalExceptionHandler`、实体基类 `BaseEntity`、SpringDoc 配置、MyBatis-Plus 自动填充配置、JSON 工具类、TokenPairDTO/LoginUserDTO、ClientTypeEnum/LoginModeEnum（4种登录模式）/RegisterModeEnum（5种注册模式）/OAuthProviderEnum（4种OAuth提供商）、RedisKeyConstants（含验证码前缀常量）、29 个错误码 |
+| `cloudoffice-common` | 9300 | common 服务自身依赖 Nacos/Redis/MariaDB；作为 jar 被 gateway/auth/biz/system 依赖 | 公共模块 + 独立微服务（v0.2.8 服务化）：统一响应体 `ApiResult<T>`、分页响应 `PageResult<T>`、异常体系（`BaseException`/`BusinessException`/`AuthException`）、全局异常处理器 `GlobalExceptionHandler`、实体基类 `BaseEntity`、SpringDoc 配置、MyBatis-Plus 自动填充配置、JSON 工具类、TokenPairDTO/LoginUserDTO、ClientTypeEnum/LoginModeEnum（4种登录模式）/RegisterModeEnum（5种注册模式）/OAuthProviderEnum（4种OAuth提供商）、RedisKeyConstants（含验证码前缀常量）、29 个错误码；服务化后新增健康检查端点 `/api/v1/common/health` 与通用配置管理查询接口 `/api/v1/common/config`、`/api/v1/common/config/{serviceName}`（v0.2.8） |
 | `cloudoffice-gateway` | 9000 | common, Nacos, Redis | API 网关：请求路由转发（3 条路由规则）、CORS 跨域配置、Nacos 服务发现集成、`AuthFilter` 全局认证过滤器（9 步校验流程：白名单放行 → Bearer 格式校验 → RS256 公钥验签 → tokenType 校验 → Redis 黑名单 → 登录态 → 账号状态 → 租户状态 → Header 透传） |
 | `cloudoffice-auth-service` | 9100 | common, Nacos, MyBatis-Plus, MariaDB, Redis | 认证服务：RBAC 多租户权限模型（7 张数据表）+ OAuth 账号关联表 + 验证码记录表（共 9 表）；6 种客户端类型混合登录（同端互斥 + 多端共存）；JWT RS256 双 Token（Access Token 2h + Refresh Token 7d + 轮换机制）；BCrypt 密码编码；多模式登录（4 种：用户名密码/手机验证码/手机+密码/OAuth，LoginStrategy 策略工厂模式）；多模式注册（5 种：用户名密码/手机验证码/OAuth/手机号设用户名/OAuth补全信息，RegisterStrategy 策略工厂模式 + 两步注册机制）；认证编排服务 AuthenticationService（统一编排登录/注册流程）；密码管理（修改密码/密码找回重置，重置后自动清除所有登录态）；手机号变更（原手机可用→短信验证，原手机停用→邮箱验证）；验证码管理（VerificationCodeManager 生成/校验/频率控制 + VerificationCodeService 发送，模拟模式 mock）；Redis 登录态/黑名单/状态缓存管理；用户/角色/权限 CRUD 管理 API；登录日志审计 |
 | `cloudoffice-biz-service` | 9200 | common, Nacos, MyBatis-Plus, MariaDB | 企业服务（骨架）：企业信息/人事管理业务骨架、健康检查接口 |
@@ -228,7 +234,7 @@ docker compose -f scripts/docker/docker-compose.yml up -d nacos mariadb
 |------|------|------|
 | 环境配置 | `deploy/env.json` / `deploy/env.example.json` | 实际环境配置与模板（数据库、Redis、RSA 密钥等） |
 | 部署脚本 | `deploy/scripts/` | 全部 .sh/.ps1 部署运维脚本（环境检查、DB 初始化、RSA 密钥生成、服务启停、load-env 等） |
-| 最终产物 | `deploy/` | 后端 jar 包（auth/biz/system/gateway）、客户端安装产物（cloudoffice-flutter-app/） |
+| 最终产物 | `deploy/` | 后端 jar 包（common/gateway/auth/biz/system，v0.2.8 新增 common）、客户端安装产物（cloudoffice-flutter-app/） |
 
 ```bash
 # 从模板生成环境配置（deploy/scripts 下不再有环境模板生成脚本，直接复制模板即可）
@@ -246,6 +252,7 @@ cp deploy/env.example.json deploy/env.json   # Linux/macOS
 | 变量名 | 默认值 | 适用服务 | 说明 |
 |--------|--------|---------|------|
 | `NACOS_ADDR` | `127.0.0.1:8848` | 全部 | Nacos 服务地址 |
+| `COMMON_PORT` | `9300` | common | 公共服务端口（v0.2.8 新增） |
 | `DB_HOST` | `127.0.0.1` | auth/biz/system | 数据库主机地址 |
 | `DB_PORT` | `3306` | auth/biz/system | 数据库端口 |
 | `DB_USERNAME` | `root` | auth/biz/system | 数据库用户名 |
@@ -299,14 +306,18 @@ mvn clean package -DskipTests
 在 IntelliJ IDEA 中，导航至 `Run` → `Edit Configurations`，选择目标服务的运行配置（已预置）并点击运行。建议按以下顺序启动：
 
 1. Nacos 注册中心（外部启动）
-2. GatewayApplication（端口 9000）
-3. AuthApplication（端口 9100）
-4. BizApplication（端口 9200）
-5. SystemApplication（端口 9400）
+2. CommonApplication（端口 9300，v0.2.8 新增）
+3. GatewayApplication（端口 9000）
+4. AuthApplication（端口 9100）
+5. BizApplication（端口 9200）
+6. SystemApplication（端口 9400）
 
 **方式二：命令行启动**
 
 ```bash
+# 启动公共服务（v0.2.8 新增，建议最先启动）
+mvn spring-boot:run -pl cloudoffice-common
+
 # 启动网关
 mvn spring-boot:run -pl cloudoffice-gateway
 
@@ -323,7 +334,7 @@ mvn spring-boot:run -pl cloudoffice-system-service
 **方式三：Docker Compose 一键部署（推荐）**
 
 ```bash
-# 构建并启动所有服务（Nacos + MariaDB + Redis + 4 个微服务）
+# 构建并启动所有服务（Nacos + MariaDB + Redis + 5 个微服务，含 common）
 docker compose -f scripts/docker/docker-compose.yml up -d --build
 ```
 
@@ -336,31 +347,38 @@ docker compose -f scripts/docker/docker-compose.yml up -d --build
 # ② 基础设施一键启动（检测未运行的 MariaDB/Redis/Nacos 自动拉起，v0.2.7）
 ./deploy/scripts/deploy-start-services.sh     # Linux（Windows: .\deploy\scripts\deploy-start-services.ps1）
 
-# ③ 后端服务按序一键启动（gateway → auth → biz → system，逐服务健康确认，v0.2.7）
+# ③ 后端服务按序一键启动（common → gateway → auth → biz → system，逐服务健康确认，v0.2.7；v0.2.8 新增 common 置于第一位）
 ./deploy/scripts/deploy-start-all.sh          # Linux（Windows: .\deploy\scripts\deploy-start-all.ps1）
 
-# 单独启动某个服务（v0.2.7 单服务脚本保持可用）
-./deploy/scripts/deploy-start-gateway.sh      # 或 deploy-start-auth / deploy-start-biz / deploy-start-system
+# 后端服务一键停止（system → biz → auth → gateway → common，v0.2.8 新增 common 最后停止）
+./deploy/scripts/deploy-stop-all.sh           # Linux（Windows: .\deploy\scripts\deploy-stop-all.ps1）
+
+# 单独启动某个服务（v0.2.7 单服务脚本保持可用；v0.2.8 新增 common）
+./deploy/scripts/deploy-start-common.sh       # 或 deploy-start-gateway / deploy-start-auth / deploy-start-biz / deploy-start-system
+./deploy/scripts/deploy-stop-common.sh        # 单服务停止（v0.2.8 新增）
 ```
 
-> **v0.2.7 说明：** 全部脚本统一经 `deploy/scripts/load-env` 从 `deploy/env.json` 加载配置（脚本内无硬编码地址），输出统一分级（通过/警告/失败）与退出码约定（失败非零）；启动后端服务前请确认 jar 包已落位 `deploy/`、基础设施已就绪。
+> **v0.2.7/v0.2.8 说明：** 全部脚本统一经 `deploy/scripts/load-env` 从 `deploy/env.json` 加载配置（脚本内无硬编码地址），输出统一分级（通过/警告/失败）与退出码约定（失败非零）；启动后端服务前请确认 jar 包已落位 `deploy/`（v0.2.8 起含 cloudoffice-common.jar）、基础设施已就绪；v0.2.8 起一键启动顺序为 common → gateway → auth → biz → system，一键停止顺序为 system → biz → auth → gateway → common。
 
 ### 7. 验证部署
 
 各服务健康检查端点：
 
 ```bash
-# 验证网关路由可用性
+# 验证网关路由可用性（common 健康检查为白名单放行，无需 Token，v0.2.8）
+curl http://localhost:9000/api/v1/common/health
 curl http://localhost:9000/api/v1/auth/health
 curl http://localhost:9000/api/v1/biz/health
 curl http://localhost:9000/api/v1/system/health
 
 # 直接验证服务
+curl http://localhost:9300/api/v1/common/health
 curl http://localhost:9100/api/v1/auth/health
 curl http://localhost:9200/api/v1/biz/health
 curl http://localhost:9400/api/v1/system/health
 
 # 查看 API 文档
+open http://localhost:9300/swagger-ui.html   # common 服务（分组 common，v0.2.8）
 open http://localhost:9100/swagger-ui.html
 ```
 
@@ -499,7 +517,7 @@ curl -s -X POST http://localhost:9000/api/v1/auth/logout \
   -H "Authorization: Bearer $TOKEN" | jq .
 ```
 
-## API 接口列表（v0.1.6 完整接口；v0.2.5 为工程目录调整、v0.2.6 为配置/依赖修复，均无接口变更）
+## API 接口列表（v0.1.6 完整接口；v0.2.5 为工程目录调整、v0.2.6 为配置/依赖修复，均无接口变更；v0.2.8 新增 common 服务健康检查与通用配置管理接口）
 
 ### 认证接口
 
@@ -551,9 +569,17 @@ curl -s -X POST http://localhost:9000/api/v1/auth/logout \
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
+| GET | `/api/v1/common/health` | 公共服务健康检查（v0.2.8，白名单放行） |
 | GET | `/api/v1/auth/health` | 认证服务健康检查 |
 | GET | `/api/v1/biz/health` | 企业服务健康检查 |
 | GET | `/api/v1/system/health` | 系统服务健康检查 |
+
+### 通用配置管理接口（v0.2.8 新增）
+
+| 方法 | 路径 | 说明 | 认证 |
+|------|------|------|------|
+| GET | `/api/v1/common/config` | 通用配置查询（全部或按 serviceName/group/key 过滤，分页） | 需认证 |
+| GET | `/api/v1/common/config/{serviceName}` | 按微服务名称查询运行时配置 | 需认证 |
 
 ## 开发指南
 
@@ -575,6 +601,7 @@ IDEA 运行配置已预设于 `.idea/runConfigurations/` 目录下：
 
 | 配置名称 | 对应模块 | 端口 | 启动类 |
 |---------|---------|------|--------|
+| `CommonApplication` | cloudoffice-common | 9300 | `CommonApplication`（v0.2.8 服务化新增） |
 | `GatewayApplication` | cloudoffice-gateway | 9000 | `GatewayApplication` |
 | `AuthApplication` | cloudoffice-auth-service | 9100 | `AuthApplication` |
 | `BizApplication` | cloudoffice-biz-service | 9200 | `BizApplication` |
@@ -646,10 +673,12 @@ CloudStrollOffice/
 ├── checkstyle.xml                  # Checkstyle 规则配置
 ├── .gitignore                      # Git 忽略规则（v0.2.7 治理生成/测试/调试临时与中间文件）
 │
-├── cloudoffice-common/             # 公共模块（JAR 包，无启动类）
+├── cloudoffice-common/             # 公共模块 + 独立微服务（端口 9300，v0.2.8 服务化，含启动类）
 │   └── src/main/java/org/cloudstrolling/cloudoffice/common/
+│       ├── CommonApplication.java  # 启动类（v0.2.8 新增）
 │       ├── config/                 # MyBatis-Plus 配置、SpringDoc 配置
 │       ├── constant/               # RedisKeyConstants（Redis Key 常量）
+│       ├── controller/             # HealthController、ConfigController（v0.2.8 新增）
 │       ├── dto/                    # LoginUserDTO、TokenPairDTO
 │       ├── enums/                  # ClientTypeEnum、LoginModeEnum、RegisterModeEnum、OAuthProviderEnum
 │       ├── exception/              # 异常定义（ErrorCode、BaseException、GlobalExceptionHandler 等）
@@ -688,27 +717,30 @@ CloudStrollOffice/
 │   └── test/                       # 27 个测试文件
 │
 ├── deploy/                         # 部署资产集中化目录（v0.2.5 起）
+│   ├── cloudoffice-common.jar           # 公共服务最终 jar 包（v0.2.8 服务化新增）
 │   ├── cloudoffice-auth-service.jar     # 认证服务最终 jar 包
 │   ├── cloudoffice-biz-service.jar      # 企业服务最终 jar 包
 │   ├── cloudoffice-system-service.jar   # 系统服务最终 jar 包
 │   ├── cloudoffice-gateway.jar          # 网关最终 jar 包
 │   ├── cloudoffice-flutter-app/         # 客户端构建产物（web/、windows/）
-│   ├── env.json / env.example.json      # 环境配置与模板（RSA 密钥为 DER 单行 Base64，v0.2.6 契约）
-│   └── scripts/                         # 部署运维脚本（.sh/.ps1，v0.2.7 重构后 12 组）
+│   ├── env.json / env.example.json      # 环境配置与模板（RSA 密钥为 DER 单行 Base64，v0.2.6 契约；含 COMMON_PORT，v0.2.8）
+│   └── scripts/                         # 部署运维脚本（.sh/.ps1，v0.2.7 重构，v0.2.8 扩展 common）
 │       ├── load-env.ps1 / .sh           # 统一配置加载（env.json → 环境变量，F-001）
 │       ├── deploy-check-env.ps1 / .sh   # 环境可用性 + 运行状态检查（JDK/MariaDB/Redis/Nacos，F-002~F-006/F-010）
 │       ├── deploy-start-services.ps1 / .sh  # 基础设施检测与一键启动（F-006/F-007）
-│       ├── deploy-start-all.ps1 / .sh   # 后端服务按序一键启动总入口（F-008）
+│       ├── deploy-start-all.ps1 / .sh   # 后端服务按序一键启动总入口（F-008，common→gateway→auth→biz→system）
+│       ├── deploy-stop-all.ps1 / .sh    # 后端服务一键停止（F-009，system→biz→auth→gateway→common）
+│       ├── deploy-start-common.ps1 / .sh / deploy-stop-common.ps1 / .sh  # 单服务启停（common，v0.2.8 新增）
 │       ├── deploy-start-gateway.ps1 / .sh  # 单服务启动（gateway/auth/biz/system，F-009）
 │       ├── deploy-rsa-keygen.ps1 / .sh  # RSA 密钥对生成（DER 单行 Base64，ADR-015，F-011 对齐）
 │       ├── deploy-db-init.ps1 / .sh     # 数据库初始化
-│       └── build-backend / build-client.ps1 / .sh  # 一键编译（后端/客户端）
+│       └── build-backend / build-client.ps1 / .sh  # 一键编译（后端/客户端；v0.2.8 纳入 common 产物）
 │
 ├── docs/                           # 项目文档
 │   ├── project.md                  # 项目信息、编码规范、项目地图
 │   ├── sad.md                      # 系统架构设计文档
 │   ├── cso-urs.md / cso-prd.md / cso-api.md / cso-dbd.md / cso-dbd.sql / cso-lld.md / cso-testcase.md  # 主文档
-│   ├── cso-v0.2.7/                 # 版本目录（URS/PRD/API/DBD/LLD/Task/Testcase/Review/回归报告/进度等）
+│   ├── cso-v0.2.8/                 # 版本目录（URS/PRD/API/DBD/LLD/Task/Testcase/Review/回归报告/进度等）
 │   └── deployment-guide.md         # 部署指南
 │
 └── scripts/                        # 脚本与模板（v0.2.5 后仅保留非 sh/ps1 内容）
@@ -722,6 +754,7 @@ CloudStrollOffice/
 
 | 服务 | 端口 | 说明 |
 |------|------|------|
+| cloudoffice-common | 9300 | 公共服务（公共模块 + 通用配置管理，v0.2.8 服务化） |
 | cloudoffice-gateway | 9000 | API 网关 |
 | cloudoffice-auth-service | 9100 | 认证服务 |
 | cloudoffice-biz-service | 9200 | 企业服务 |
@@ -737,6 +770,8 @@ CloudStrollOffice/
 ```
 [负载均衡器（Nginx/ALB）] ──▶ [Gateway 实例集群] ──▶ [各微服务多实例]
                                 │
+                                ├──▶ [common:9300] ──▶ [MariaDB:3306]
+                                │                    └──▶ [Redis:6379]
                                 ├──▶ [auth-service:9100] ──▶ [MariaDB:3306]
                                 │                         └──▶ [Redis:6379]
                                 ├──▶ [biz-service:9200]  ──▶ [MariaDB:3306]
@@ -745,12 +780,13 @@ CloudStrollOffice/
                                 └──▶ [Nacos Cluster:8848] ──▶ [Nacos Cluster]
 ```
 
-部署资产统一位于 `deploy` 目录（v0.2.5 起）：最终 jar 包、客户端安装产物、env.json 环境配置与 `deploy/scripts` 部署脚本。v0.2.7 起部署脚本体系提供"环境可用性检查 → 基础设施一键启动 → 后端服务按序一键启动"三阶段能力。详细编译与部署方案见 `deploy/build.md`、`deploy/deploy.md`（由 impm-deploy-update 技能维护）。
+部署资产统一位于 `deploy` 目录（v0.2.5 起）：最终 jar 包（v0.2.8 起含 cloudoffice-common.jar）、客户端安装产物、env.json 环境配置与 `deploy/scripts` 部署脚本。v0.2.7 起部署脚本体系提供"环境可用性检查 → 基础设施一键启动 → 后端服务按序一键启动"三阶段能力；v0.2.8 起一键启动顺序为 common → gateway → auth → biz → system（common 最先启动），一键停止顺序为 system → biz → auth → gateway → common（common 最后停止）。详细编译与部署方案见 `deploy/build.md`、`deploy/deploy.md`（由 impm-deploy-update 技能维护）。
 
 ## 版本规划
 
 | 版本 | 阶段 | 计划内容 |
 |------|------|---------|
+| v0.2.8 | cloudoffice-common 服务化改造与通用配置管理接口先行 ✅ | common 服务化（F-001/F-002）：独立部署 9300、Nacos 注册、健康检查 /api/v1/common/health、SpringDoc；通用配置管理查询接口（F-003~F-005）：/api/v1/common/config 按服务名/分组/键查询、敏感脱敏、扩展预留；网关路由更新（F-006）；build-backend 纳入 common 产物（F-007）；deploy-start-all 顺序 common→gateway→auth→biz→system（F-008）；deploy-stop-all 顺序 system→biz→auth→gateway→common（F-009）；deploy.md/readme.md 更新（F-010/F-011）；env.json 新增 COMMON_PORT（F-012） |
 | v0.2.7 | 部署脚本体系重构与仓库清洁度治理 ✅ | 部署脚本重构（F-001~F-011）：load-env 统一配置加载、deploy-check-env 环境可用性+运行状态检查、deploy-start-services 基础设施一键启动、deploy-start-all 后端服务按序一键启动、.ps1/.sh 双平台契约对齐与输出分级/退出码约定、deploy-rsa-keygen.sh 契约修复；.gitignore 临时/中间文件治理（F-012） |
 | v0.2.6 | 部署与配置缺陷修复 ✅ | 修复 v0.2.5 回归报告记录的 T-02 缺陷：5 个 pom 引入 spring-cloud-starter-bootstrap（ADR-014）、RSA 密钥统一 DER 单行 Base64 契约（ADR-015）、SecurityConfig 白名单增补（login/register/refresh）与全局异常处理器注册等契约行为对齐；4 服务全部正常启动，API 回归全量跑通（TC-001~051 PASS=72、FAIL=0、SKIP=0），接口契约 API-001~033 无回归 |
 | v0.2.5 | 部署资产集中化 ✅ | 新建 deploy 目录；后端 jar/客户端安装产物统一输出到 deploy；env.json 与 env.example.json 迁移；deploy/scripts 子目录建立；scripts 下全部 sh/ps1 迁移并适配路径；中间产物不入 deploy |

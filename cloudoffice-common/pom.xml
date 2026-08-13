@@ -30,6 +30,31 @@
             <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
         </dependency>
 
+        <!-- MariaDB 驱动（通用配置管理查询回源 t_common_config，v0.2.8 TASK-004）。
+             optional=true：仅 common 服务自身运行时使用，不向 gateway/auth/biz/system
+             依赖方传递，避免污染下游 classpath（下游各自声明所需中间件）。 -->
+        <dependency>
+            <groupId>org.mariadb.jdbc</groupId>
+            <artifactId>mariadb-java-client</artifactId>
+            <scope>runtime</scope>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- Redis（通用配置本地缓存 ConfigCacheManager，v0.2.8 TASK-004）。
+             optional=true：同上，仅 common 服务自身运行时使用，不向依赖方传递。 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- Redis 连接池（optional，同上） -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-pool2</artifactId>
+            <optional>true</optional>
+        </dependency>
+
         <!-- SpringDoc OpenAPI -->
         <dependency>
             <groupId>org.springdoc</groupId>
@@ -46,6 +71,24 @@
         <dependency>
             <groupId>com.fasterxml.jackson.datatype</groupId>
             <artifactId>jackson-datatype-jsr310</artifactId>
+        </dependency>
+
+        <!-- Nacos 服务发现（common 服务化后注册到 Nacos） -->
+        <dependency>
+            <groupId>com.alibaba.cloud</groupId>
+            <artifactId>spring-cloud-starter-alibaba-nacos-discovery</artifactId>
+        </dependency>
+
+        <!-- Nacos 配置中心 -->
+        <dependency>
+            <groupId>com.alibaba.cloud</groupId>
+            <artifactId>spring-cloud-starter-alibaba-nacos-config</artifactId>
+        </dependency>
+
+        <!-- Spring Cloud Bootstrap 配置引导（恢复 bootstrap.yml 加载，修复 No spring.config.import property has been defined，与 v0.2.6 ADR-014 一致） -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-bootstrap</artifactId>
         </dependency>
 
         <!-- Spring Security Core（仅引用异常类，不启用安全过滤链） -->
@@ -69,7 +112,10 @@
         </dependency>
     </dependencies>
 
-    <!-- 公共模块不含启动类，不需要 spring-boot-maven-plugin -->
+    <!-- 公共模块服务化：既有普通 jar 依赖能力（gateway/auth/biz/system 引用），
+         又可独立打包为可执行服务。spring-boot-maven-plugin 配置 classifier=exec：
+         可执行 fat jar 以 -exec.jar 产出并复制至 deploy，主 artifact 仍为普通瘦 jar，
+         保证下游服务对 common 的 Maven 依赖不被破坏。 -->
     <build>
         <plugins>
             <plugin>
@@ -79,6 +125,38 @@
                     <source>${java.version}</source>
                     <target>${java.version}</target>
                 </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <classifier>exec</classifier>
+                </configuration>
+            </plugin>
+
+            <!-- 产物输出：package 阶段将可执行 jar（-exec）复制至 deploy/cloudoffice-common.jar
+                 （在 spring-boot 插件之后执行，复制 repackage 后的产物；与 auth/gateway 模块同一契约） -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>copy-final-jar-to-deploy</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <target>
+                                <!-- 仅复制单个最终可执行 jar 文件，禁止整目录递归复制 target -->
+                                <copy file="${project.build.directory}/${project.build.finalName}-exec.jar"
+                                      tofile="${deployDir}/cloudoffice-common.jar"
+                                      overwrite="true"/>
+                            </target>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

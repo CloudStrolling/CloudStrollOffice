@@ -73,7 +73,8 @@ import static org.mockito.Mockito.when;
                 "auth.white-list[4]=/swagger-ui/**",
                 "auth.white-list[5]=/v3/api-docs/**",
                 "auth.white-list[6]=/favicon.ico",
-                "auth.white-list[7]=/webjars/**"
+                "auth.white-list[7]=/webjars/**",
+                "auth.white-list[8]=/api/v1/common/health"
         })
 @Import(AuthFilterTest.TestConfig.class)
 @DisplayName("AuthFilter 全局认证过滤器集成测试")
@@ -138,6 +139,16 @@ class AuthFilterTest {
                     .route("test-echo", r -> r
                             .order(-1)
                             .path("/api/v1/biz/echo")
+                            .filters(f -> f.filter(echoFilter()))
+                            .uri("http://localhost:9999"))
+                    .route("test-common-health", r -> r
+                            .order(-1)
+                            .path("/api/v1/common/health")
+                            .filters(f -> f.filter(healthFilter()))
+                            .uri("http://localhost:9999"))
+                    .route("test-common-config", r -> r
+                            .order(-1)
+                            .path("/api/v1/common/config", "/api/v1/common/config/**")
                             .filters(f -> f.filter(echoFilter()))
                             .uri("http://localhost:9999"))
                     .build();
@@ -252,6 +263,48 @@ class AuthFilterTest {
                 .uri("/api/v1/auth/health")
                 .exchange()
                 .expectStatus().isOk();
+    }
+
+    /**
+     * common 健康检查端点应列入白名单，无 Token 直接放行（与 auth/biz/system 一致）。
+     */
+    @Test
+    @DisplayName("common 健康检查端点应白名单放行，无需 Token")
+    void shouldPassCommonHealthWhiteListPath_withoutToken() {
+        webTestClient.get()
+                .uri("/api/v1/common/health")
+                .exchange()
+                .expectStatus().isOk();
+    }
+
+    /**
+     * common 配置查询端点应不在白名单中，无 Token 访问应返回 401。
+     */
+    @Test
+    @DisplayName("无 Token 访问 common 配置查询端点应返回 401")
+    void shouldReturn401_whenNoToken_onCommonConfig() {
+        webTestClient.get()
+                .uri("/api/v1/common/config")
+                .exchange()
+                .expectStatus().isUnauthorized()
+                .expectBody()
+                .jsonPath("$.code").isEqualTo(401)
+                .jsonPath("$.message").exists();
+    }
+
+    /**
+     * common 按微服务查询配置端点应不在白名单中，无 Token 访问应返回 401。
+     */
+    @Test
+    @DisplayName("无 Token 访问 common 按微服务查询配置端点应返回 401")
+    void shouldReturn401_whenNoToken_onCommonConfigByService() {
+        webTestClient.get()
+                .uri("/api/v1/common/config/auth-service")
+                .exchange()
+                .expectStatus().isUnauthorized()
+                .expectBody()
+                .jsonPath("$.code").isEqualTo(401)
+                .jsonPath("$.message").exists();
     }
 
     /**

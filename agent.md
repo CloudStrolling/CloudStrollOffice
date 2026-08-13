@@ -2,7 +2,7 @@
 
 本项目基于 impm（iterative project management）软件工程流程，由 1 个主控 Agent（PM）与 12 个 subagent 协作完成瀑布式开发。所有 Agent 定义位于 `.opencode/agents/` 目录，技能定义位于 `.opencode/skills/` 目录。
 
-**当前版本 v0.2.7（部署脚本体系重构与仓库清洁度治理）**：系统性检查并重构 `deploy/scripts` 全部脚本（.ps1/.sh 双版本）——全部脚本统一经 `load-env` 从 `deploy/env.json` 加载配置（F-001，消除硬编码地址）；`deploy-check-env` 完成 JDK/MariaDB/Redis/Nacos 四类环境**可用性检查 + 运行状态检测**（命令/服务/进程三重检测 + SELECT 1/ping/HTTP 探测，F-002~F-006/F-010）；`deploy-start-services` 检测并一键启动未运行的基础设施（F-007，启动后探测确认不报假成功）；`deploy-start-all` 按 gateway → auth → biz → system 顺序**一键启动 4 个后端服务**（F-008，前置校验 + 逐服务健康确认 + 失败即停）；单服务启动脚本保持可用（F-009）；.ps1/.sh 双平台契约对齐、输出分级与退出码约定统一（F-011）；`.gitignore` 排除生成/测试/调试过程的临时与中间文件（F-012）。
+**当前版本 v0.2.8（cloudoffice-common 服务化改造与通用配置管理接口先行）**：cloudoffice-common 从纯公共 jar 模块升级为**可独立部署的 Spring Boot 微服务**（F-001/F-002，端口 9300，jar `cloudoffice-common.jar`），注册到 Nacos（服务名 `cloudoffice-common`），提供健康检查端点 `/api/v1/common/health` 与 SpringDoc OpenAPI 文档（分组 common）；新增**通用配置管理查询接口**（F-003~F-005）——`GET /api/v1/common/config`、`GET /api/v1/common/config/{serviceName}` 统一管理 gateway/auth/biz/system/common 五个微服务运行时配置（启动环境变量除外），敏感配置脱敏、缓存优先查询、接口经网关 AuthFilter 认证，本版本仅交付查询接口、增删改与后端管理界面在后续版本迭代；网关新增 `/api/v1/common/**` 路由规则并将 common 健康检查加入白名单（F-006）；编译脚本 `build-backend` 将 common 纳入产物输出（F-007）；`deploy-start-all` 启动顺序更新为 **common → gateway → auth → biz → system**（common 最先启动且健康确认后再启动 gateway，F-008），`deploy-stop-all` 停止顺序更新为 **system → biz → auth → gateway → common**（common 最后停止，F-009），新增单服务启停脚本 `deploy-start-common` / `deploy-stop-common`；`deploy/deploy.md` 与根目录 `readme.md` 同步更新（F-010/F-011）；`env.json`/`env.example.json` 新增 `COMMON_PORT`（F-012）。
 
 ## 一、Agent 角色一览
 
@@ -73,9 +73,9 @@
 | 项目主文档 | `docs/project.md`（基本信息、编码规范、项目地图） | SA |
 | 系统架构设计 | `docs/sad.md` | SA |
 | 主文档（URS/PRD/API/DBD/LLD/Testcase） | `docs/cso-urs.md`、`docs/cso-prd.md`、`docs/cso-api.md`、`docs/cso-dbd.md`、`docs/cso-dbd.sql`、`docs/cso-lld.md`、`docs/cso-testcase.md` | 各角色编写，DW 合并 |
-| 版本目录 | `docs/cso-v{版本号}/`（URS/PRD/DBD/API/LLD/Task/Testcase/Review/回归报告/进度等），最新 `docs/cso-v0.2.7/` | 各角色 |
+| 版本目录 | `docs/cso-v{版本号}/`（URS/PRD/DBD/API/LLD/Task/Testcase/Review/回归报告/进度等），最新 `docs/cso-v0.2.8/` | 各角色 |
 | 项目根 README | `readme.md`（项目介绍、快速开始、目录结构、命令说明） | DW |
 | Agent 说明 | `agent.md`（本文件） | DW |
-| 编译部署文档 | `deploy/build.md`、`deploy/deploy.md`（配套 `deploy/scripts/` 12 组部署运维脚本，v0.2.7 重构：load-env / deploy-check-env / deploy-start-services / deploy-start-all / deploy-start-{gateway,auth,biz,system} / deploy-rsa-keygen / deploy-db-init / build-backend / build-client） | DW |
+| 编译部署文档 | `deploy/build.md`、`deploy/deploy.md`（配套 `deploy/scripts/` 部署运维脚本，v0.2.7 重构：load-env / deploy-check-env / deploy-start-services / deploy-start-all / deploy-stop-all / deploy-start-{common,gateway,auth,biz,system} / deploy-stop-common / deploy-rsa-keygen / deploy-db-init / build-backend / build-client；v0.2.8 扩展 common 服务，启动顺序 common 居首、停止顺序 common 居末） | DW |
 
 <!-- SPDX-License-Identifier: Apache-2.0 / Copyright 2026 jenemy8023 <jenemy8023@163.com> -->

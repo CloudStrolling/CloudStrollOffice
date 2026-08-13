@@ -30,6 +30,12 @@ spring:
           uri: lb://cloudoffice-system-service
           predicates:
             - Path=/api/v1/system/**
+        # common 服务化路由（v0.2.8 TASK-005）：/api/v1/common/** 转发到 cloudoffice-common
+        # 提供通用配置管理查询接口（API-035/036）与健康检查端点（/api/v1/common/health）
+        - id: common-service
+          uri: lb://cloudoffice-common
+          predicates:
+            - Path=/api/v1/common/**
       globalcors:
         cors-configurations:
           '[/**]':
@@ -58,6 +64,7 @@ auth:
     - /api/v1/auth/verification-code/send
     - /api/v1/auth/password/forgot/send-code
     - /api/v1/auth/password/forgot/reset
+    - /api/v1/common/health
     - /swagger-ui/**
     - /v3/api-docs/**
     - /favicon.ico

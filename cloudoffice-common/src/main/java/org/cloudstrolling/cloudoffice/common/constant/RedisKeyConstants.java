@@ -40,6 +40,9 @@ public class RedisKeyConstants {
     /** 验证码频率控制 Key 前缀：auth:verification:freq:{purpose}:{target} */
     public static final String VERIFICATION_CODE_FREQ = "auth:verification:freq:";
 
+    /** 通用配置本地缓存 Key 前缀：common:config:{serviceName} */
+    public static final String COMMON_CONFIG_CACHE_PREFIX = "common:config:";
+
     // ========== Key 构建方法 ==========
 
     /**
@@ -156,5 +159,22 @@ public class RedisKeyConstants {
             throw new IllegalArgumentException("target must not be null");
         }
         return VERIFICATION_CODE_FREQ + purpose + ":" + target;
+    }
+
+    /**
+     * 构建通用配置本地缓存 Key。
+     * <p>
+     * 格式：common:config:{serviceName}
+     * </p>
+     *
+     * @param serviceName 微服务名称，不能为 null
+     * @return 完整的 Redis Key 字符串
+     * @throws IllegalArgumentException 如果 serviceName 为 null
+     */
+    public static String buildConfigCacheKey(String serviceName) {
+        if (serviceName == null) {
+            throw new IllegalArgumentException("serviceName must not be null");
+        }
+        return COMMON_CONFIG_CACHE_PREFIX + serviceName;
     }
 }

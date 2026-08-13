@@ -4,6 +4,8 @@
 .DESCRIPTION
   构建 Flutter 客户端（Windows/Web）并仅将最终可交付产物复制到根目录 deploy。
   构建缓存 (build/) 与编译过程文件不进入 deploy（对应 PRD F-003/F-004，验收 AC-3/AC-4）。
+  本脚本基于脚本自身目录（$PSScriptRoot）推导所有路径，并将工作目录临时切换到
+  客户端工程根再执行 flutter 命令，故可在任意目录下调用。
 .EXAMPLE
   .\build-release.ps1                  # 构建 Windows + Web
   .\build-release.ps1 -Platform web    # 仅构建 Web
@@ -28,61 +30,71 @@ if (-not (Test-Path $DeployDir)) {
   exit 1
 }
 
-# ========== 依赖安装（构建前置步骤） ==========
-Write-Host "==> 执行 flutter pub get ..."
-flutter pub get
-if ($LASTEXITCODE -ne 0) {
-  Write-Host "[错误] flutter pub get 失败，已中止" -ForegroundColor Red
-  exit 1
-}
+# ========== 切换工作目录到客户端工程根（flutter 命令需在工程根执行） ==========
+Push-Location $ScriptDir
+try {
 
-# ========== Windows 平台构建 ==========
-if ($Platform -in @("all", "windows")) {
-  Write-Host "==> 执行 flutter build windows --release ..."
-  flutter build windows --release
+  # ========== 依赖安装（构建前置步骤） ==========
+  Write-Host "==> 执行 flutter pub get ..."
+  flutter pub get
   if ($LASTEXITCODE -ne 0) {
-    Write-Host "[错误] Windows 构建失败，已中止" -ForegroundColor Red
+    Write-Host "[错误] flutter pub get 失败，已中止" -ForegroundColor Red
     exit 1
   }
 
-  # Windows 最终产物目录（Flutter 3.16+ x64 架构化路径）
-  $ReleaseDir = Join-Path $ScriptDir "build\windows\x64\runner\Release"
-  if (-not (Test-Path $ReleaseDir)) {
-    Write-Host "[错误] 未找到 Windows 最终产物目录: $ReleaseDir" -ForegroundColor Red
-    exit 1
+  # ========== Windows 平台构建 ==========
+  if ($Platform -in @("all", "windows")) {
+    Write-Host "==> 执行 flutter build windows --release ..."
+    flutter build windows --release
+    if ($LASTEXITCODE -ne 0) {
+      Write-Host "[错误] Windows 构建失败，已中止" -ForegroundColor Red
+      exit 1
+    }
+
+    # Windows 最终产物目录（Flutter 3.16+ x64 架构化路径）
+    $ReleaseDir = Join-Path $ScriptDir "build\windows\x64\runner\Release"
+    if (-not (Test-Path $ReleaseDir)) {
+      Write-Host "[错误] 未找到 Windows 最终产物目录: $ReleaseDir" -ForegroundColor Red
+      exit 1
+    }
+
+    $WinTarget = Join-Path $ClientDeployDir "windows"
+    New-Item -ItemType Directory -Force -Path $WinTarget | Out-Null
+    # 仅复制最终产物文件（exe/dll/data），严禁整目录递归复制 build/（AC-4）
+    Copy-Item -Path (Join-Path $ReleaseDir "*") -Destination $WinTarget -Recurse -Force
+    Write-Host "[完成] Windows 产物已输出: $WinTarget" -ForegroundColor Green
   }
 
-  $WinTarget = Join-Path $ClientDeployDir "windows"
-  New-Item -ItemType Directory -Force -Path $WinTarget | Out-Null
-  # 仅复制最终产物文件（exe/dll/data），严禁整目录递归复制 build/（AC-4）
-  Copy-Item -Path (Join-Path $ReleaseDir "*") -Destination $WinTarget -Recurse -Force
-  Write-Host "[完成] Windows 产物已输出: $WinTarget" -ForegroundColor Green
+  # ========== Web 平台构建 ==========
+  if ($Platform -in @("all", "web")) {
+    Write-Host "==> 执行 flutter build web --release ..."
+    flutter build web --release
+    if ($LASTEXITCODE -ne 0) {
+      Write-Host "[错误] Web 构建失败，已中止" -ForegroundColor Red
+      exit 1
+    }
+
+    # Web 最终产物目录（整体即为最终可交付部署包）
+    $WebDir = Join-Path $ScriptDir "build\web"
+    if (-not (Test-Path $WebDir)) {
+      Write-Host "[错误] 未找到 Web 最终产物目录: $WebDir" -ForegroundColor Red
+      exit 1
+    }
+
+    $WebTarget = Join-Path $ClientDeployDir "web"
+    New-Item -ItemType Directory -Force -Path $WebTarget | Out-Null
+    # 仅复制最终 Web 部署包内容，build/web 之外的构建缓存不进入 deploy（AC-4）
+    Copy-Item -Path (Join-Path $WebDir "*") -Destination $WebTarget -Recurse -Force
+    Write-Host "[完成] Web 产物已输出: $WebTarget" -ForegroundColor Green
+  }
+
+  Write-Host ""
+  Write-Host "=============================================="
+  Write-Host "  客户端构建完成，全部最终产物已输出至 deploy"
+  Write-Host "=============================================="
+
 }
-
-# ========== Web 平台构建 ==========
-if ($Platform -in @("all", "web")) {
-  Write-Host "==> 执行 flutter build web --release ..."
-  flutter build web --release
-  if ($LASTEXITCODE -ne 0) {
-    Write-Host "[错误] Web 构建失败，已中止" -ForegroundColor Red
-    exit 1
-  }
-
-  # Web 最终产物目录（整体即为最终可交付部署包）
-  $WebDir = Join-Path $ScriptDir "build\web"
-  if (-not (Test-Path $WebDir)) {
-    Write-Host "[错误] 未找到 Web 最终产物目录: $WebDir" -ForegroundColor Red
-    exit 1
-  }
-
-  $WebTarget = Join-Path $ClientDeployDir "web"
-  New-Item -ItemType Directory -Force -Path $WebTarget | Out-Null
-  # 仅复制最终 Web 部署包内容，build/web 之外的构建缓存不进入 deploy（AC-4）
-  Copy-Item -Path (Join-Path $WebDir "*") -Destination $WebTarget -Recurse -Force
-  Write-Host "[完成] Web 产物已输出: $WebTarget" -ForegroundColor Green
+finally {
+  # 无论成功失败或 exit 均恢复调用者原工作目录（exit 会触发 finally，已验证）
+  Pop-Location
 }
-
-Write-Host ""
-Write-Host "=============================================="
-Write-Host "  客户端构建完成，全部最终产物已输出至 deploy"
-Write-Host "=============================================="

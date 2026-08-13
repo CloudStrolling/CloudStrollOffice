@@ -1,18 +1,72 @@
 {
-    "$schema":  "https://opencode.ai/config.json",
-    "mcp":  {
-                "browsermcp":  {
-                                   "type":  "local",
-                                   "command":  [
-                                                   "npx",
-                                                   "-y",
-                                                   "@browsermcp/mcp@0.1.3"
-                                               ],
-                                   "enabled":  true
-                               }
-            },
-    "plugin":  [
-                   "opencode-impm-cn",
-                   "opencode-browser"
-               ]
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "browsermcp": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "@browsermcp/mcp@0.1.3"
+      ],
+      "enabled": true
+    }
+  },
+  "plugin": [
+    "opencode-impm-cn",
+    "opencode-browser"
+  ],
+  "agent": {
+    "pm": {
+      "reasoning_effort": "low",
+      "model": "opencode-go/deepseek-v4-flash"
+    },
+    "te": {
+      "reasoning_effort": "high",
+      "model": "opencode-go/deepseek-v4-flash"
+    },
+    "sse": {
+      "reasoning_effort": "max",
+      "model": "opencode-go/deepseek-v4-pro"
+    },
+    "scm": {
+      "reasoning_effort": "low",
+      "model": "opencode-go/deepseek-v4-flash"
+    },
+    "tl": {
+      "reasoning_effort": "high",
+      "model": "opencode-go/deepseek-v4-pro"
+    },
+    "fee": {
+      "reasoning_effort": "high",
+      "model": "opencode-go/deepseek-v4-flash"
+    },
+    "bee": {
+      "reasoning_effort": "high",
+      "model": "opencode-go/deepseek-v4-pro"
+    },
+    "cs": {
+      "reasoning_effort": "low",
+      "model": "opencode-go/deepseek-v4-flash"
+    },
+    "sa": {
+      "reasoning_effort": "max",
+      "model": "opencode-go/glm-5.2"
+    },
+    "dba": {
+      "reasoning_effort": "high",
+      "model": "opencode-go/glm-5.2"
+    },
+    "ws": {
+      "reasoning_effort": "low",
+      "model": "opencode-go/deepseek-v4-flash"
+    },
+    "dw": {
+      "reasoning_effort": "high",
+      "model": "opencode-go/deepseek-v4-flash"
+    },
+    "ba": {
+      "reasoning_effort": "high",
+      "model": "opencode-go/glm-5.2"
+    }
+  }
 }

@@ -1,0 +1,24 @@
+# cloudoffice-common 服务引导配置（bootstrap.yml）
+# 说明：common 服务化改造（v0.2.8 TASK-002）后作为独立微服务启动，
+#       启动早期阶段加载 Nacos 注册中心与配置中心引导配置。
+#       服务名固定为 cloudoffice-common，地址/命名空间/分组均由环境变量注入（可缺省）。
+spring:
+  application:
+    name: cloudoffice-common
+  cloud:
+    nacos:
+      discovery:
+        # 服务注册中心地址（env.json 的 NACOS_ADDR，缺省 127.0.0.1:8848）
+        server-addr: ${NACOS_ADDR:127.0.0.1:8848}
+        # 注册命名空间（缺省 cso-dev 开发环境）
+        namespace: ${NACOS_NAMESPACE:cso-dev}
+        # 注意：不设置 discovery.group，保持默认 DEFAULT_GROUP。
+        # Spring Cloud Alibaba 的 NacosServiceDiscovery 以「消费方自身 group」查询实例，
+        # 若各服务 group 不一致会导致网关 lb:// 路由跨服务发现失效（v0.2.8 A-01 修复）。
+      config:
+        # 配置中心地址（同注册中心，缺省 127.0.0.1:8848）
+        server-addr: ${NACOS_ADDR:127.0.0.1:8848}
+        # 配置命名空间（缺省 cso-dev 开发环境）
+        namespace: ${NACOS_NAMESPACE:cso-dev}
+        # 配置文件名扩展名（yaml 格式，Nacos 拉取同名配置）
+        file-extension: yaml

@@ -20,6 +20,13 @@ add_executable(${BINARY_NAME} WIN32
 # that need different build settings.
 apply_standard_settings(${BINARY_NAME})
 
+# Treat all source files as UTF-8 regardless of BOM (MSVC default is the system
+# ANSI code page, e.g. GBK on Chinese Windows, which garbles UTF-8 source such as
+# the window title L"云漫智企"). Without this the title bar renders as mojibake.
+if(MSVC)
+  target_compile_options(${BINARY_NAME} PRIVATE "/utf-8")
+endif()
+
 # Add preprocessor definitions for the build version.
 target_compile_definitions(${BINARY_NAME} PRIVATE "FLUTTER_VERSION=\"${FLUTTER_VERSION}\"")
 target_compile_definitions(${BINARY_NAME} PRIVATE "FLUTTER_VERSION_MAJOR=${FLUTTER_VERSION_MAJOR}")

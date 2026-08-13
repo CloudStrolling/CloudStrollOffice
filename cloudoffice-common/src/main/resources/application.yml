@@ -1,0 +1,64 @@
+server:
+  port: ${COMMON_PORT:9300}
+
+spring:
+  application:
+    name: cloudoffice-common
+  # 通用配置管理（TASK-004）：接入 t_common_config 数据源与 Redis 本地缓存，
+  # 启用 DataSource/MyBatis-Plus 自动配置（common 服务独立启动时连接
+  # cloudstroll_office_common 库；该配置仅作用于 common 自身，不影响下游服务）
+  datasource:
+    url: jdbc:mariadb://${DB_HOST:127.0.0.1}:${DB_PORT:3306}/${DB_COMMON_NAME:cloudstroll_office_common}?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:root}
+    driver-class-name: org.mariadb.jdbc.Driver
+    hikari:
+      minimum-idle: 2
+      maximum-pool-size: 10
+      idle-timeout: 300000
+      max-lifetime: 1200000
+      connection-timeout: 30000
+  redis:
+    host: ${REDIS_HOST:127.0.0.1}
+    port: ${REDIS_PORT:6379}
+    password: ${REDIS_PASSWORD:}
+    database: ${REDIS_DATABASE:0}
+    timeout: 5000ms
+    lettuce:
+      pool:
+        max-active: 8
+        max-idle: 4
+        min-idle: 2
+        max-wait: -1ms
+
+springdoc:
+  api-docs:
+    enabled: true
+    path: /v3/api-docs
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+  group-configs:
+    - group: common
+      paths-to-match: /api/v1/common/**
+
+mybatis-plus:
+  type-aliases-package: org.cloudstrolling.cloudoffice.common.entity
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    db-config:
+      id-type: ASSIGN_ID
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+# 通用配置管理参数（与 DBD 种子数据 common/config/cache-ttl-seconds、sensitive-mask 一致）
+common:
+  config:
+    cache-ttl-seconds: 300
+    sensitive-mask: "****"
+
+logging:
+  level:
+    org.cloudstrolling: DEBUG

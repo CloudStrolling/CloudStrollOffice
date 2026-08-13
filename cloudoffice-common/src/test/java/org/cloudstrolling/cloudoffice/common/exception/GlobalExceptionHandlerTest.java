@@ -107,7 +107,7 @@ class GlobalExceptionHandlerTest {
 
         ResponseEntity<ApiResult<Void>> response = handler.handleBusinessException(ex);
 
-        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
         assertNotNull(response.getBody());
         assertEquals(409, response.getBody().getCode());
         assertEquals("资源冲突", response.getBody().getMessage());

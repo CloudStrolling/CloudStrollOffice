@@ -1,8 +1,8 @@
 # 系统架构设计文档（SAD）
 
 **项目名称**：云漫智企（CloudStrollOffice）
-**版本号**：0.2.7
-**日期**：2026-08-10
+**版本号**：0.2.8
+**日期**：2026-08-13
 **编写人**：SA
 
 ## 1. 设计目标与约束
@@ -14,15 +14,17 @@
 - **G-A4 多租户数据隔离**：基于 RBAC（用户-角色-权限）模型实现多租户数据空间隔离，租户内用户名唯一、租户间数据不可见。
 - **G-A5 多端一致体验**：Flutter 客户端（Web + Windows 双平台）与后端共用同一套 API 契约（ApiResult 统一响应体、29 个统一错误码），Token 安全存储、网关地址可配置。
 - **G-A6 部署资产集中化**：以根目录 `deploy` 为全部最终构建产物（后端微服务 jar 包、客户端安装文件/exe）与部署资产（env.json/env.example.json、deploy/scripts 下 .sh/.ps1 部署运维脚本）的唯一落点，实现"产物集中、纯净交付、迁移无损"；构建中间产物（target 目录、编译临时文件、测试产物）一律不进入 deploy。
-- **G-A7 部署运维自动化**：以 `deploy/env.json` 为唯一配置源，重构 `deploy/scripts` 全部脚本（.ps1/.sh 双平台），形成"环境可用性检查（deploy-check-env）→ 基础设施运行状态检查与一键启动（deploy-start-services）→ 后端服务按序一键启动（deploy-start-all，gateway→auth→biz→system）→ 单服务启动（deploy-start-{svc}）"的脚本能力矩阵，统一经 load-env 加载配置、输出分级（通过/警告/失败）与退出码约定，实现"一条命令完成整个后端环境拉起"；同时治理 `.gitignore`，排除生成、测试、调试过程中的临时/中间文件，保持仓库整洁可审计（v0.2.7）。
+- **G-A7 部署运维自动化**：以 `deploy/env.json` 为唯一配置源，重构 `deploy/scripts` 全部脚本（.ps1/.sh 双平台），形成"环境可用性检查（deploy-check-env）→ 基础设施运行状态检查与一键启动（deploy-start-services）→ 后端服务按序一键启动（deploy-start-all，common→gateway→auth→biz→system）→ 单服务启动（deploy-start-{svc}）"的脚本能力矩阵，统一经 load-env 加载配置、输出分级（通过/警告/失败）与退出码约定，实现"一条命令完成整个后端环境拉起"；同时治理 `.gitignore`，排除生成、测试、调试过程中的临时/中间文件，保持仓库整洁可审计（v0.2.7）。
+- **G-A8 common 服务化与通用配置管理（v0.2.8）**：将 cloudoffice-common 从纯公共 jar 模块升级为可独立部署的 Spring Boot 微服务（端口 9300），具备 Nacos 服务注册、健康检查端点（/api/v1/common/health）、统一 ApiResult 响应、SpringDoc OpenAPI 文档等与其他微服务同等的能力；同时在 common 中新增通用配置管理查询接口，统一管理 gateway/auth/biz/system/common 五个微服务在不同业务场景下的所有运行时配置（启动环境变量除外），本版本仅交付查询接口，增删改接口与后端管理界面在后续版本迭代；同步更新编译脚本（build-backend 纳入 common 产物）、部署启动脚本（deploy-start-all 中 common 位于服务清单第一位）、部署停止脚本（deploy-stop-all 中 common 最后停止）、部署文档（deploy.md）与 readme.md。
 
 ### 1.2 设计约束
-- **技术约束**：后端统一 Java 21 + Spring Boot 3.2.5 + Spring Cloud 2023.0.1 + Spring Cloud Alibaba 2023.0.1.0；客户端统一 Flutter（Dart 3，SDK ^3.12.2）；ORM 统一 MyBatis-Plus 3.5.6；禁止引入与现有技术栈重复的第三方框架。gateway/auth/biz/system 四个服务模块必须引入 `spring-cloud-starter-bootstrap`（Spring Cloud 2023.0.1 配置引导依赖），保证 bootstrap.yml（含 Nacos discovery/config server-addr）在 Spring Boot 3.x 下正常加载，Nacos 配置/注册引导链路不得断裂（v0.2.6 修复 v0.0.1 基线遗留缺陷）。
-- **架构约束**：模块间依赖单向（下游依赖 common），服务间禁止循环依赖；所有服务注册到 Nacos，网关统一路由 `/api/v1/{module}/**`。
-- **安全约束**：密码一律 BCrypt 加密存储，日志禁止输出密码与 Token；JWT 私钥仅存在于 auth-service（签名），公钥存在于 gateway 与 auth-service（验签）；密钥通过环境变量注入，禁止硬编码。RSA 密钥格式统一为 **DER 编码单行 Base64**（无 PEM 头尾标记、无换行）：deploy-rsa-keygen.ps1 生成/env.json 注入的 `RSA_PUBLIC_KEY`、`RSA_PRIVATE_KEY` 必须与 Java 端 `Base64.getDecoder()` + `X509EncodedKeySpec`/`PKCS8EncodedKeySpec` 解码契约严格一致，严禁将多行 PEM 整体 Base64（含 BEGIN/END 标记与 \r\n）直接注入 env.json（v0.2.6 修复 v0.0.1 基线遗留缺陷）。
+- **技术约束**：后端统一 Java 21 + Spring Boot 3.2.5 + Spring Cloud 2023.0.1 + Spring Cloud Alibaba 2023.0.1.0；客户端统一 Flutter（Dart 3，SDK ^3.12.2）；ORM 统一 MyBatis-Plus 3.5.6；禁止引入与现有技术栈重复的第三方框架。gateway/auth/biz/system/common 五个服务模块必须引入 `spring-cloud-starter-bootstrap`（Spring Cloud 2023.0.1 配置引导依赖），保证 bootstrap.yml（含 Nacos discovery/config server-addr）在 Spring Boot 3.x 下正常加载，Nacos 配置/注册引导链路不得断裂（v0.2.6 修复 v0.0.1 基线遗留缺陷；v0.2.8 common 服务化后同样需引入该依赖）。
+- **架构约束**：模块间依赖单向（下游依赖 common），服务间禁止循环依赖；所有服务注册到 Nacos，网关统一路由 `/api/v1/{module}/**`。common 服务化后既作为公共 jar 被 gateway/auth/biz/system 依赖，又作为独立微服务注册到 Nacos 并提供 API 服务（/api/v1/common/**），不得破坏现有模块依赖关系——下游服务仍可依赖 common 的公共类与接口，common 作为 jar 被引用时不会因新增启动类而影响依赖方编译与运行（v0.2.8）。
+- **安全约束**：密码一律 BCrypt 加密存储，日志禁止输出密码与 Token；JWT 私钥仅存在于 auth-service（签名），公钥存在于 gateway 与 auth-service（验签）；密钥通过环境变量注入，禁止硬编码。RSA 密钥格式统一为 **DER 编码单行 Base64**（无 PEM 头尾标记、无换行）：deploy-rsa-keygen.ps1 生成/env.json 注入的 `RSA_PUBLIC_KEY`、`RSA_PRIVATE_KEY` 必须与 Java 端 `Base64.getDecoder()` + `X509EncodedKeySpec`/`PKCS8EncodedKeySpec` 解码契约严格一致，严禁将多行 PEM 整体 Base64（含 BEGIN/END 标记与 \r\n）直接注入 env.json（v0.2.6 修复 v0.0.1 基线遗留缺陷）。通用配置管理查询接口需经网关 AuthFilter 认证（非白名单端点），配置中敏感信息（如密码、密钥）不在查询接口返回明文（v0.2.8）。
 - **资源约束**：基础中间件（MariaDB 10.6 / Redis 7.2 / Nacos 2.3）通过 Docker Compose 一键编排（8 个容器）；开发环境验证码采用模拟模式，生产切换真实通道。
-- **部署资产约束**：最终构建产物（后端各服务 jar 包、客户端安装文件/exe）统一输出至根目录 `deploy` 目录；环境配置 `env.json`/`env.example.json` 与部署运维脚本（`deploy/scripts` 下的 .sh/.ps1）集中存放于 deploy 下；构建中间产物（target 目录、编译临时文件、测试产物）禁止进入 deploy；迁移后脚本内环境配置/密钥/产物路径引用必须同步适配，保证部署功能不因路径变化失效。
-- **脚本体系约束（v0.2.7 起）**：全部部署脚本统一通过 `load-env.ps1`/`load-env.sh` 从 `deploy/env.json` 加载配置，脚本内不得硬编码环境地址与凭据；脚本能力按"可用性检查（deploy-check-env）→ 基础设施一键启动（deploy-start-services）→ 后端服务按序一键启动（deploy-start-all）→ 单服务启动（deploy-start-gateway/auth/biz/system）"划分，.ps1 与 .sh 双平台行为一致；输出统一分级（通过/警告/失败）、退出码约定（失败非零）；RSA 密钥格式契约（ADR-015，DER 编码单行 Base64）在脚本重构中不得破坏。
+- **部署资产约束**：最终构建产物（后端各服务 jar 包含 common、客户端安装文件/exe）统一输出至根目录 `deploy` 目录；环境配置 `env.json`/`env.example.json` 与部署运维脚本（`deploy/scripts` 下的 .sh/.ps1）集中存放于 deploy 下；构建中间产物（target 目录、编译临时文件、测试产物）禁止进入 deploy；迁移后脚本内环境配置/密钥/产物路径引用必须同步适配，保证部署功能不因路径变化失效。
+- **脚本体系约束（v0.2.7 起，v0.2.8 扩展）**：全部部署脚本统一通过 `load-env.ps1`/`load-env.sh` 从 `deploy/env.json` 加载配置，脚本内不得硬编码环境地址与凭据；脚本能力按"可用性检查（deploy-check-env）→ 基础设施一键启动（deploy-start-services）→ 后端服务按序一键启动（deploy-start-all）→ 单服务启动（deploy-start-{svc}）"划分，.ps1 与 .sh 双平台行为一致；输出统一分级（通过/警告/失败）、退出码约定（失败非零）；RSA 密钥格式契约（ADR-015，DER 编码单行 Base64）在脚本重构中不得破坏。v0.2.8 扩展：deploy-start-all 服务清单新增 common 并置于第一位（common→gateway→auth→biz→system），deploy-stop-all 服务清单新增 common 并置于最后一位（system→biz→auth→gateway→common），build-backend 编译产物新增 common jar 包输出。
+- **配置范围约束（v0.2.8）**：通用配置管理仅管理运行时配置（业务参数、功能开关、限流参数、业务规则参数等），启动环境变量（NACOS_ADDR、DB_HOST、DB_PORT、DB_USERNAME、DB_PASSWORD、REDIS_HOST、REDIS_PORT、REDIS_PASSWORD、REDIS_DATABASE、RSA_PUBLIC_KEY、RSA_PRIVATE_KEY、NACOS_HOME 等）不纳入通用配置管理范围，仍由 env.json 环境变量注入。
 - **合规约束**：接口统一 ApiResult 响应结构，错误码统一 29 个，全局异常处理不泄露堆栈信息；登录失败不泄露具体原因，避免账号枚举。
 
 ## 2. 技术栈选型及理由
@@ -33,46 +35,48 @@
 | 后端框架 | Spring Boot 3.2.5 | 快速构建微服务应用，生态成熟，内置 WebFlux/WebMVC 支持 |
 | 微服务框架 | Spring Cloud 2023.0.1 | 提供网关、负载均衡、服务发现等微服务全套能力 |
 | 微服务组件 | Spring Cloud Alibaba 2023.0.1.0（Nacos 2.3） | Nacos 承担注册中心与配置中心，服务发现/配置管理一体化，运维简单 |
-| 配置引导 | spring-cloud-starter-bootstrap（Spring Cloud 2023.0.1） | Spring Boot 3.x 下 bootstrap.yml 默认不加载，需显式引入该依赖恢复 Nacos 配置/注册引导链路，消除 `No spring.config.import property has been defined` 启动报错（v0.2.6 修复 v0.0.1 基线遗留缺陷） |
+| 配置引导 | spring-cloud-starter-bootstrap（Spring Cloud 2023.0.1） | Spring Boot 3.x 下 bootstrap.yml 默认不加载，需显式引入该依赖恢复 Nacos 配置/注册引导链路，消除 `No spring.config.import property has been defined` 启动报错（v0.2.6 修复 v0.0.1 基线遗留缺陷；v0.2.8 common 服务化后同样引入） |
 | API 网关 | Spring Cloud Gateway（Reactive） | 响应式高性能网关；AuthFilter 全局过滤器实现 9 步统一认证；支持 CORS 与负载均衡路由 |
 | ORM | MyBatis-Plus 3.5.6 | 无侵入增强 MyBatis，内置分页插件与逻辑删除，CRUD 开发效率高 |
 | 数据库 | MariaDB 10.6 | 兼容 MySQL 生态，开源免费，稳定性与性能满足企业办公场景 |
-| 缓存/会话 | Redis 7.2 | 登录态会话、Token 黑名单、状态缓存、验证码临时存储；网关用 ReactiveRedisTemplate 实现响应式校验 |
+| 缓存/会话 | Redis 7.2 | 登录态会话、Token 黑名单、状态缓存、验证码临时存储；网关用 ReactiveRedisTemplate 实现响应式校验；通用配置管理本地缓存（v0.2.8） |
 | JWT | JJWT 0.12.6 | JWT 标准实现库，支持 RS256 非对称签名算法（RSA 2048） |
 | 密码加密 | Spring Security BCryptPasswordEncoder | BCrypt 加盐哈希，抗彩虹表攻击，业界标准 |
-| API 文档 | SpringDoc OpenAPI 3（2.5.0） | 自动生成 Swagger UI 在线文档，按模块分组，支持在线调试 |
+| API 文档 | SpringDoc OpenAPI 3（2.5.0） | 自动生成 Swagger UI 在线文档，按模块分组（含 common 分组），支持在线调试 |
 | 工具库 | Hutool 5.8.26 / Lombok 1.18.32 | Hutool 提供常用工具方法，Lombok 简化样板代码 |
 | 客户端框架 | Flutter（Dart 3，SDK ^3.12.2） | 一套代码多端运行（Web + Windows + 移动端），UI 一致性好 |
 | 客户端网络 | dio + provider + go_router + flutter_secure_storage | dio 封装 HTTP（ApiClient/ApiInterceptor 自动刷新 Token）、provider 状态管理、go_router 路由守卫、安全存储 Token |
 | 部署编排 | Docker Compose | 一键编排 8 个容器（Nacos/MariaDB/Redis/gateway/auth/biz/system），开发与演示环境快速部署 |
-| 构建产物管理 | Maven 构建插件（如 maven-antrun-plugin/copy 插件）+ Flutter 构建脚本 | 将各模块最终产物（后端 jar 包、客户端安装文件/exe）集中输出到根目录 `deploy`，仅复制最终产物、隔离中间产物，交付人员单目录获取全部可交付资产 |
+| 构建产物管理 | Maven 构建插件（如 maven-antrun-plugin/copy 插件）+ Flutter 构建脚本 | 将各模块最终产物（后端 jar 包含 common、客户端安装文件/exe）集中输出到根目录 `deploy`，仅复制最终产物、隔离中间产物，交付人员单目录获取全部可交付资产 |
 | 代码规范 | Checkstyle（checkstyle.xml） | 统一代码风格与质量门禁 |
 
 ## 3. 系统上下文图
 
 ```mermaid
 C4Context
-    title 系统上下文图（v0.0.1 云漫智企）
+    title 系统上下文图（v0.2.8 云漫智企）
     Person(user, "终端用户（员工）", "注册、多模式登录、密码找回、修改密码、更换手机号")
     Person(admin, "系统管理员", "用户/角色/权限管理、封禁解封、强制踢人")
     Person(tenantAdmin, "租户管理员", "本租户数据空间内的用户与权限管理")
-    Person(ops, "运维人员", "健康检查、日志审计、API 在线调试")
+    Person(ops, "运维人员", "健康检查、日志审计、API 在线调试、通用配置查询")
+    Person(dev, "后端开发者", "通过通用配置管理接口获取运行时配置项")
     Person(thirdParty, "第三方系统/OAuth 用户", "通过 OAuth 授权（微信等）接入系统")
 
-    System(cso, "云漫智企（CloudStrollOffice）", "微服务企业办公套件：统一认证授权底座 + 企业业务骨架")
+    System(cso, "云漫智企（CloudStrollOffice）", "微服务企业办公套件：统一认证授权底座 + 通用配置管理 + 企业业务骨架")
 
-    System_Ext(mariadb, "MariaDB 10.6", "业务关系型数据库（认证库 9 张表，biz/system 库预留）")
-    System_Ext(redis, "Redis 7.2", "会话/黑名单/状态缓存、验证码缓存")
+    System_Ext(mariadb, "MariaDB 10.6", "业务关系型数据库（认证库 9 张表，通用配置库，biz/system 库预留）")
+    System_Ext(redis, "Redis 7.2", "会话/黑名单/状态缓存、验证码缓存、通用配置本地缓存")
     System_Ext(nacos, "Nacos 2.3", "服务注册中心与配置中心")
     System_Ext(sms, "短信/邮件通道", "验证码发送通道（开发环境为模拟模式）")
 
     Rel(user, cso, "登录/注册/认证操作（HTTPS/HTTP）")
     Rel(admin, cso, "用户/角色/权限管理 API")
     Rel(tenantAdmin, cso, "租户内数据管理 API")
-    Rel(ops, cso, "健康检查/审计/调试")
+    Rel(ops, cso, "健康检查/审计/调试/配置查询")
+    Rel(dev, cso, "通用配置查询 API")
     Rel(thirdParty, cso, "OAuth 授权接入")
     Rel(cso, mariadb, "读写业务数据")
-    Rel(cso, redis, "会话/黑名单/状态/验证码读写")
+    Rel(cso, redis, "会话/黑名单/状态/验证码/配置缓存读写")
     Rel(cso, nacos, "注册与配置")
     Rel(cso, sms, "发送验证码")
 ```
@@ -81,50 +85,72 @@ C4Context
 
 ```mermaid
 C4Container
-    title 容器图（v0.0.1 云漫智企微服务架构）
+    title 容器图（v0.2.8 云漫智企微服务架构）
 
     Person(user, "终端用户", "Flutter Web / Windows 客户端")
 
     Container(fe, "cloudoffice-flutter-app", "Flutter（Dart 3）", "登录/注册/忘记密码页面、ApiClient+ApiInterceptor、Token 安全存储")
 
-    Container(gw, "cloudoffice-gateway", "Spring Cloud Gateway :9000", "路由分发 /api/v1/{module}/**；AuthFilter 全局认证过滤器（9 步校验、Header 透传、白名单放行）")
-    Container(common, "cloudoffice-common", "Java 21 公共模块（jar）", "ApiResult/PageResult、统一异常体系（29 错误码）、枚举常量、Redis Key 常量、SpringDoc 配置")
+    Container(gw, "cloudoffice-gateway", "Spring Cloud Gateway :9000", "路由分发 /api/v1/{module}/**（含 /api/v1/common/**）；AuthFilter 全局认证过滤器（9 步校验、Header 透传、白名单放行）")
+    Container(common, "cloudoffice-common", "Spring Boot :9300（v0.2.8 服务化）", "公共模块（jar）：ApiResult/PageResult、统一异常体系（29 错误码）、枚举常量、Redis Key 常量、SpringDoc 配置；API 服务：健康检查 /api/v1/common/health、通用配置管理查询 /api/v1/common/config、SpringDoc OpenAPI 文档（分组 common）")
 
     Container(auth, "cloudoffice-auth-service", "Spring Boot :9100", "认证授权服务：登录/注册（策略工厂）、双 Token 签发与轮换、会话管理、密码/手机号/验证码管理、RBAC 用户角色权限管理、登录日志")
     Container(biz, "cloudoffice-biz-service", "Spring Boot :9200", "企业服务骨架：健康检查，为后续企业信息/人事/工作流/薪酬预留")
     Container(system, "cloudoffice-system-service", "Spring Boot :9400", "系统服务骨架：健康检查，为后续系统配置/审计预留")
 
-    ContainerDb(mdb, "MariaDB 10.6", "数据库", "cloudstroll_office_auth（9 张表）；cloudstroll_office_biz/system 建库预留")
-    ContainerDb(rdb, "Redis 7.2", "缓存", "登录态会话、Token 黑名单、账号/租户状态缓存、验证码缓存")
-    ContainerDb(ncdb, "Nacos 2.3", "注册/配置中心", "服务注册发现与配置管理")
+    ContainerDb(mdb, "MariaDB 10.6", "数据库", "cloudstroll_office_auth（9 张表）；通用配置表（v0.2.8）；cloudstroll_office_biz/system 建库预留")
+    ContainerDb(rdb, "Redis 7.2", "缓存", "登录态会话、Token 黑名单、账号/租户状态缓存、验证码缓存、通用配置本地缓存（v0.2.8）")
+    ContainerDb(ncdb, "Nacos 2.3", "注册/配置中心", "服务注册发现与配置管理（含 common 服务注册）")
 
     Rel(user, fe, "使用（Web/Windows）")
     Rel(fe, gw, "HTTP :9000 /api/v1/**")
+    Rel(gw, common, "lb://cloudoffice-common /api/v1/common/**（v0.2.8）")
     Rel(gw, auth, "lb://cloudoffice-auth-service /api/v1/auth/**")
     Rel(gw, biz, "lb://cloudoffice-biz-service /api/v1/biz/**")
     Rel(gw, system, "lb://cloudoffice-system-service /api/v1/system/**")
+    Rel(common, mdb, "JDBC 读写通用配置数据（v0.2.8）")
+    Rel(common, rdb, "通用配置本地缓存（v0.2.8）")
     Rel(auth, mdb, "JDBC 读写认证数据")
     Rel(auth, rdb, "会话/黑名单/状态/验证码")
     Rel(gw, rdb, "响应式校验黑名单/会话/状态")
+    Rel(common, ncdb, "注册与配置（v0.2.8）")
     Rel(auth, ncdb, "注册与配置")
     Rel(biz, ncdb, "注册与配置")
     Rel(system, ncdb, "注册与配置")
     Rel(gw, ncdb, "注册与配置")
-    Rel_Back(auth, common, "依赖")
-    Rel_Back(gw, common, "依赖")
-    Rel_Back(biz, common, "依赖")
-    Rel_Back(system, common, "依赖")
+    Rel_Back(auth, common, "依赖（jar）")
+    Rel_Back(gw, common, "依赖（jar）")
+    Rel_Back(biz, common, "依赖（jar）")
+    Rel_Back(system, common, "依赖（jar）")
 ```
+
+容器图说明（v0.2.8 变更）：
+- cloudoffice-common 从纯公共 jar 模块升级为可独立部署的 Spring Boot 微服务（端口 9300），同时保留公共 jar 模块能力（ApiResult/PageResult、统一异常体系、枚举常量等），下游服务（gateway/auth/biz/system）仍以 Maven 依赖方式引用 common 的公共类与接口。
+- common 服务自身注册到 Nacos（服务名 `cloudoffice-common`），网关新增 `/api/v1/common/**` 路由规则转发至 common 服务。
+- common 服务提供健康检查端点（/api/v1/common/health，白名单放行）与通用配置管理查询接口（/api/v1/common/config，需认证）。
+- common 服务可读写通用配置数据（MariaDB 通用配置表）与本地缓存（Redis）。
 
 ## 5. 组件图
 
 ```mermaid
 C4Component
-    title 组件图（认证服务内部组件划分）
+    title 组件图（认证服务与 common 服务内部组件划分）
 
     Container_Boundary(gw_b, "cloudoffice-gateway") {
         Component(gw_filter, "AuthFilter", "GlobalFilter", "9 步认证：白名单→Bearer 格式→RS256 验签→tokenType→黑名单→登录态→账号状态→租户状态→Header 透传")
-        Component(gw_cfg, "AuthProperties / RsaKeyConfig / RedisConfig", "配置", "白名单、RSA 公钥、ReactiveRedisTemplate")
+        Component(gw_cfg, "AuthProperties / RsaKeyConfig / RedisConfig", "配置", "白名单（含 /api/v1/common/health）、RSA 公钥、ReactiveRedisTemplate")
+        Component(gw_route, "路由配置", "RouteLocator", "/api/v1/auth/**、/api/v1/biz/**、/api/v1/system/**、/api/v1/common/**（v0.2.8 新增）")
+    }
+
+    Container_Boundary(common_b, "cloudoffice-common（v0.2.8 服务化）") {
+        Component(cm_boot, "CommonApplication", "Spring Boot 启动类", "@SpringBootApplication，main 方法，Nacos 服务注册")
+        Component(cm_health, "HealthController", "REST Controller", "GET /api/v1/common/health 健康检查端点（白名单放行）")
+        Component(cm_config_ctrl, "ConfigController", "REST Controller", "GET /api/v1/common/config、GET /api/v1/common/config/{serviceName} 通用配置查询接口")
+        Component(cm_config_svc, "ConfigService", "配置管理服务", "按 serviceName/group/key 查询配置、敏感配置脱敏、本地缓存管理")
+        Component(cm_config_mapper, "ConfigMapper", "MyBatis-Plus Mapper", "通用配置表数据访问（如配置存储方案为数据库）")
+        Component(cm_config_cache, "ConfigCacheManager", "缓存管理", "Redis 本地缓存、缓存命中优先、缓存失效策略")
+        Component(cm_common, "公共模块（jar）", "ApiResult/PageResult/异常体系/枚举常量", "被 gateway/auth/biz/system 依赖的公共类与接口")
+        Component(cm_doc, "SpringDoc Config", "OpenAPI 配置", "文档分组 common，Swagger UI 在线调试")
     }
 
     Container_Boundary(auth_b, "cloudoffice-auth-service") {
@@ -141,6 +167,12 @@ C4Component
 
     Rel(gw_filter, c4, "公钥验签")
     Rel(gw_filter, c5, "黑名单/登录态/状态查询（Redis）")
+    Rel(gw_route, cm_health, "路由 /api/v1/common/health")
+    Rel(gw_route, cm_config_ctrl, "路由 /api/v1/common/config")
+    Rel(cm_config_ctrl, cm_config_svc, "调用配置查询服务")
+    Rel(cm_config_svc, cm_config_cache, "查询本地缓存")
+    Rel(cm_config_cache, rdb_ext, "Redis 缓存读写")
+    Rel(cm_config_svc, cm_config_mapper, "缓存未命中查询数据库")
     Rel(c1, c2, "调用编排")
     Rel(c2, c3, "策略分发")
     Rel(c2, c4, "签发/轮换 Token")
@@ -150,6 +182,11 @@ C4Component
     Rel(c7, c8, "数据访问")
 ```
 
+组件图说明（v0.2.8 新增）：
+- 新增 cloudoffice-common 服务内部组件：CommonApplication（启动类）、HealthController（健康检查）、ConfigController（配置查询接口）、ConfigService（配置管理服务，含敏感配置脱敏逻辑）、ConfigMapper（数据访问）、ConfigCacheManager（Redis 本地缓存管理）、公共模块（jar，被下游服务依赖）、SpringDoc Config（OpenAPI 文档分组 common）。
+- 网关路由配置新增 /api/v1/common/** 路由规则，将 common 健康检查与配置查询请求转发至 common 服务。
+- 网关白名单新增 /api/v1/common/health（健康检查端点，无 Token 访问）；/api/v1/common/config 不在白名单中，需经 AuthFilter 认证。
+
 ## 6. 部署架构图
 
 ```mermaid
@@ -158,10 +195,11 @@ flowchart TB
         subgraph Net["cloud-stroll-network 桥接网络"]
             subgraph Infra["基础设施"]
                 N["Nacos 2.3<br/>:8848<br/>注册/配置中心"]
-                M["MariaDB 10.6<br/>:3306<br/>认证库 9 表 + biz/system 预留"]
-                R["Redis 7.2<br/>:6379<br/>会话/黑名单/缓存"]
+                M["MariaDB 10.6<br/>:3306<br/>认证库 9 表 + 通用配置表 + biz/system 预留"]
+                R["Redis 7.2<br/>:6379<br/>会话/黑名单/缓存/通用配置缓存"]
             end
-            subgraph Services["后端微服务"]
+            subgraph Services["后端微服务（v0.2.8 含 common）"]
+                C["cloudoffice-common<br/>:9300<br/>公共模块 + 通用配置管理服务"]
                 G["cloudoffice-gateway<br/>:9000<br/>AuthFilter 9 步认证"]
                 A["cloudoffice-auth-service<br/>:9100<br/>认证授权服务"]
                 B["cloudoffice-biz-service<br/>:9200<br/>企业服务骨架"]
@@ -177,9 +215,13 @@ flowchart TB
 
     WEB -->|"HTTP :9000"| G
     WIN -->|"HTTP :9000"| G
+    G -->|"lb 负载均衡"| C
     G -->|"lb 负载均衡"| A
     G -->|"lb 负载均衡"| B
     G -->|"lb 负载均衡"| S
+    C --> M
+    C --> R
+    C --> N
     A --> M
     G --> R
     A --> R
@@ -189,19 +231,21 @@ flowchart TB
     S --> N
 
     subgraph Env["密钥注入（环境变量）"]
-        K["RSA_PRIVATE_KEY（DER 单行 Base64）→ auth-service（私钥签名）<br/>RSA_PUBLIC_KEY（DER 单行 Base64）→ gateway + auth-service（公钥验签）<br/>DB/REDIS/NACOS 连接信息"]
+        K["RSA_PRIVATE_KEY（DER 单行 Base64）→ auth-service（私钥签名）<br/>RSA_PUBLIC_KEY（DER 单行 Base64）→ gateway + auth-service（公钥验签）<br/>DB/REDIS/NACOS 连接信息<br/>COMMON_PORT（v0.2.8 新增）"]
     end
+    Env -.->|"环境变量注入"| C
     Env -.->|"环境变量注入"| G
     Env -.->|"环境变量注入"| A
     Env -.->|"环境变量注入"| B
     Env -.->|"环境变量注入"| S
 
     subgraph Artifacts["deploy 目录（根目录，构建产物与部署资产唯一落点）"]
-        JAR["后端最终 jar 包<br/>gateway/auth/biz/system"]
+        JAR["后端最终 jar 包<br/>common/gateway/auth/biz/system（v0.2.8 新增 common）"]
         CLI["客户端安装产物<br/>安装文件 / exe"]
-        ENVF["env.json / env.example.json"]
-        SCR["deploy/scripts 脚本体系（v0.2.7）<br/>load-env（统一配置加载）<br/>deploy-check-env（可用性检查）<br/>deploy-start-services（基础设施一键启动）<br/>deploy-start-all（后端按序一键启动）<br/>deploy-start-{gateway/auth/biz/system}（单服务启动）<br/>deploy-rsa-keygen（RSA 密钥，DER 单行 Base64 契约）<br/>.sh / .ps1 双平台"]
+        ENVF["env.json / env.example.json<br/>（v0.2.8 新增 COMMON_PORT 等配置项）"]
+        SCR["deploy/scripts 脚本体系（v0.2.8 扩展）<br/>load-env（统一配置加载）<br/>deploy-check-env（可用性检查）<br/>deploy-start-services（基础设施一键启动）<br/>deploy-start-all（后端按序一键启动：common→gateway→auth→biz→system）<br/>deploy-stop-all（后端逆序一键停止：system→biz→auth→gateway→common）<br/>deploy-start-{common/gateway/auth/biz/system}（单服务启动）<br/>build-backend（编译脚本，含 common 产物输出）<br/>deploy-rsa-keygen（RSA 密钥，DER 单行 Base64 契约）<br/>.sh / .ps1 双平台"]
     end
+    C -->|"mvn package 最终产物"| JAR
     G -->|"mvn package 最终产物"| JAR
     A -->|"mvn package 最终产物"| JAR
     B -->|"mvn package 最终产物"| JAR
@@ -210,18 +254,19 @@ flowchart TB
     WIN -->|"Flutter 构建产物"| CLI
 ```
 
-部署说明：后端各服务以 Docker 容器部署于同一桥接网络，容器间通过服务名通信；端口映射：Nacos 8848、MariaDB 3306、Redis 6379、网关 9000、认证服务 9100、业务服务 9200、系统服务 9400；RSA 密钥与数据库/中间件连接信息通过 `.env` 环境变量注入，生产环境应使用密钥管理服务托管。各服务已引入 `spring-cloud-starter-bootstrap`，启动时 bootstrap.yml（Nacos discovery/config server-addr）先于 application.yml 加载，完成 Nacos 配置引导与注册；`RSA_PUBLIC_KEY`/`RSA_PRIVATE_KEY` 一律为 DER 编码单行 Base64（由 deploy-rsa-keygen.ps1 生成），与 Java 端 RsaKeyConfig 解码契约一致（v0.2.6 修复项）。
+部署说明：后端各服务以 Docker 容器部署于同一桥接网络，容器间通过服务名通信；端口映射：Nacos 8848、MariaDB 3306、Redis 6379、common 9300（v0.2.8 新增）、网关 9000、认证服务 9100、业务服务 9200、系统服务 9400；RSA 密钥与数据库/中间件连接信息通过环境变量注入，生产环境应使用密钥管理服务托管。各服务已引入 `spring-cloud-starter-bootstrap`，启动时 bootstrap.yml（Nacos discovery/config server-addr）先于 application.yml 加载，完成 Nacos 配置引导与注册；`RSA_PUBLIC_KEY`/`RSA_PRIVATE_KEY` 一律为 DER 编码单行 Base64（由 deploy-rsa-keygen.ps1 生成），与 Java 端 RsaKeyConfig 解码契约一致（v0.2.6 修复项）。v0.2.8 新增 common 服务（端口 9300），同样引入 spring-cloud-starter-bootstrap 保证 Nacos 引导链路正常。
 
-部署资产说明（v0.2.5 起）：根目录 `deploy` 为最终构建产物与部署资产的唯一落点——Maven 各模块 package 生成的最终 jar 包与 Flutter 客户端构建生成的安装文件/exe 均输出到 `deploy` 目录；`env.json`/`env.example.json` 环境配置与 `deploy/scripts` 下全部 .sh/.ps1 部署运维脚本集中存放；构建中间产物（target 目录、编译临时文件、测试产物等）禁止进入 deploy；`deploy/scripts` 脚本内部对 env.json、密钥文件（keys）、jar 包等路径引用随迁移同步适配。
+部署资产说明（v0.2.5 起，v0.2.8 扩展）：根目录 `deploy` 为最终构建产物与部署资产的唯一落点——Maven 各模块 package 生成的最终 jar 包（v0.2.8 新增 common jar）与 Flutter 客户端构建生成的安装文件/exe 均输出到 `deploy` 目录；`env.json`/`env.example.json` 环境配置（v0.2.8 新增 COMMON_PORT 等配置项）与 `deploy/scripts` 下全部 .sh/.ps1 部署运维脚本集中存放；构建中间产物（target 目录、编译临时文件、测试产物等）禁止进入 deploy；`deploy/scripts` 脚本内部对 env.json、密钥文件（keys）、jar 包等路径引用随迁移同步适配。
 
-脚本体系说明（v0.2.7 起）：`deploy/scripts` 全部脚本基于 `deploy/env.json`（经 `load-env.ps1`/`load-env.sh` 统一加载）实现配置驱动，脚本内无硬编码环境地址与凭据；能力划分为三层——`deploy-check-env`（JDK 命令/JAVA_HOME/版本 21、MariaDB 命令/服务/进程 + SELECT 1、Redis 命令/服务/进程 + ping、Nacos NACOS_HOME/startup 脚本 + HTTP 探测的可用性检查与运行状态检测）、`deploy-start-services`（检测未运行的 MariaDB/Redis/Nacos 并自动启动、启动后再次探测确认）、`deploy-start-all`（校验 jar 包与关键环境变量后按 gateway→auth→biz→system 顺序启动 4 个后端服务并逐服务健康确认）；单服务启动脚本（deploy-start-gateway/auth/biz/system）与一键启动对应逻辑一致；`.ps1` 与 `.sh` 双平台行为对齐，输出分级（通过/警告/失败）与退出码约定统一（失败非零），RSA 密钥契约保持 ADR-015（DER 单行 Base64）不破坏。
+脚本体系说明（v0.2.7 起，v0.2.8 扩展）：`deploy/scripts` 全部脚本基于 `deploy/env.json`（经 `load-env.ps1`/`load-env.sh` 统一加载）实现配置驱动，脚本内无硬编码环境地址与凭据；能力划分为三层——`deploy-check-env`（JDK 命令/JAVA_HOME/版本 21、MariaDB 命令/服务/进程 + SELECT 1、Redis 命令/服务/进程 + ping、Nacos NACOS_HOME/startup 脚本 + HTTP 探测的可用性检查与运行状态检测）、`deploy-start-services`（检测未运行的 MariaDB/Redis/Nacos 并自动启动、启动后再次探测确认）、`deploy-start-all`（校验 jar 包与关键环境变量后按 **common→gateway→auth→biz→system** 顺序启动 5 个后端服务并逐服务健康确认，common 最先启动且健康确认后再启动 gateway）；`deploy-stop-all`（按 **system→biz→auth→gateway→common** 逆序停止 5 个后端服务，common 最后停止）；单服务启动脚本（deploy-start-{common/gateway/auth/biz/system}）与一键启动对应逻辑一致；`build-backend` 编译脚本将 common 纳入编译产物输出范围，生成可部署 jar 包到 deploy 目录；`.ps1` 与 `.sh` 双平台行为对齐，输出分级（通过/警告/失败）与退出码约定统一（失败非零），RSA 密钥契约保持 ADR-015（DER 单行 Base64）不破坏。
 
 ## 7. 安全架构
 
 - **认证机制**：
   - 网关 AuthFilter 全局 9 步校验：白名单放行 → Bearer 格式校验 → RS256 公钥验签 → tokenType 校验（必须为 access）→ Redis 黑名单校验 → 登录态校验 → 账号状态校验 → 租户状态校验 → 用户信息 Header 透传（X-User-Id/X-Tenant-Id/X-User-Name/X-Client-Type/X-Roles/X-Permissions）。
   - JWT RS256 双 Token：Access Token 2 小时 + Refresh Token 7 天；刷新后旧 Refresh Token 立即入黑名单（防重放）；私钥仅存 auth-service，公钥存 gateway 与 auth-service。
-  - 白名单端点（登录/注册/刷新/验证码发送/密码找回/健康检查/OpenAPI）直接放行；其余请求必须携带合法 Bearer Token。
+  - 白名单端点（登录/注册/刷新/验证码发送/密码找回/健康检查含 /api/v1/common/health/OpenAPI）直接放行；其余请求必须携带合法 Bearer Token。
+  - 通用配置管理查询接口（/api/v1/common/config、/api/v1/common/config/{serviceName}）不在白名单中，需经 AuthFilter 认证，调用方需携带合法 Bearer Token（v0.2.8）。
 - **授权机制**：
   - RBAC 模型：用户-角色-权限三层关联（t_auth_user_role / t_auth_role_permission / t_auth_permission 树形），用户权限为所分配角色权限并集；本版本提供模型与数据管理 API，接口级鉴权注解随业务版本演进。
   - 多租户隔离：登录/注册必须携带 tenantCode；用户名/角色编码在租户内唯一；数据查询与操作限定当前租户空间。
@@ -231,6 +276,7 @@ flowchart TB
   - JWT 密钥、数据库密码、Redis 密码一律通过环境变量注入，代码与配置文件不含真实密钥。
   - RSA 密钥格式契约统一：`RSA_PUBLIC_KEY`/`RSA_PRIVATE_KEY` 采用 DER 编码单行 Base64（无 PEM 头尾、无换行），由 deploy-rsa-keygen.ps1 生成并注入 env.json，与 Java 端 `Base64.getDecoder()` + `X509EncodedKeySpec`（公钥）/`PKCS8EncodedKeySpec`（私钥）解码契约严格一致；私钥不得入库、不得写入日志（v0.2.6 修复项）。
   - 登录日志记录 IP/客户端类型/结果/失败原因，供安全审计追溯。
+  - 通用配置管理敏感配置项脱敏：查询接口返回配置项时，标记为敏感的配置项（如密码、密钥类）进行脱敏处理（如返回 `****`）或排除不返回，不在响应中暴露明文（v0.2.8）。
 - **账号安全**：
   - 会话实时可控：登出幂等（Token 入黑名单 + 会话清除）；管理员强制踢人（指定端/所有端）即时生效；密码修改/找回成功后清除该用户全部登录态。
   - 验证码：60 秒发送频率限制、5 分钟有效期、错误次数限制防暴力尝试、一次性失效、按用途隔离。
@@ -238,13 +284,14 @@ flowchart TB
 
 ## 8. 性能架构
 
-- **容量估算**：本版本为认证底座，登录/刷新为高频接口；认证库 9 张表数据量可控（租户/用户/角色/权限/日志），日志表随使用增长，后续版本可规划归档策略。
+- **容量估算**：本版本为认证底座 + 通用配置管理，登录/刷新为高频接口；认证库 9 张表数据量可控（租户/用户/角色/权限/日志），日志表随使用增长，后续版本可规划归档策略。通用配置表数据量可控（五个微服务的运行时配置项，预计百级至千级），查询以本地缓存命中为主。
 - **缓存设计**：
   - Redis 承载全部热路径数据：登录态会话（userId+clientType）、Token 黑名单（Token 签名 SHA-256 指纹）、账号状态缓存、租户状态缓存、验证码缓存（5 分钟 TTL）。
   - 网关使用 ReactiveRedisTemplate 响应式非阻塞校验，避免阻塞事件循环线程，提升网关吞吐。
-- **连接池**：auth-service HikariCP（maximum-pool-size 20、minimum-idle 5）；Redis Lettuce 连接池（auth max-active 16、gateway max-active 8）。
+  - 通用配置管理本地缓存（v0.2.8）：配置查询优先命中 Redis 本地缓存（响应时间 ≤ 50ms），缓存未命中时回源数据库查询并回填缓存；缓存失效策略按配置变更触发或 TTL 过期自动失效。
+- **连接池**：auth-service HikariCP（maximum-pool-size 20、minimum-idle 5）；Redis Lettuce 连接池（auth max-active 16、gateway max-active 8、common max-active 8 v0.2.8）；common-service HikariCP（maximum-pool-size 10、minimum-idle 2，配置查询为低频读操作 v0.2.8）。
 - **异步与限流**：本版本登录/注册流程为同步事务处理；网关依赖 Spring Cloud Gateway 路由与 CORS；后续版本可引入 Spring Cloud Gateway RequestRateLimiter 限流与消息队列异步化（登录日志写入等）。
-- **监控指标**：各服务提供 `/api/v1/{module}/health` 健康检查端点（服务名/状态/版本/时间戳）；SpringDoc Swagger UI 在线调试；后续版本可接入 Actuator 指标与链路追踪。
+- **监控指标**：各服务提供 `/api/v1/{module}/health` 健康检查端点（服务名/状态/版本/时间戳，含 /api/v1/common/health v0.2.8）；SpringDoc Swagger UI 在线调试（含 common 分组 v0.2.8）；后续版本可接入 Actuator 指标与链路追踪。
 
 ## 9. 数据流图
 
@@ -271,7 +318,7 @@ flowchart LR
     F -->|"1. 白名单判断"| F
     F -->|"2-4. Bearer 格式/RS256 验签/tokenType"| K2["RSA 公钥"]
     F -->|"5-8. 黑名单/登录态/账号状态/租户状态"| R2[("Redis")]
-    F -->|"9. Header 透传<br/>X-User-Id 等"| SVC["下游服务（auth/biz/system）"]
+    F -->|"9. Header 透传<br/>X-User-Id 等"| SVC["下游服务（auth/biz/system/common）"]
     SVC -->|"ApiResult 统一响应"| C
 ```
 
@@ -282,6 +329,21 @@ flowchart LR
     A2 -->|"校验签名/有效期/黑名单/tokenType"| K3["RSA 公钥 + Redis 黑名单"]
     A2 -->|"旧 Refresh Token 入黑名单（轮换）"| R3[("Redis")]
     A2 -->|"签发新 Token 对（Access 2h + Refresh 7d）"| C2
+```
+
+### 9.4 通用配置查询数据流（v0.2.8 新增）
+```mermaid
+flowchart LR
+    C3["客户端携带<br/>Bearer Token"] -->|"GET /api/v1/common/config<br/>或 /api/v1/common/config/{serviceName}"| F3["网关 AuthFilter"]
+    F3 -->|"1-9. 认证校验（非白名单）"| R3[("Redis<br/>黑名单/会话/状态")]
+    F3 -->|"认证通过<br/>路由转发"| CM["common 服务<br/>ConfigController"]
+    CM -->|"调用配置查询服务"| CS["ConfigService"]
+    CS -->|"1. 查询本地缓存"| RC[("Redis<br/>配置缓存")]
+    CS -->|"2. 缓存未命中<br/>回源数据库"| DB[("MariaDB<br/>通用配置表")]
+    CS -->|"3. 敏感配置脱敏"| CS
+    CS -->|"返回配置项列表"| CM
+    CM -->|"ApiResult 统一响应"| F3
+    F3 -->|"响应"| C3
 ```
 
 ## 10. 架构决策记录（ADR）
@@ -304,5 +366,8 @@ flowchart LR
 | ADR-014 | bootstrap 配置引导依赖 | 四个服务模块（gateway/auth/biz/system）统一引入 `spring-cloud-starter-bootstrap`，恢复 bootstrap.yml（含 Nacos discovery/config server-addr）在 Spring Boot 3.x 下的加载，打通 Nacos 配置引导链路 | Spring Boot 3.x 默认不加载 bootstrap.yml，全项目 pom 缺该依赖导致 auth/biz/system 启动报 `No spring.config.import property has been defined`、Nacos 引导断裂（v0.0.1 基线遗留缺陷 T-02，v0.2.6 修复）；引入依赖为最小改动且不改变接口契约 | 2026-08-09 |
 | ADR-015 | RSA 密钥格式契约 | 统一 RSA 密钥格式为 DER 编码单行 Base64：deploy-rsa-keygen.ps1 输出/env.json 注入的 `RSA_PUBLIC_KEY`/`RSA_PRIVATE_KEY` 与 Java 端 `Base64.getDecoder()` + `X509EncodedKeySpec`（公钥）/`PKCS8EncodedKeySpec`（私钥）解码逻辑严格一致；禁止多行 PEM 整体 Base64 直接注入 | 原 env.json 注入 PEM 整体 Base64（多行、含 BEGIN/END）与 Java 严格解码契约不匹配，网关启动报 `RSA 公钥解析失败`（v0.0.1 基线遗留缺陷 T-02，v0.2.6 修复）；统一脚本输出契约可消除配置歧义，Java 端无需兼容代码、运行时代码零改动 | 2026-08-09 |
 | ADR-016 | 部署脚本体系重构与配置驱动 | v0.2.7 系统性重构 `deploy/scripts` 全部脚本：以 `deploy/env.json` 为唯一配置源（`load-env.ps1`/`.sh` 统一加载，脚本不硬编码地址与凭据）；能力划分为可用性检查（deploy-check-env）、基础设施一键启动（deploy-start-services）、后端服务按序一键启动（deploy-start-all）与单服务启动（deploy-start-{svc}）四类；.ps1 与 .sh 双平台行为对齐，输出分级（通过/警告/失败）与退出码约定（失败非零）统一；删除弃用脚本残留（deploy-env 等），`.sh` 与 `.ps1` 密钥输出契约对齐（不破坏 ADR-015）；同时治理 `.gitignore` 排除生成/测试/调试临时与中间文件 | 消除历史遗留的脚本契约不一致（deploy-rsa-keygen.sh 与 .ps1 输出不一致、deploy-env 弃用残留、硬编码默认地址）与人工逐服务启动的低效；配置驱动使脚本无感变更、双平台可预期、结果可核对；仅涉及部署运维层，不改变后端架构、接口契约与数据库设计 | 2026-08-10 |
+| ADR-017 | common 服务化改造 | v0.2.8 将 cloudoffice-common 从纯公共 jar 模块升级为可独立部署的 Spring Boot 微服务（端口 9300）：新增启动类（@SpringBootApplication）、bootstrap.yml（Nacos discovery/config server-addr）、application.yml（端口、SpringDoc 分组）、健康检查端点（/api/v1/common/health）、SpringDoc OpenAPI 文档；common 同时保留公共 jar 模块能力（ApiResult/PageResult/异常体系/枚举常量），下游服务（gateway/auth/biz/system）仍以 Maven 依赖方式引用 common 公共类与接口，服务化改造不破坏现有模块依赖关系；common 引入 spring-cloud-starter-bootstrap 保证 Nacos 引导链路正常（与 ADR-014 一致） | common 作为所有微服务的公共依赖与配置提供方，服务化后可独立部署、注册到 Nacos、提供 API 服务（通用配置管理），与其他微服务具备同等能力；common 最先启动确保后续服务可通过 Nacos 服务发现获取配置接口；保留 jar 模块能力避免下游服务编译与运行受影响 | 2026-08-13 |
+| ADR-018 | 通用配置管理接口先行 | v0.2.8 在 cloudoffice-common 中新增通用配置管理查询接口（GET /api/v1/common/config、GET /api/v1/common/config/{serviceName}），统一管理 gateway/auth/biz/system/common 五个微服务在不同业务场景下的所有运行时配置（启动环境变量除外）；接口层与数据层预留增删改扩展点，本版本仅实现查询接口，后端管理界面与写入接口在后续版本迭代；敏感配置项查询时脱敏或排除；配置查询经网关 AuthFilter 认证（非白名单端点）；配置数据优先命中 Redis 本地缓存（≤ 50ms），缓存未命中回源数据库查询并回填缓存 | 各微服务运行时配置分散在各自配置文件中，缺乏统一查询入口，配置一致性难以保障；通用配置管理提供统一查询入口，替代分散的配置查询需求；接口先行、扩展预留确保后续管理功能可平滑接入，避免接口重构；敏感配置脱敏防止信息泄露 | 2026-08-13 |
+| ADR-019 | 部署顺序含 common（v0.2.8） | v0.2.8 扩展部署脚本体系：deploy-start-all 服务清单新增 common 并置于第一位（common→gateway→auth→biz→system），common 最先启动且健康确认后再启动 gateway；deploy-stop-all 服务清单新增 common 并置于最后一位（system→biz→auth→gateway→common），common 最后停止；build-backend 编译脚本将 common 纳入编译产物输出范围，生成可部署 jar 包到 deploy 目录；deploy-start-{common} 单服务启动脚本与一键启动对应逻辑一致 | common 作为所有微服务的公共依赖与配置提供方，须在所有后端服务之前率先启动并完成健康确认，确保后续服务启动时可通过 Nacos 服务发现获取 common 的配置接口；common 最后停止确保其他服务在停止过程中仍可访问配置接口；编译脚本纳入 common 产物使 common 服务化后可通过编译脚本一键构建出可部署产物 | 2026-08-13 |
 
 <!-- SPDX-License-Identifier: Apache-2.0 / Copyright 2026 jenemy8023 <jenemy8023@163.com> -->

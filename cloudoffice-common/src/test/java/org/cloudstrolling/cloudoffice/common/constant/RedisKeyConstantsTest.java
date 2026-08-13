@@ -126,4 +126,26 @@ class RedisKeyConstantsTest {
         assertThrows(IllegalArgumentException.class,
                 () -> RedisKeyConstants.buildTenantStatusKey(null));
     }
+
+    // ========== 通用配置缓存 Key（TASK-004 新增） ==========
+
+    @Test
+    @DisplayName("COMMON_CONFIG_CACHE_PREFIX 常量值应为 common:config:")
+    void commonConfigCachePrefix_shouldBeCorrect() {
+        assertEquals("common:config:", RedisKeyConstants.COMMON_CONFIG_CACHE_PREFIX);
+    }
+
+    @Test
+    @DisplayName("buildConfigCacheKey 应返回 common:config:{serviceName} 格式")
+    void buildConfigCacheKey_shouldReturnCorrectFormat() {
+        assertEquals("common:config:auth-service", RedisKeyConstants.buildConfigCacheKey("auth-service"));
+        assertEquals("common:config:gateway", RedisKeyConstants.buildConfigCacheKey("gateway"));
+    }
+
+    @Test
+    @DisplayName("buildConfigCacheKey serviceName 为 null 时应抛出 IllegalArgumentException")
+    void buildConfigCacheKey_withNullServiceName_shouldThrowException() {
+        assertThrows(IllegalArgumentException.class,
+                () -> RedisKeyConstants.buildConfigCacheKey(null));
+    }
 }
